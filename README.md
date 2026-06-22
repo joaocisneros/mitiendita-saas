@@ -55,13 +55,22 @@ npm run test:e2e
 
 ---
 
-## 🗺️ Fases
+## 🗺️ Fases (MVP completo ✅)
 
 - **Fase 0 — Cimientos** ✅ multi-tenancy, autenticación (JWT + refresh), registro de empresa.
-- **Fase 1** — Registro + configuración de tienda.
-- **Fase 2** — Productos y categorías (+ Cloudinary).
-- **Fase 3** — Tienda pública + carrito (frontend).
-- **Fase 4** — Checkout, pedidos y reserva de stock.
-- **Fase 5** — Yape, comprobantes, WhatsApp, notificación al dueño.
-- **Fase 6** — Panel de pedidos y pagos.
-- **Fase 7** — Superadmin y planes.
+- **Fase 1 — Configuración de tienda** ✅ marca, colores, Yape, WhatsApp, delivery.
+- **Fase 2 — Catálogo** ✅ productos y categorías (CRUD + Cloudinary).
+- **Fase 3 — Tienda pública** ✅ catálogo + carrito mobile-first.
+- **Fase 4 — Checkout** ✅ pedidos, recálculo en servidor, reserva de stock, idempotencia.
+- **Fase 5 — Pago** ✅ Yape (QR), comprobante, WhatsApp.
+- **Fase 6 — Panel del dueño** ✅ dashboard, pedidos, aprobar/rechazar pago, estados, expiración.
+- **Fase 7 — Superadmin** ✅ empresas, suspender/activar, planes, métricas globales.
+
+### URLs (desarrollo)
+- Tienda: `http://localhost:8301/tienda/<subdominio>`
+- Panel del dueño: `http://localhost:8301/panel/login`
+- Superadmin: `http://localhost:8301/superadmin/login`
+- API: `http://localhost:8300/api`
+
+35 pruebas e2e cubren auth, aislamiento multi-tenant, catálogo, pedidos,
+anti-sobreventa, idempotencia, pagos y superadmin.
