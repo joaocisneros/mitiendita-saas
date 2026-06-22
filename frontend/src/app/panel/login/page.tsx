@@ -25,18 +25,20 @@ export default function PanelLogin() {
   }
 
   return (
-    <div className="flex min-h-screen flex-1 items-center justify-center bg-gray-50 px-4">
+    <div className="flex min-h-screen flex-1 items-center justify-center bg-gradient-to-br from-violet-600 via-violet-500 to-fuchsia-500 px-4">
       <div className="w-full max-w-sm">
-        <h1 className="mb-1 text-center text-2xl font-extrabold">
-          Mi<span className="text-violet-600">Tiendita</span>
-        </h1>
-        <p className="mb-6 text-center text-sm text-gray-500">
-          Panel del negocio
-        </p>
+        <div className="mb-6 text-center">
+          <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 text-3xl backdrop-blur">
+            🛍️
+          </div>
+          <h1 className="text-2xl font-extrabold text-white">MiTiendita</h1>
+          <p className="text-sm text-white/80">Panel del negocio</p>
+        </div>
         <form
           onSubmit={submit}
-          className="space-y-4 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-black/5"
+          className="space-y-4 rounded-2xl bg-white p-6 shadow-xl"
         >
+          <h2 className="text-lg font-bold text-gray-800">Inicia sesión</h2>
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-gray-700">
               Correo
