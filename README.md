@@ -34,7 +34,7 @@ npm install
 cp .env.example .env        # ajusta credenciales si hace falta
 npx prisma migrate dev      # crea las tablas
 npm run prisma:seed         # planes, subdominios reservados, superadmin
-npm run start:dev           # API en http://localhost:3001/api
+npm run start:dev           # API en http://localhost:8003/api
 ```
 
 Pruebas:
