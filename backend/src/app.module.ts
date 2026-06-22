@@ -10,6 +10,9 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
+import { CategoriesModule } from './categories/categories.module';
+import { ProductsModule } from './products/products.module';
+import { MediaModule } from './media/media.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { TenancyMiddleware } from './tenancy/tenancy.middleware';
@@ -21,6 +24,9 @@ import { TenancyMiddleware } from './tenancy/tenancy.middleware';
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     PrismaModule,
     AuthModule,
+    CategoriesModule,
+    ProductsModule,
+    MediaModule,
   ],
   controllers: [AppController],
   providers: [

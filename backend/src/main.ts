@@ -23,7 +23,7 @@ async function bootstrap() {
     credentials: true,
   });
 
-  const port = Number(process.env.PORT ?? 8003);
+  const port = Number(process.env.PORT ?? 8300);
   await app.listen(port);
   // eslint-disable-next-line no-console
   console.log(`🚀 MiTiendita API escuchando en http://localhost:${port}/api`);

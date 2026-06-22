@@ -24,6 +24,16 @@ MiTiendita/
 
 ---
 
+## 🔌 Puertos reservados para MiTiendita
+
+Bloque dedicado para no chocar con otros proyectos de Laragon
+(MiPlanilla 8000/8004/8123, FACTURACIONELECTRONICA 8090/8766/8767, IA 3001/5175, etc.):
+
+| Servicio | Puerto |
+|---|---|
+| Backend API | **8300** |
+| Frontend | **8301** *(Fase 3)* |
+
 ## ▶️ Cómo correr el backend (desarrollo)
 
 Requisitos: Node 20+, MySQL (Laragon).
@@ -34,7 +44,7 @@ npm install
 cp .env.example .env        # ajusta credenciales si hace falta
 npx prisma migrate dev      # crea las tablas
 npm run prisma:seed         # planes, subdominios reservados, superadmin
-npm run start:dev           # API en http://localhost:8003/api
+npm run start:dev           # API en http://localhost:8300/api
 ```
 
 Pruebas:
