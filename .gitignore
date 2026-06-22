@@ -1,0 +1,23 @@
+# Dependencias (cada subproyecto tiene las suyas)
+node_modules/
+
+# Variables de entorno
+.env
+.env.*
+!.env.example
+
+# Compilados / generados
+dist/
+build/
+coverage/
+generated/
+
+# Logs
+*.log
+
+# Sistema operativo / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json

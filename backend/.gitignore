@@ -1,0 +1,25 @@
+# Dependencias
+node_modules
+
+# Variables de entorno (¡nunca se suben!)
+.env
+.env.*
+!.env.example
+
+# Cliente Prisma generado
+/generated
+
+# Compilados y cobertura
+/dist
+/coverage
+/build
+
+# Logs
+*.log
+logs
+
+# Sistema operativo / editor
+.DS_Store
+Thumbs.db
+.idea
+*.tsbuildinfo

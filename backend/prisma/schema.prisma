@@ -1,0 +1,172 @@
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  MiTiendita — Esquema de base de datos                         ║
+// ║  Fase 0: Cimientos (núcleo multi-tenant + autenticación)      ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  runtime      = "nodejs"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ───────────────────────── ENUMS ─────────────────────────
+
+enum CompanyStatus {
+  active
+  suspended
+  inactive
+}
+
+enum MembershipRole {
+  OWNER
+  EMPLOYEE
+}
+
+// ════════════════ ENTIDADES GLOBALES (sin company_id) ════════════════
+
+/// Planes comerciales (Básico, Pro, Premium). Asignados manualmente en el MVP.
+model Plan {
+  id          Int      @id @default(autoincrement())
+  name        String
+  slug        String   @unique
+  priceMonth  Decimal  @default(0) @db.Decimal(10, 2) @map("price_month")
+  maxProducts Int?     @map("max_products") // null = ilimitado
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  companies Company[]
+
+  @@map("plans")
+}
+
+/// La empresa (negocio). Cada empresa = una tienda en el MVP.
+model Company {
+  id        String        @id @default(uuid())
+  name      String // nombre comercial
+  subdomain String        @unique
+  status    CompanyStatus @default(active)
+  planId    Int?          @map("plan_id")
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+  deletedAt DateTime?     @map("deleted_at")
+
+  plan        Plan?            @relation(fields: [planId], references: [id])
+  settings    CompanySettings?
+  memberships Membership[]
+
+  @@index([status])
+  @@map("companies")
+}
+
+/// Administradores de la plataforma (tabla separada por seguridad).
+model SuperAdmin {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("super_admins")
+}
+
+/// Subdominios reservados que ninguna empresa puede usar (www, api, admin...).
+model ReservedSubdomain {
+  id        Int      @id @default(autoincrement())
+  slug      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("reserved_subdomains")
+}
+
+// ════════════════ IDENTIDAD Y ACCESO ════════════════
+
+/// Usuario del panel (identidad global). Se vincula a empresas vía Membership.
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  memberships   Membership[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+/// Vincula un usuario con una empresa y su rol. Permite empleados a futuro.
+model Membership {
+  id        String         @id @default(uuid())
+  userId    String         @map("user_id")
+  companyId String         @map("company_id")
+  role      MembershipRole @default(OWNER)
+  createdAt DateTime       @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id])
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@unique([userId, companyId])
+  @@index([companyId])
+  @@map("memberships")
+}
+
+/// Refresh tokens revocables (se guarda solo el hash, nunca el token en claro).
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ════════════════ CONFIGURACIÓN DE TIENDA (por empresa) ════════════════
+
+/// Configuración de marca, pago Yape y entrega de cada tienda.
+model CompanySettings {
+  id              String   @id @default(uuid())
+  companyId       String   @unique @map("company_id")
+  storeName       String   @map("store_name")
+  businessType    String?  @map("business_type") // informativo: Bodega, Farmacia, Ropa... (no bloquea nada)
+  description     String?  @db.Text
+  logoUrl         String?  @map("logo_url")
+  primaryColor    String   @default("#2563eb") @map("primary_color")
+  secondaryColor  String   @default("#f59e0b") @map("secondary_color")
+  whatsappNumber  String?  @map("whatsapp_number")
+  yapeQrUrl       String?  @map("yape_qr_url")
+  yapeHolderName  String?  @map("yape_holder_name")
+  yapeNumber      String?  @map("yape_number")
+  currency        String   @default("PEN")
+  timezone        String   @default("America/Lima")
+  whatsappMessage String?  @map("whatsapp_message") @db.Text
+
+  // Entrega
+  allowsPickup   Boolean  @default(true) @map("allows_pickup")
+  allowsDelivery Boolean  @default(true) @map("allows_delivery")
+  deliveryFee    Decimal  @default(0) @db.Decimal(10, 2) @map("delivery_fee")
+  minOrder       Decimal? @db.Decimal(10, 2) @map("min_order")
+  storeAddress   String?  @map("store_address")
+  deliveryNotes  String?  @map("delivery_notes") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@map("company_settings")
+}
