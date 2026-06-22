@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { PrismaModule } from './prisma/prisma.module';
@@ -15,6 +16,7 @@ import { ProductsModule } from './products/products.module';
 import { MediaModule } from './media/media.module';
 import { StorefrontModule } from './storefront/storefront.module';
 import { OrdersModule } from './orders/orders.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { TenancyMiddleware } from './tenancy/tenancy.middleware';
@@ -22,6 +24,7 @@ import { TenancyMiddleware } from './tenancy/tenancy.middleware';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     // Rate limiting por defecto: 100 peticiones por minuto.
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     PrismaModule,
@@ -31,6 +34,7 @@ import { TenancyMiddleware } from './tenancy/tenancy.middleware';
     MediaModule,
     StorefrontModule,
     OrdersModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [
