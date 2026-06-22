@@ -9,6 +9,7 @@ interface JwtPayload {
   email: string;
   companyId: string;
   role: 'OWNER' | 'EMPLOYEE';
+  scope?: 'super';
 }
 
 /**
@@ -31,6 +32,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       email: payload.email,
       companyId: payload.companyId,
       role: payload.role,
+      scope: payload.scope,
     };
   }
 }

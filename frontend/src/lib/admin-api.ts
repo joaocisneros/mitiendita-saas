@@ -153,4 +153,122 @@ export const adminApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status, comment }),
     }).then((r) => jsonOrThrow<AdminOrderDetail>(r, "No se pudo cambiar el estado.")),
+
+  // ── Productos ──
+  products: (params: { search?: string; page?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.search) q.set("search", params.search);
+    if (params.page) q.set("page", String(params.page));
+    const qs = q.toString();
+    return authFetch(`/products${qs ? `?${qs}` : ""}`).then((r) =>
+      jsonOrThrow<{ items: AdminProduct[]; total: number; pages: number }>(r, "Error"),
+    );
+  },
+  product: (id: string) =>
+    authFetch(`/products/${id}`).then((r) => jsonOrThrow<AdminProduct>(r, "Error")),
+  createProduct: (body: ProductInput) =>
+    authFetch(`/products`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => jsonOrThrow<AdminProduct>(r, "No se pudo crear.")),
+  updateProduct: (id: string, body: Partial<ProductInput>) =>
+    authFetch(`/products/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => jsonOrThrow<AdminProduct>(r, "No se pudo actualizar.")),
+  deleteProduct: (id: string) =>
+    authFetch(`/products/${id}`, { method: "DELETE" }).then((r) =>
+      jsonOrThrow(r, "No se pudo eliminar."),
+    ),
+
+  // ── Categorías ──
+  categories: () =>
+    authFetch(`/categories`).then((r) => jsonOrThrow<AdminCategory[]>(r, "Error")),
+  createCategory: (name: string) =>
+    authFetch(`/categories`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    }).then((r) => jsonOrThrow<AdminCategory>(r, "No se pudo crear.")),
+  deleteCategory: (id: string) =>
+    authFetch(`/categories/${id}`, { method: "DELETE" }).then((r) =>
+      jsonOrThrow(r, "No se pudo eliminar."),
+    ),
+
+  // ── Configuración ──
+  settings: () =>
+    authFetch(`/admin/settings`).then((r) => jsonOrThrow<StoreSettings>(r, "Error")),
+  updateSettings: (body: Partial<StoreSettings>) =>
+    authFetch(`/admin/settings`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => jsonOrThrow<StoreSettings>(r, "No se pudo guardar.")),
+
+  // ── Subida de imágenes ──
+  async uploadImage(file: File, folder: "products" | "categories" | "general") {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await authFetch(`/media/upload?folder=${folder}`, {
+      method: "POST",
+      body: form,
+    });
+    return jsonOrThrow<{ url: string; publicId: string }>(res, "No se pudo subir la imagen.");
+  },
 };
+
+export interface AdminProduct {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  price: string;
+  stock: number;
+  reserved: number;
+  sku: string | null;
+  imageUrl: string | null;
+  isFeatured: boolean;
+  isActive: boolean;
+  categoryId: string | null;
+}
+export interface ProductInput {
+  name: string;
+  price: number;
+  stock: number;
+  description?: string;
+  sku?: string;
+  categoryId?: string | null;
+  imageUrl?: string;
+  isFeatured?: boolean;
+  isActive?: boolean;
+}
+export interface AdminCategory {
+  id: string;
+  name: string;
+  slug: string;
+  isActive: boolean;
+  sortOrder: number;
+}
+export interface StoreSettings {
+  storeName: string;
+  businessType: string | null;
+  description: string | null;
+  logoUrl: string | null;
+  primaryColor: string;
+  secondaryColor: string;
+  whatsappNumber: string | null;
+  yapeQrUrl: string | null;
+  yapeHolderName: string | null;
+  yapeNumber: string | null;
+  whatsappMessage: string | null;
+  allowsPickup: boolean;
+  allowsDelivery: boolean;
+  deliveryFee: string;
+  minOrder: string | null;
+  storeAddress: string | null;
+  deliveryNotes: string | null;
+  subdomain?: string;
+  status?: string;
+}

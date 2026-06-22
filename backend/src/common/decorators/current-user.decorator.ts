@@ -9,6 +9,7 @@ export interface AuthUser {
   email: string;
   companyId: string;
   role: 'OWNER' | 'EMPLOYEE';
+  scope?: 'super';
 }
 
 /**

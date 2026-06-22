@@ -17,6 +17,8 @@ import { MediaModule } from './media/media.module';
 import { StorefrontModule } from './storefront/storefront.module';
 import { OrdersModule } from './orders/orders.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { StoreSettingsModule } from './store-settings/store-settings.module';
+import { SuperAdminModule } from './superadmin/superadmin.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { TenancyMiddleware } from './tenancy/tenancy.middleware';
@@ -35,6 +37,8 @@ import { TenancyMiddleware } from './tenancy/tenancy.middleware';
     StorefrontModule,
     OrdersModule,
     DashboardModule,
+    StoreSettingsModule,
+    SuperAdminModule,
   ],
   controllers: [AppController],
   providers: [
