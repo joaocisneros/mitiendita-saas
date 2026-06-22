@@ -27,6 +27,32 @@ enum MembershipRole {
   EMPLOYEE
 }
 
+enum OrderStatus {
+  pending
+  confirmed
+  preparing
+  out_for_delivery
+  delivered
+  cancelled
+  expired
+}
+
+enum PaymentStatus {
+  pending
+  proof_submitted
+  approved
+  rejected
+}
+
+enum DeliveryMethod {
+  pickup
+  delivery
+}
+
+enum PaymentMethod {
+  yape
+}
+
 // ════════════════ ENTIDADES GLOBALES (sin company_id) ════════════════
 
 /// Planes comerciales (Básico, Pro, Premium). Asignados manualmente en el MVP.
@@ -61,6 +87,9 @@ model Company {
   memberships Membership[]
   categories  Category[]
   products    Product[]
+  customers   Customer[]
+  orders      Order[]
+  payments    Payment[]
 
   @@index([status])
   @@map("companies")
@@ -217,8 +246,9 @@ model Product {
   updatedAt   DateTime  @updatedAt @map("updated_at")
   deletedAt   DateTime? @map("deleted_at")
 
-  company  Company   @relation(fields: [companyId], references: [id])
-  category Category? @relation(fields: [categoryId], references: [id])
+  company    Company     @relation(fields: [companyId], references: [id])
+  category   Category?   @relation(fields: [categoryId], references: [id])
+  orderItems OrderItem[]
 
   // slug y SKU únicos por empresa. SKU es opcional (varios NULL permitidos).
   @@unique([companyId, slug])
@@ -226,4 +256,127 @@ model Product {
   @@index([companyId])
   @@index([companyId, categoryId])
   @@map("products")
+}
+
+// ════════════════ CLIENTES Y PEDIDOS (por empresa) ════════════════
+
+/// Cliente comprador. Identificado por teléfono dentro de cada empresa.
+model Customer {
+  id              String    @id @default(uuid())
+  companyId       String    @map("company_id")
+  name            String
+  phone           String // teléfono normalizado
+  address         String?   @db.Text
+  firstPurchaseAt DateTime? @map("first_purchase_at")
+  lastPurchaseAt  DateTime? @map("last_purchase_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id])
+  orders  Order[]
+
+  @@unique([companyId, phone])
+  @@index([companyId])
+  @@map("customers")
+}
+
+/// Pedido. Guarda copias históricas de los datos del cliente.
+model Order {
+  id             String         @id @default(uuid())
+  companyId      String         @map("company_id")
+  customerId     String         @map("customer_id")
+  publicCode     String         @unique @map("public_code")
+  status         OrderStatus    @default(pending)
+  paymentStatus  PaymentStatus  @default(pending) @map("payment_status")
+  deliveryMethod DeliveryMethod @map("delivery_method")
+
+  // Copia histórica de los datos al momento de la compra.
+  customerName  String  @map("customer_name")
+  customerPhone String  @map("customer_phone")
+  address       String? @db.Text
+  reference     String?
+  customerNote  String? @map("customer_note") @db.Text
+
+  subtotal    Decimal @db.Decimal(12, 2)
+  deliveryFee Decimal @default(0) @map("delivery_fee") @db.Decimal(12, 2)
+  total       Decimal @db.Decimal(12, 2)
+  currency    String  @default("PEN")
+
+  idempotencyKey       String?   @map("idempotency_key")
+  reservationExpiresAt DateTime? @map("reservation_expires_at")
+  confirmedAt          DateTime? @map("confirmed_at")
+  deliveredAt          DateTime? @map("delivered_at")
+  cancelledAt          DateTime? @map("cancelled_at")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  company  Company              @relation(fields: [companyId], references: [id])
+  customer Customer             @relation(fields: [customerId], references: [id])
+  items    OrderItem[]
+  history  OrderStatusHistory[]
+  payment  Payment?
+
+  // Idempotencia: una misma clave no crea dos pedidos en la misma empresa.
+  @@unique([companyId, idempotencyKey])
+  @@index([companyId, status])
+  @@index([companyId, createdAt])
+  @@map("orders")
+}
+
+/// Línea de pedido con copia histórica (nombre, SKU, precio, cantidad).
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String  @map("order_id")
+  productId String? @map("product_id")
+  name      String
+  sku       String?
+  unitPrice Decimal @map("unit_price") @db.Decimal(12, 2)
+  quantity  Int
+  lineTotal Decimal @map("line_total") @db.Decimal(12, 2)
+
+  order   Order    @relation(fields: [orderId], references: [id])
+  product Product? @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+/// Historial de cambios de estado del pedido (auditoría).
+model OrderStatusHistory {
+  id              String   @id @default(uuid())
+  orderId         String   @map("order_id")
+  fromStatus      String?  @map("from_status")
+  toStatus        String   @map("to_status")
+  changedByUserId String?  @map("changed_by_user_id")
+  comment         String?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@map("order_status_history")
+}
+
+/// Pago del pedido (Yape manual en el MVP).
+model Payment {
+  id                String        @id @default(uuid())
+  companyId         String        @map("company_id")
+  orderId           String        @unique @map("order_id")
+  method            PaymentMethod @default(yape)
+  expectedAmount    Decimal       @map("expected_amount") @db.Decimal(12, 2)
+  reportedAmount    Decimal?      @map("reported_amount") @db.Decimal(12, 2)
+  proofUrl          String?       @map("proof_url")
+  status            PaymentStatus @default(pending)
+  submittedAt       DateTime?     @map("submitted_at")
+  validatedAt       DateTime?     @map("validated_at")
+  validatedByUserId String?       @map("validated_by_user_id")
+  rejectionComment  String?       @map("rejection_comment")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id])
+  order   Order   @relation(fields: [orderId], references: [id])
+
+  @@index([companyId, status])
+  @@map("payments")
 }
