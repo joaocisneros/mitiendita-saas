@@ -1,6 +1,7 @@
 import Image from "next/image";
 import type { PublicProduct } from "@/lib/types";
 import { formatPrice } from "@/lib/format";
+import { AddToCart } from "./AddToCart";
 
 export function ProductCard({
   product,
@@ -43,12 +44,7 @@ export function ProductCard({
         <p className="mt-1 text-lg font-extrabold text-gray-900">
           {formatPrice(product.price, currency)}
         </p>
-        <button
-          disabled={!product.inStock}
-          className="mt-2 w-full rounded-lg bg-violet-600 py-2 text-sm font-semibold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
-        >
-          {product.inStock ? "Agregar" : "Sin stock"}
-        </button>
+        <AddToCart product={product} />
       </div>
     </article>
   );

@@ -9,6 +9,11 @@ export interface StoreBrand {
   allowsPickup: boolean;
   allowsDelivery: boolean;
   deliveryFee: string;
+  minOrder: string | null;
+  storeAddress: string | null;
+  yapeQrUrl: string | null;
+  yapeHolderName: string | null;
+  yapeNumber: string | null;
 }
 
 export interface StoreCategory {

@@ -36,6 +36,12 @@ export class StorefrontService {
         allowsPickup: s?.allowsPickup ?? true,
         allowsDelivery: s?.allowsDelivery ?? true,
         deliveryFee: s?.deliveryFee ?? 0,
+        minOrder: s?.minOrder ?? null,
+        storeAddress: s?.storeAddress ?? null,
+        // Datos de pago Yape (para la pantalla de pago).
+        yapeQrUrl: s?.yapeQrUrl ?? null,
+        yapeHolderName: s?.yapeHolderName ?? null,
+        yapeNumber: s?.yapeNumber ?? null,
       },
       categories,
     };

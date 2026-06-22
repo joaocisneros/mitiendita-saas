@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { MediaService } from '../media/media.service';
 import { normalizePhone } from '../common/utils/phone.util';
 import { generateOrderCode } from '../common/utils/order-code.util';
 import { CheckoutDto } from './dto/checkout.dto';
@@ -14,7 +15,10 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 
 @Injectable()
 export class OrdersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly media: MediaService,
+  ) {}
 
   /**
    * Crea un pedido como invitado (checkout público).
@@ -220,6 +224,58 @@ export class OrdersService {
     return this.format(order, company.settings?.currency ?? 'PEN');
   }
 
+  /**
+   * El cliente sube su comprobante de pago Yape.
+   * Pausa la expiración de la reserva (decisión: el comprobante "congela"
+   * el pedido hasta que el dueño valide).
+   */
+  async submitProof(
+    subdomain: string,
+    code: string,
+    file: Express.Multer.File,
+    reportedAmount?: number,
+  ) {
+    const company = await this.prisma.company.findFirst({
+      where: { subdomain, deletedAt: null },
+      include: { settings: true },
+    });
+    if (!company) throw new NotFoundException('Tienda no encontrada.');
+
+    const order = await this.prisma.order.findFirst({
+      where: { companyId: company.id, publicCode: code },
+      include: { payment: true },
+    });
+    if (!order) throw new NotFoundException('Pedido no encontrado.');
+    if (order.status === 'cancelled' || order.status === 'expired') {
+      throw new BadRequestException('Este pedido ya no admite pagos.');
+    }
+
+    const uploaded = await this.media.uploadImage(file, company.id, 'proofs');
+
+    await this.prisma.$transaction([
+      this.prisma.payment.update({
+        where: { orderId: order.id },
+        data: {
+          proofUrl: uploaded.url,
+          reportedAmount: reportedAmount ?? null,
+          status: 'proof_submitted',
+          submittedAt: new Date(),
+        },
+      }),
+      this.prisma.order.update({
+        where: { id: order.id },
+        // Pausar expiración: el pedido ya no vence mientras se valida el pago.
+        data: { paymentStatus: 'proof_submitted', reservationExpiresAt: null },
+      }),
+    ]);
+
+    const updated = await this.prisma.order.findUnique({
+      where: { id: order.id },
+      include: { items: true, payment: true },
+    });
+    return this.format(updated!, company.settings?.currency ?? 'PEN');
+  }
+
   // ───────────────────── helpers ─────────────────────
 
   private format(
@@ -246,7 +302,11 @@ export class OrdersService {
         quantity: number;
         lineTotal: unknown;
       }>;
-      payment: { status: string; expectedAmount: unknown } | null;
+      payment: {
+        status: string;
+        expectedAmount: unknown;
+        proofUrl?: string | null;
+      } | null;
     },
     currency: string,
   ) {
@@ -255,6 +315,7 @@ export class OrdersService {
       code: order.publicCode,
       status: order.status,
       paymentStatus: order.paymentStatus,
+      proofUrl: order.payment?.proofUrl ?? null,
       deliveryMethod: order.deliveryMethod,
       customerName: order.customerName,
       customerPhone: order.customerPhone,
