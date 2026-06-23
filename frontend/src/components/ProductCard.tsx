@@ -8,10 +8,14 @@ export function ProductCard({
   product,
   currency,
   subdomain,
+  accent,
+  actionLabel,
 }: {
   product: PublicProduct;
   currency: string;
   subdomain: string;
+  accent?: string;
+  actionLabel?: string;
 }) {
   return (
     <article className="overflow-hidden rounded-2xl bg-white ring-1 ring-black/5 transition hover:shadow-md">
@@ -41,13 +45,13 @@ export function ProductCard({
         )}
       </Link>
       <div className="p-3">
-        <Link href={`/tienda/${subdomain}/producto/${product.slug}`} className="line-clamp-2 text-sm font-bold text-gray-800 hover:text-violet-700">
+        <Link href={`/tienda/${subdomain}/producto/${product.slug}`} className="line-clamp-2 text-sm font-bold text-gray-800 hover:opacity-80">
           {product.name}
         </Link>
         <p className="mt-1 text-lg font-extrabold text-gray-900">
           {formatPrice(product.price, currency)}
         </p>
-        <AddToCart product={product} />
+        <AddToCart product={product} accent={accent} label={actionLabel} />
       </div>
     </article>
   );

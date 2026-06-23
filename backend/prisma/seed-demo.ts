@@ -31,13 +31,13 @@ const DEMOS: Array<{
   notes?: string;
   businessType: string;
 }> = [
-  { subdomain: 'demo-trial-ok', name: 'Bodega La Esquina', owner: 'Lucía Ramos', email: 'lucia@demo.test', planSlug: 'basico', status: 'active', subscriptionStatus: 'trial', endsInDays: 9, businessType: 'Bodega' },
-  { subdomain: 'demo-trial-sinfecha', name: 'Snacks Don Pepe', owner: 'José Quispe', email: 'jose@demo.test', planSlug: 'basico', status: 'active', subscriptionStatus: 'trial', endsInDays: null, businessType: 'Snacks' },
-  { subdomain: 'demo-activa', name: 'Farmacia Salud Total', owner: 'Ana Flores', email: 'ana@demo.test', planSlug: 'pro', status: 'active', subscriptionStatus: 'active', endsInDays: 22, notes: 'Pago al día por transferencia.', businessType: 'Farmacia' },
-  { subdomain: 'demo-porvencer', name: 'Moda Urbana', owner: 'Carla Díaz', email: 'carla@demo.test', planSlug: 'pro', status: 'active', subscriptionStatus: 'active', endsInDays: 2, notes: 'Vence pronto, contactar.', businessType: 'Ropa' },
-  { subdomain: 'demo-vencida', name: 'Tech Repuestos', owner: 'Mario León', email: 'mario@demo.test', planSlug: 'premium', status: 'active', subscriptionStatus: 'past_due', endsInDays: -6, notes: 'No respondió al primer aviso.', businessType: 'Tecnología' },
-  { subdomain: 'demo-suspendida', name: 'Juguetería Pim Pam', owner: 'Rosa Vega', email: 'rosa@demo.test', planSlug: 'basico', status: 'suspended', subscriptionStatus: 'past_due', endsInDays: -20, notes: 'Suspendida por falta de pago.', businessType: 'Juguetería' },
-  { subdomain: 'demo-cancelada', name: 'Café del Centro', owner: 'Pedro Sánchez', email: 'pedro@demo.test', planSlug: 'basico', status: 'inactive', subscriptionStatus: 'cancelled', endsInDays: -40, notes: 'Cliente canceló el servicio.', businessType: 'Cafetería' },
+  { subdomain: 'demo-catalogo', name: 'Bodega La Esquina', owner: 'Lucía Ramos', email: 'lucia@demo.test', planSlug: 'basico', status: 'active', subscriptionStatus: 'trial', endsInDays: 9, businessType: 'Bodegas' },
+  { subdomain: 'demo-carta', name: 'Pizzería Don Pepe', owner: 'José Quispe', email: 'jose@demo.test', planSlug: 'basico', status: 'active', subscriptionStatus: 'trial', endsInDays: null, businessType: 'Pizzerías' },
+  { subdomain: 'demo-servicios', name: 'Salón Bella Vista', owner: 'Ana Flores', email: 'ana@demo.test', planSlug: 'pro', status: 'active', subscriptionStatus: 'active', endsInDays: 22, notes: 'Pago al día por transferencia.', businessType: 'Salones de belleza' },
+  { subdomain: 'demo-digital', name: 'StreamPro', owner: 'Carla Díaz', email: 'carla@demo.test', planSlug: 'pro', status: 'active', subscriptionStatus: 'active', endsInDays: 2, notes: 'Vence pronto, contactar.', businessType: 'Streaming' },
+  { subdomain: 'demo-taller', name: 'Taller Mecánico León', owner: 'Mario León', email: 'mario@demo.test', planSlug: 'premium', status: 'active', subscriptionStatus: 'past_due', endsInDays: -6, notes: 'No respondió al primer aviso.', businessType: 'Talleres mecánicos' },
+  { subdomain: 'demo-suspendida', name: 'Juguetería Pim Pam', owner: 'Rosa Vega', email: 'rosa@demo.test', planSlug: 'basico', status: 'suspended', subscriptionStatus: 'past_due', endsInDays: -20, notes: 'Suspendida por falta de pago.', businessType: 'Tiendas de mascotas' },
+  { subdomain: 'demo-cancelada', name: 'Café del Centro', owner: 'Pedro Sánchez', email: 'pedro@demo.test', planSlug: 'basico', status: 'inactive', subscriptionStatus: 'cancelled', endsInDays: -40, notes: 'Cliente canceló el servicio.', businessType: 'Cafeterías' },
 ];
 
 async function main() {

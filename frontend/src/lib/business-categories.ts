@@ -179,6 +179,44 @@ export const DEFAULT_CATEGORY = BUSINESS_CATEGORIES[0];
 /** Todos los subtipos, planos, para validaciones o listados simples. */
 export const ALL_SUBTYPES = BUSINESS_CATEGORIES.flatMap((c) => c.subtypes);
 
+/** Plantilla de tienda que usa cada rubro. */
+export type StoreArchetype = "catalogo" | "carta" | "servicios" | "digital";
+
+const ARCHETYPE_BY_CATEGORY: Record<string, StoreArchetype> = {
+  comercio: "catalogo",
+  alimentos: "carta",
+  belleza: "servicios",
+  salud: "servicios",
+  educacion: "servicios",
+  turismo: "servicios",
+  automotriz: "servicios",
+  inmobiliario: "servicios",
+  servicios: "servicios",
+  digital: "digital",
+};
+
+/** Texto del botón de acción principal de cada rubro. */
+const ACTION_BY_CATEGORY: Record<string, string> = {
+  comercio: "Agregar",
+  alimentos: "Agregar al pedido",
+  belleza: "Reservar",
+  salud: "Reservar cita",
+  educacion: "Inscribirme",
+  turismo: "Reservar",
+  automotriz: "Agendar",
+  inmobiliario: "Consultar",
+  servicios: "Solicitar",
+  digital: "Suscribirme",
+};
+
+export function archetypeOf(category: BusinessCategory): StoreArchetype {
+  return ARCHETYPE_BY_CATEGORY[category.id] ?? "catalogo";
+}
+
+export function actionOf(category: BusinessCategory): string {
+  return ACTION_BY_CATEGORY[category.id] ?? "Agregar";
+}
+
 function normalize(value: string) {
   return value
     .toLowerCase()

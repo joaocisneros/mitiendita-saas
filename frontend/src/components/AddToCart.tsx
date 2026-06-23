@@ -3,7 +3,15 @@
 import { useCart } from "@/lib/cart-context";
 import type { PublicProduct } from "@/lib/types";
 
-export function AddToCart({ product }: { product: PublicProduct }) {
+export function AddToCart({
+  product,
+  accent = "#7c3aed",
+  label = "Agregar",
+}: {
+  product: PublicProduct;
+  accent?: string;
+  label?: string;
+}) {
   const { items, add, setQty } = useCart();
   const inCart = items.find((i) => i.productId === product.id);
 
@@ -20,21 +28,25 @@ export function AddToCart({ product }: { product: PublicProduct }) {
 
   if (inCart) {
     return (
-      <div className="mt-2 flex items-center justify-between rounded-lg bg-violet-50 px-2 py-1">
+      <div className="mt-2 flex items-center justify-between rounded-lg bg-slate-100 px-2 py-1">
         <button
           onClick={() => setQty(product.id, inCart.quantity - 1)}
-          className="h-8 w-8 rounded-md bg-white text-lg font-bold text-violet-600 shadow-sm"
+          style={{ color: accent }}
+          className="h-8 w-8 rounded-md bg-white text-lg font-bold shadow-sm"
           aria-label="Quitar uno"
         >
           −
         </button>
-        <span className="font-bold text-violet-700">{inCart.quantity}</span>
+        <span className="font-bold" style={{ color: accent }}>
+          {inCart.quantity}
+        </span>
         <button
           onClick={() =>
             setQty(product.id, Math.min(product.available, inCart.quantity + 1))
           }
           disabled={inCart.quantity >= product.available}
-          className="h-8 w-8 rounded-md bg-white text-lg font-bold text-violet-600 shadow-sm disabled:opacity-40"
+          style={{ color: accent }}
+          className="h-8 w-8 rounded-md bg-white text-lg font-bold shadow-sm disabled:opacity-40"
           aria-label="Agregar uno"
         >
           +
@@ -54,9 +66,10 @@ export function AddToCart({ product }: { product: PublicProduct }) {
           available: product.available,
         })
       }
-      className="mt-2 w-full rounded-lg bg-violet-600 py-2 text-sm font-semibold text-white transition hover:bg-violet-700"
+      style={{ backgroundColor: accent }}
+      className="mt-2 w-full rounded-lg py-2 text-sm font-semibold text-white transition hover:opacity-90"
     >
-      Agregar
+      {label}
     </button>
   );
 }

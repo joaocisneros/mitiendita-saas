@@ -70,12 +70,13 @@ export const storefrontApi = {
 
   getProducts: (
     subdomain: string,
-    params: { category?: string; search?: string; page?: number } = {},
+    params: { category?: string; search?: string; page?: number; limit?: number } = {},
   ) => {
     const q = new URLSearchParams();
     if (params.category) q.set("category", params.category);
     if (params.search) q.set("search", params.search);
     if (params.page) q.set("page", String(params.page));
+    if (params.limit) q.set("limit", String(params.limit));
     const qs = q.toString();
     return get<ProductListResponse>(
       `/public/stores/${subdomain}/products${qs ? `?${qs}` : ""}`,
