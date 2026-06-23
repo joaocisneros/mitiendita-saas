@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { superApi, type Plan, type SaCompany } from "@/lib/superadmin-api";
 import { CompanyDetailModal } from "@/components/CompanyDetailModal";
+import { CreateCompanyModal } from "@/components/CreateCompanyModal";
 
 export default function CompaniesPage() {
   const [companies, setCompanies] = useState<SaCompany[]>([]);
@@ -16,6 +18,7 @@ export default function CompaniesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
 
   const load = useCallback(
     (targetPage = page) => {
@@ -73,12 +76,17 @@ export default function CompaniesPage() {
 
   return (
     <div className="space-y-6 pb-20 md:pb-0">
-      <div>
-        <p className="text-sm font-bold text-violet-700">Plataforma</p>
-        <h1 className="mt-1 text-3xl font-black text-slate-950">Empresas</h1>
-        <p className="mt-2 text-sm font-medium text-slate-600">
-          {total} empresas registradas en total.
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm font-bold text-violet-700">Plataforma</p>
+          <h1 className="mt-1 text-3xl font-black text-slate-950">Empresas</h1>
+          <p className="mt-2 text-sm font-medium text-slate-600">
+            {total} empresas registradas en total.
+          </p>
+        </div>
+        <button onClick={() => setShowCreate(true)} className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-violet-700">
+          + Crear empresa
+        </button>
       </div>
       <section className="grid gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 md:grid-cols-[1fr_180px_200px_auto]">
         <input
@@ -147,9 +155,10 @@ export default function CompaniesPage() {
                     >
                       {company.name}
                     </button>
-                    <p className="mt-1 text-xs font-medium text-slate-600">
-                      {company.subdomain}
-                    </p>
+                    <p className="mt-1 text-xs font-medium text-slate-600">{company.subdomain}.mitiendita.com</p>
+                    <Link href={`/tienda/${company.subdomain}`} target="_blank" className="mt-1 inline-flex text-xs font-bold text-violet-700 hover:underline">
+                      Abrir tienda ↗
+                    </Link>
                   </td>
                   <td className="p-4">
                     <p className="font-semibold text-slate-900">
@@ -268,6 +277,17 @@ export default function CompaniesPage() {
           companyId={selectedId}
           onClose={() => setSelectedId(null)}
           onChanged={() => load()}
+        />
+      )}
+      {showCreate && (
+        <CreateCompanyModal
+          plans={plans}
+          onClose={() => setShowCreate(false)}
+          onCreated={(company) => {
+            setShowCreate(false);
+            load(1);
+            setSelectedId(company.id);
+          }}
         />
       )}
     </div>

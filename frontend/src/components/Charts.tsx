@@ -48,13 +48,15 @@ export function DonutChart({
   const total = data.reduce((s, d) => s + d.value, 0) || 1;
   const radius = size / 2 - 12;
   const circ = 2 * Math.PI * radius;
-  let offset = 0;
   return (
     <div className="flex items-center gap-5">
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
         {data.map((d, i) => {
           const len = (d.value / total) * circ;
-          const el = (
+          const offset = data
+            .slice(0, i)
+            .reduce((sum, item) => sum + (item.value / total) * circ, 0);
+          return (
             <circle
               key={i}
               cx={size / 2}
@@ -67,8 +69,6 @@ export function DonutChart({
               strokeDashoffset={-offset}
             />
           );
-          offset += len;
-          return el;
         })}
       </svg>
       <ul className="space-y-1 text-sm">

@@ -7,7 +7,7 @@ import { clearSuperToken, getSuperToken } from "@/lib/superadmin-api";
 import { DashboardIcon } from "@/components/DashboardIcon";
 
 const NAV = [
-  { href: "/superadmin", label: "Dashboard", icon: "dashboard" as const },
+  { href: "/superadmin", label: "Panel general", icon: "dashboard" as const },
   {
     href: "/superadmin/empresas",
     label: "Empresas",
@@ -71,7 +71,7 @@ export default function SaLayout({ children }: { children: React.ReactNode }) {
           <span>
             <span className="block text-lg font-black">MiTiendita</span>
             <span className="block text-[10px] font-bold uppercase tracking-[0.2em] text-violet-300">
-              Super Admin
+              Administrador global
             </span>
           </span>
         </Link>

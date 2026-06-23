@@ -34,13 +34,28 @@ async function sfetch<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export interface GlobalStats {
+  rangeDays: number;
   totalCompanies: number;
   activeCompanies: number;
   suspendedCompanies: number;
   totalOrders: number;
   grossVolume: string;
+  mrr: string;
   newCompaniesThisMonth: number;
+  newCompaniesInRange: number;
+  cancelledCompaniesInRange: number;
+  growthRate: number;
+  churnRate: number;
+  retentionRate: number;
+  atRiskCompanies: number;
+  alerts: {
+    expiringSoon: number;
+    pastDue: number;
+    suspendedForDebt: number;
+    atRisk: number;
+  };
   companiesByMonth: { month: string; count: number }[];
+  gmvByMonth: { month: string; total: number }[];
   planDistribution: { plan: string; count: number }[];
 }
 export interface Plan {
@@ -66,6 +81,9 @@ export interface SaCompany {
   orders: number;
   products: number;
   customers: number;
+  subscriptionStatus: "trial" | "active" | "past_due" | "cancelled";
+  currentPeriodEndsAt: string | null;
+  lastPaymentAt: string | null;
   createdAt: string;
 }
 export interface SaCompanyDetail {
@@ -126,6 +144,35 @@ export interface PlanInput {
   isActive?: boolean;
 }
 
+export interface CreateCompanyInput {
+  responsibleName: string;
+  email: string;
+  password: string;
+  commercialName: string;
+  subdomain: string;
+  whatsappNumber: string;
+  businessType?: string;
+  planId?: number;
+}
+
+export interface CreatedCompany {
+  id: string;
+  name: string;
+  subdomain: string;
+  owner: CompanyOwner;
+  trialEndsAt: string;
+}
+
+export interface UpdateCompanyInput {
+  name?: string;
+  subdomain?: string;
+  businessType?: string;
+  whatsappNumber?: string;
+  storeAddress?: string;
+  allowsPickup?: boolean;
+  allowsDelivery?: boolean;
+}
+
 export const superApi = {
   async login(email: string, password: string) {
     const res = await fetch(`${API}/superadmin/login`, {
@@ -141,7 +188,8 @@ export const superApi = {
     setSuperToken(data.accessToken);
     return data;
   },
-  stats: () => sfetch<GlobalStats>("/superadmin/stats"),
+  stats: (days = 30) =>
+    sfetch<GlobalStats>(`/superadmin/stats?days=${days}`),
   companies: (
     params: {
       search?: string;
@@ -164,6 +212,18 @@ export const superApi = {
   },
   company: (id: string) =>
     sfetch<SaCompanyDetail>(`/superadmin/companies/${id}`),
+  createCompany: (body: CreateCompanyInput) =>
+    sfetch<CreatedCompany>("/superadmin/companies", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  updateCompany: (id: string, body: UpdateCompanyInput) =>
+    sfetch<SaCompanyDetail>(`/superadmin/companies/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
   plans: () => sfetch<Plan[]>("/superadmin/plans"),
   createPlan: (body: PlanInput) =>
     sfetch<Plan>("/superadmin/plans", {
@@ -193,12 +253,18 @@ export const superApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ planId }),
     }),
-  audits: (page = 1) =>
-    sfetch<PageResult<AuditRow>>(`/superadmin/audits?page=${page}`),
+  audits: (page = 1, action?: string) => {
+    const q = new URLSearchParams();
+    q.set("page", String(page));
+    if (action) q.set("action", action);
+    return sfetch<PageResult<AuditRow>>(`/superadmin/audits?${q.toString()}`);
+  },
+  auditActions: () => sfetch<string[]>("/superadmin/audit-actions"),
 
-  subscriptions: (status?: string, page = 1) => {
+  subscriptions: (status?: string, search?: string, page = 1) => {
     const q = new URLSearchParams();
     if (status) q.set("status", status);
+    if (search) q.set("search", search);
     q.set("page", String(page));
     return sfetch<PageResult<SubscriptionRow>>(
       `/superadmin/subscriptions?${q.toString()}`,

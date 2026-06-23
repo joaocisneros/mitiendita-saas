@@ -1,17 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { superApi, type AuditRow } from "@/lib/superadmin-api";
 import { DashboardIcon } from "@/components/DashboardIcon";
 import { CompanyDetailModal } from "@/components/CompanyDetailModal";
 
 const LABELS: Record<string, string> = {
+  "company.created": "Creó una empresa",
+  "company.updated": "Editó una empresa",
   "company.activated": "Activó una empresa",
   "company.suspended": "Suspendió una empresa",
+  "company.deleted": "Eliminó una empresa",
   "company.plan_changed": "Cambió el plan de una empresa",
+  "company.impersonated": "Ingresó como soporte",
   "plan.created": "Creó un plan",
   "plan.updated": "Actualizó un plan",
+  "subscription.paid": "Registró un pago de suscripción",
+  "subscription.updated": "Actualizó una suscripción",
+  "user.password_reset": "Restableció una contraseña",
+  "user.toggled": "Activó/desactivó un usuario",
+  "platform.settings_updated": "Actualizó la configuración",
 };
+
+function actionLabel(action: string) {
+  return LABELS[action] ?? action;
+}
 
 export default function ActivityPage() {
   const [rows, setRows] = useState<AuditRow[]>([]);
@@ -20,36 +33,39 @@ export default function ActivityPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [action, setAction] = useState("");
+  const [actions, setActions] = useState<string[]>([]);
 
-  function load(target = page) {
-    setLoading(true);
-    superApi
-      .audits(target)
-      .then((result) => {
-        setRows(result.items);
-        setPage(result.page);
-        setPages(result.pages || 1);
-      })
-      .catch((reason) =>
-        setError(
-          reason instanceof Error
-            ? reason.message
-            : "No se pudo cargar la actividad.",
-        ),
-      )
-      .finally(() => setLoading(false));
-  }
+  const load = useCallback(
+    (target = 1) => {
+      setLoading(true);
+      setError("");
+      superApi
+        .audits(target, action || undefined)
+        .then((result) => {
+          setRows(result.items);
+          setPage(result.page);
+          setPages(result.pages || 1);
+        })
+        .catch((reason) =>
+          setError(
+            reason instanceof Error
+              ? reason.message
+              : "No se pudo cargar la actividad.",
+          ),
+        )
+        .finally(() => setLoading(false));
+    },
+    [action],
+  );
+  useEffect(() => {
+    load(1);
+  }, [load]);
   useEffect(() => {
     superApi
-      .audits(1)
-      .then((result) => {
-        setRows(result.items);
-        setPages(result.pages || 1);
-      })
-      .catch((reason) =>
-        setError(reason instanceof Error ? reason.message : "Error"),
-      )
-      .finally(() => setLoading(false));
+      .auditActions()
+      .then(setActions)
+      .catch(() => setActions([]));
   }, []);
 
   return (
@@ -62,6 +78,20 @@ export default function ActivityPage() {
         <p className="mt-2 text-sm font-medium text-slate-600">
           Historial de acciones sensibles realizadas en la plataforma.
         </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          value={action}
+          onChange={(e) => setAction(e.target.value)}
+          className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800"
+        >
+          <option value="">Todas las acciones</option>
+          {actions.map((a) => (
+            <option key={a} value={a}>
+              {actionLabel(a)}
+            </option>
+          ))}
+        </select>
       </div>
       {error && (
         <p className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">
@@ -77,7 +107,7 @@ export default function ActivityPage() {
               </span>
               <div className="min-w-0 flex-1">
                 <p className="font-bold text-slate-950">
-                  {LABELS[row.action] ?? row.action}
+                  {actionLabel(row.action)}
                 </p>
                 <p className="mt-1 text-sm font-medium text-slate-600">
                   Por {row.superAdmin.name} · {row.superAdmin.email}
