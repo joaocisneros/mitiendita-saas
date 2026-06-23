@@ -25,7 +25,7 @@ export function StatusBadge({
   const map = type === "payment" ? PAYMENT_STATUS : ORDER_STATUS;
   const s = map[status] ?? { label: status, cls: "bg-gray-100 text-gray-700" };
   return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${s.cls}`}>
+    <span className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold ${s.cls}`}>
       {s.label}
     </span>
   );

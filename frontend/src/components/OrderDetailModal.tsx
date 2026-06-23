@@ -62,14 +62,14 @@ export function OrderDetailModal({
         <p className="p-8 text-center text-slate-500">{error || "Cargando..."}</p>
       ) : (
         <div className="space-y-4">
-          <div className="flex items-start justify-between">
-            <div>
+          <div className="flex items-start justify-between gap-3 pr-9">
+            <div className="min-w-0">
               <h2 className="text-xl font-black text-slate-950">{order.publicCode}</h2>
               <p className="text-sm text-slate-500">
                 {new Date(order.createdAt).toLocaleString("es-PE")}
               </p>
             </div>
-            <div className="flex flex-col items-end gap-1">
+            <div className="flex shrink-0 flex-col items-end gap-1">
               <StatusBadge status={order.status} />
               <StatusBadge status={order.paymentStatus} type="payment" />
             </div>
@@ -173,9 +173,11 @@ export function OrderDetailModal({
 export function Overlay({
   children,
   onClose,
+  size = "default",
 }: {
   children: React.ReactNode;
   onClose: () => void;
+  size?: "default" | "wide";
 }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -193,7 +195,9 @@ export function Overlay({
       onClick={onClose}
     >
       <div
-        className="relative max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl sm:rounded-3xl"
+        className={`relative max-h-[92vh] w-full overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl sm:rounded-3xl ${
+          size === "wide" ? "sm:max-w-5xl sm:p-6" : "max-w-lg"
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         <button

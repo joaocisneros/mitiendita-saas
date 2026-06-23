@@ -32,10 +32,17 @@ const NAV = [
   },
 ];
 
+function isActive(href: string, pathname: string) {
+  return href === "/superadmin"
+    ? pathname === "/superadmin"
+    : pathname.startsWith(href);
+}
+
 export default function SaLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [ready, setReady] = useState(false);
+  const current = NAV.find((item) => isActive(item.href, pathname));
 
   useEffect(() => {
     if (!getSuperToken()) router.replace("/superadmin/login");
@@ -56,7 +63,7 @@ export default function SaLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="admin-shell flex min-h-screen bg-slate-100 text-slate-950">
-      <aside className="hidden w-68 shrink-0 flex-col bg-slate-950 px-4 py-5 text-white shadow-xl md:flex">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col overflow-y-auto bg-slate-950 px-4 py-5 text-white shadow-xl md:flex">
         <Link href="/superadmin" className="mb-8 flex items-center gap-3 px-2">
           <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-600 shadow-lg shadow-violet-950/40">
             <DashboardIcon name="store" />
@@ -73,10 +80,7 @@ export default function SaLayout({ children }: { children: React.ReactNode }) {
         </p>
         <nav className="flex-1 space-y-1.5">
           {NAV.map((item) => {
-            const active =
-              item.href === "/superadmin"
-                ? pathname === "/superadmin"
-                : pathname.startsWith(item.href);
+            const active = isActive(item.href, pathname);
             return (
               <Link
                 key={item.label}
@@ -108,10 +112,10 @@ export default function SaLayout({ children }: { children: React.ReactNode }) {
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur md:px-7">
           <div>
             <p className="font-black text-slate-950">
-              Administración de plataforma
+              {current?.label ?? "Administración de plataforma"}
             </p>
             <p className="hidden text-xs font-medium text-slate-600 sm:block">
-              Métricas, empresas y planes
+              Administración de plataforma
             </p>
           </div>
           <button

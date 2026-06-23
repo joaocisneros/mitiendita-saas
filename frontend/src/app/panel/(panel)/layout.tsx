@@ -17,10 +17,15 @@ const NAV = [
   { href: "/panel/config", label: "Configuración", icon: "settings" as const },
 ];
 
+function isActive(href: string, pathname: string) {
+  return href === "/panel" ? pathname === "/panel" : pathname.startsWith(href);
+}
+
 export default function PanelLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [ready, setReady] = useState(false);
+  const current = NAV.find((item) => isActive(item.href, pathname));
 
   useEffect(() => {
     if (!getAccess()) router.replace("/panel/login");
@@ -38,7 +43,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="admin-shell flex min-h-screen bg-slate-100 text-slate-950">
-      <aside className="hidden w-64 shrink-0 flex-col bg-slate-950 px-4 py-5 text-white shadow-xl md:flex">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col overflow-y-auto bg-slate-950 px-4 py-5 text-white shadow-xl md:flex">
         <Link href="/panel" className="mb-8 flex items-center gap-3 px-2">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-600 shadow-lg shadow-violet-950/40">
             <DashboardIcon name="store" />
@@ -52,7 +57,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         <p className="mb-2 px-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Gestión</p>
         <nav className="flex-1 space-y-1.5">
           {NAV.map((item) => {
-            const active = item.href === "/panel" ? pathname === "/panel" : pathname.startsWith(item.href);
+            const active = isActive(item.href, pathname);
             return (
               <Link key={item.href} href={item.href} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${active ? "bg-violet-600 text-white shadow-md shadow-violet-950/30" : "text-slate-300 hover:bg-white/10 hover:text-white"}`}>
                 <DashboardIcon name={item.icon} />
@@ -77,7 +82,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             <span className="font-black">MiTiendita</span>
           </div>
           <div className="hidden md:block">
-            <p className="text-sm font-bold text-slate-900">Panel administrativo</p>
+            <p className="text-sm font-bold text-slate-900">{current?.label ?? "Panel administrativo"}</p>
             <p className="text-xs font-medium text-slate-600">Controla tu tienda desde un solo lugar</p>
           </div>
           <button onClick={logout} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 md:hidden">Salir</button>
