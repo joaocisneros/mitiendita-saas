@@ -2,7 +2,6 @@
 
 import {
   createContext,
-  useCallback,
   useContext,
   useEffect,
   useState,
@@ -13,6 +12,7 @@ export interface CartItem {
   name: string;
   price: string;
   imageUrl: string | null;
+  available?: number;
   quantity: number;
 }
 
@@ -41,13 +41,15 @@ export function CartProvider({
 
   // Cargar carrito guardado.
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(KEY);
-      if (raw) setItems(JSON.parse(raw) as CartItem[]);
-    } catch {
-      /* ignorar */
-    }
-    setLoaded(true);
+    queueMicrotask(() => {
+      try {
+        const raw = localStorage.getItem(KEY);
+        if (raw) setItems(JSON.parse(raw) as CartItem[]);
+      } catch {
+        /* ignorar */
+      }
+      setLoaded(true);
+    });
   }, [KEY]);
 
   // Guardar cambios.
@@ -72,7 +74,11 @@ export function CartProvider({
     setItems((prev) =>
       qty <= 0
         ? prev.filter((p) => p.productId !== productId)
-        : prev.map((p) => (p.productId === productId ? { ...p, quantity: qty } : p)),
+        : prev.map((p) =>
+            p.productId === productId
+              ? { ...p, quantity: Math.min(qty, p.available ?? qty) }
+              : p,
+          ),
     );
 
   const remove = (productId: string) =>

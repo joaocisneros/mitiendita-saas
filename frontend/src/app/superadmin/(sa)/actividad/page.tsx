@@ -1,0 +1,158 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { superApi, type AuditRow } from "@/lib/superadmin-api";
+import { DashboardIcon } from "@/components/DashboardIcon";
+import { CompanyDetailModal } from "@/components/CompanyDetailModal";
+
+const LABELS: Record<string, string> = {
+  "company.activated": "Activó una empresa",
+  "company.suspended": "Suspendió una empresa",
+  "company.plan_changed": "Cambió el plan de una empresa",
+  "plan.created": "Creó un plan",
+  "plan.updated": "Actualizó un plan",
+};
+
+export default function ActivityPage() {
+  const [rows, setRows] = useState<AuditRow[]>([]);
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  function load(target = page) {
+    setLoading(true);
+    superApi
+      .audits(target)
+      .then((result) => {
+        setRows(result.items);
+        setPage(result.page);
+        setPages(result.pages || 1);
+      })
+      .catch((reason) =>
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : "No se pudo cargar la actividad.",
+        ),
+      )
+      .finally(() => setLoading(false));
+  }
+  useEffect(() => {
+    superApi
+      .audits(1)
+      .then((result) => {
+        setRows(result.items);
+        setPages(result.pages || 1);
+      })
+      .catch((reason) =>
+        setError(reason instanceof Error ? reason.message : "Error"),
+      )
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <div className="space-y-6 pb-20 md:pb-0">
+      <div>
+        <p className="text-sm font-bold text-violet-700">Seguridad</p>
+        <h1 className="mt-1 text-3xl font-black text-slate-950">
+          Actividad administrativa
+        </h1>
+        <p className="mt-2 text-sm font-medium text-slate-600">
+          Historial de acciones sensibles realizadas en la plataforma.
+        </p>
+      </div>
+      {error && (
+        <p className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">
+          {error}
+        </p>
+      )}
+      <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+        <div className="divide-y divide-slate-200">
+          {rows.map((row) => (
+            <div key={row.id} className="flex gap-4 p-4 sm:p-5">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
+                <DashboardIcon name="activity" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-bold text-slate-950">
+                  {LABELS[row.action] ?? row.action}
+                </p>
+                <p className="mt-1 text-sm font-medium text-slate-600">
+                  Por {row.superAdmin.name} · {row.superAdmin.email}
+                </p>
+                {row.companyId && (
+                  <p className="mt-1 text-sm">
+                    <button
+                      onClick={() => setSelectedId(row.companyId)}
+                      className="font-bold text-violet-700 hover:underline"
+                    >
+                      {row.companyName ?? "Ver empresa"}
+                    </button>
+                  </p>
+                )}
+              </div>
+              <time className="shrink-0 text-right text-xs font-semibold text-slate-600">
+                {new Date(row.createdAt).toLocaleString("es-PE", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </time>
+            </div>
+          ))}
+          {!loading && rows.length === 0 && (
+            <div className="p-12 text-center">
+              <DashboardIcon
+                name="activity"
+                className="mx-auto h-10 w-10 text-slate-400"
+              />
+              <p className="mt-3 font-bold text-slate-800">
+                Aún no hay actividad registrada
+              </p>
+              <p className="mt-1 text-sm font-medium text-slate-600">
+                Las nuevas acciones aparecerán aquí.
+              </p>
+            </div>
+          )}
+          {loading && (
+            <p className="p-12 text-center font-semibold text-slate-600">
+              Cargando actividad...
+            </p>
+          )}
+        </div>
+        <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3">
+          <p className="text-sm font-medium text-slate-600">
+            Página {page} de {pages}
+          </p>
+          <div className="flex gap-2">
+            <button
+              disabled={page <= 1 || loading}
+              onClick={() => load(page - 1)}
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-bold text-slate-700 disabled:opacity-40"
+            >
+              Anterior
+            </button>
+            <button
+              disabled={page >= pages || loading}
+              onClick={() => load(page + 1)}
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-bold text-slate-700 disabled:opacity-40"
+            >
+              Siguiente
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {selectedId && (
+        <CompanyDetailModal
+          companyId={selectedId}
+          onClose={() => setSelectedId(null)}
+        />
+      )}
+    </div>
+  );
+}

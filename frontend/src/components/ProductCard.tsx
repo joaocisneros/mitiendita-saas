@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import type { PublicProduct } from "@/lib/types";
 import { formatPrice } from "@/lib/format";
 import { AddToCart } from "./AddToCart";
@@ -6,13 +7,15 @@ import { AddToCart } from "./AddToCart";
 export function ProductCard({
   product,
   currency,
+  subdomain,
 }: {
   product: PublicProduct;
   currency: string;
+  subdomain: string;
 }) {
   return (
     <article className="overflow-hidden rounded-2xl bg-white ring-1 ring-black/5 transition hover:shadow-md">
-      <div className="relative aspect-square bg-gray-100">
+      <Link href={`/tienda/${subdomain}/producto/${product.slug}`} className="relative block aspect-square bg-gray-100">
         {product.imageUrl ? (
           <Image
             src={product.imageUrl}
@@ -36,11 +39,11 @@ export function ProductCard({
             Agotado
           </span>
         )}
-      </div>
+      </Link>
       <div className="p-3">
-        <h3 className="line-clamp-2 text-sm font-medium text-gray-800">
+        <Link href={`/tienda/${subdomain}/producto/${product.slug}`} className="line-clamp-2 text-sm font-bold text-gray-800 hover:text-violet-700">
           {product.name}
-        </h3>
+        </Link>
         <p className="mt-1 text-lg font-extrabold text-gray-900">
           {formatPrice(product.price, currency)}
         </p>

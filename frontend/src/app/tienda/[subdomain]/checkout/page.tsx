@@ -24,9 +24,7 @@ export default function CheckoutPage() {
   const [saving, setSaving] = useState(false);
 
   // Una sola clave de idempotencia por intento de compra.
-  const idemKey = useRef(
-    typeof crypto !== "undefined" ? crypto.randomUUID() : String(Date.now()),
-  );
+  const idemKey = useRef<string | null>(null);
 
   useEffect(() => {
     storefrontApi
@@ -55,8 +53,13 @@ export default function CheckoutPage() {
       setError("La dirección es obligatoria para delivery.");
       return;
     }
+    if (method === "delivery" && store?.minOrder && subtotal < Number(store.minOrder)) {
+      setError(`El pedido mínimo para delivery es ${formatPrice(store.minOrder, currency)}.`);
+      return;
+    }
     setSaving(true);
     try {
+      idemKey.current ??= crypto.randomUUID();
       const order = await storefrontApi.checkout(
         subdomain,
         {

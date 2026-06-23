@@ -51,6 +51,7 @@ export function AddToCart({ product }: { product: PublicProduct }) {
           name: product.name,
           price: product.price,
           imageUrl: product.imageUrl,
+          available: product.available,
         })
       }
       className="mt-2 w-full rounded-lg bg-violet-600 py-2 text-sm font-semibold text-white transition hover:bg-violet-700"

@@ -1,27 +1,22 @@
-import {
-  Injectable,
-  InternalServerErrorException,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary, type UploadApiResponse } from 'cloudinary';
+import { mkdir, readFile, writeFile } from 'fs/promises';
+import { randomUUID } from 'crypto';
+import { extname, join } from 'path';
 
-/**
- * Abstracción de almacenamiento de imágenes (Cloudinary).
- * Si el día de mañana migramos a S3, solo cambia este servicio.
- */
 @Injectable()
 export class MediaService {
   private readonly logger = new Logger(MediaService.name);
-  private readonly enabled: boolean;
+  private readonly cloudinaryEnabled: boolean;
 
   constructor(private readonly config: ConfigService) {
     const cloud = this.config.get<string>('CLOUDINARY_CLOUD_NAME');
     const key = this.config.get<string>('CLOUDINARY_API_KEY');
     const secret = this.config.get<string>('CLOUDINARY_API_SECRET');
-    this.enabled = Boolean(cloud && key && secret);
+    this.cloudinaryEnabled = Boolean(cloud && key && secret);
 
-    if (this.enabled) {
+    if (this.cloudinaryEnabled) {
       cloudinary.config({
         cloud_name: cloud,
         api_key: key,
@@ -30,46 +25,101 @@ export class MediaService {
       });
     } else {
       this.logger.warn(
-        'Cloudinary no está configurado: la subida de imágenes está deshabilitada.',
+        'Cloudinary no está configurado; se usará almacenamiento local de desarrollo.',
       );
     }
   }
 
   isEnabled(): boolean {
-    return this.enabled;
+    return (
+      this.cloudinaryEnabled || this.config.get('NODE_ENV') !== 'production'
+    );
   }
 
-  /**
-   * Sube una imagen y devuelve su URL segura.
-   * Las imágenes se guardan en carpetas por empresa para mantener el orden.
-   */
   async uploadImage(
     file: Express.Multer.File,
     companyId: string,
     folder = 'general',
   ): Promise<{ url: string; publicId: string }> {
-    if (!this.enabled) {
-      throw new InternalServerErrorException(
-        'La subida de imágenes no está configurada.',
+    if (!this.cloudinaryEnabled) return this.saveLocal(file, companyId, folder);
+
+    try {
+      const result = await new Promise<UploadApiResponse>((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            folder: `mitiendita/${companyId}/${folder}`,
+            resource_type: 'image',
+            transformation: [{ quality: 'auto', fetch_format: 'auto' }],
+          },
+          (error, uploaded) => {
+            if (error || !uploaded) {
+              return reject(
+                error instanceof Error
+                  ? error
+                  : new Error('Cloudinary upload failed'),
+              );
+            }
+            resolve(uploaded);
+          },
+        );
+        stream.end(file.buffer);
+      });
+      return { url: result.secure_url, publicId: result.public_id };
+    } catch (error) {
+      if (this.config.get('NODE_ENV') === 'production') throw error;
+      this.logger.warn(
+        'Cloudinary no respondió; se usará almacenamiento local de desarrollo.',
       );
+      return this.saveLocal(file, companyId, folder);
     }
+  }
 
-    const result = await new Promise<UploadApiResponse>((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        {
-          folder: `mitiendita/${companyId}/${folder}`,
-          resource_type: 'image',
-          // Optimización automática para celulares: formato y calidad.
-          transformation: [{ quality: 'auto', fetch_format: 'auto' }],
-        },
-        (error, uploaded) => {
-          if (error || !uploaded) return reject(error ?? new Error('upload'));
-          resolve(uploaded);
-        },
+  async readLocal(companyId: string, folder: string, filename: string) {
+    if (
+      !/^[a-zA-Z0-9-]+$/.test(companyId) ||
+      !/^[a-zA-Z0-9-]+$/.test(folder) ||
+      !/^[a-zA-Z0-9._-]+$/.test(filename)
+    ) {
+      throw new NotFoundException('Imagen no encontrada.');
+    }
+    try {
+      const buffer = await readFile(
+        join(process.cwd(), 'uploads', companyId, folder, filename),
       );
-      stream.end(file.buffer);
-    });
+      const extension = extname(filename).toLowerCase();
+      const contentType =
+        extension === '.png'
+          ? 'image/png'
+          : extension === '.webp'
+            ? 'image/webp'
+            : 'image/jpeg';
+      return { buffer, contentType };
+    } catch {
+      throw new NotFoundException('Imagen no encontrada.');
+    }
+  }
 
-    return { url: result.secure_url, publicId: result.public_id };
+  private async saveLocal(
+    file: Express.Multer.File,
+    companyId: string,
+    folder: string,
+  ) {
+    const extension =
+      file.mimetype === 'image/png'
+        ? '.png'
+        : file.mimetype === 'image/webp'
+          ? '.webp'
+          : '.jpg';
+    const filename = `${randomUUID()}${extension}`;
+    const directory = join(process.cwd(), 'uploads', companyId, folder);
+    await mkdir(directory, { recursive: true });
+    await writeFile(join(directory, filename), file.buffer);
+    const baseUrl =
+      this.config.get<string>('PUBLIC_API_URL') ??
+      `http://localhost:${this.config.get('PORT') ?? 8300}/api`;
+    return {
+      url: `${baseUrl}/media/local/${companyId}/${folder}/${filename}`,
+      publicId: `local/${companyId}/${folder}/${filename}`,
+    };
   }
 }

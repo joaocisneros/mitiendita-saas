@@ -144,7 +144,12 @@ export default function OrderPage() {
 
             {/* Subir comprobante */}
             <div className="mt-4 border-t pt-4">
-              {order.proofUrl ? (
+              {order.paymentStatus === "rejected" && (
+                <p className="mb-3 rounded-lg bg-red-50 p-3 text-center text-sm font-semibold text-red-700">
+                  El comprobante fue rechazado. Verifica el pago y envía una nueva captura.
+                </p>
+              )}
+              {order.proofUrl && order.paymentStatus !== "rejected" ? (
                 <p className="rounded-lg bg-green-50 p-3 text-center text-sm text-green-700">
                   ✅ Comprobante enviado. El negocio validará tu pago pronto.
                 </p>

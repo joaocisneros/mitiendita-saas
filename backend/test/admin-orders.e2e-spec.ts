@@ -23,20 +23,26 @@ describe('Panel de pedidos del dueño (e2e)', () => {
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix('api');
     app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
     );
     await app.init();
 
     const reg = async (k: string, sub: string) =>
       (
-        await request(app.getHttpServer()).post('/api/auth/register').send({
-          responsibleName: `D ${k}`,
-          email: `adm_${k}_${tag}@test.com`,
-          password: 'clave12345',
-          commercialName: `T ${k}`,
-          subdomain: sub,
-          whatsappNumber: '+51900000000',
-        })
+        await request(app.getHttpServer())
+          .post('/api/auth/register')
+          .send({
+            responsibleName: `D ${k}`,
+            email: `adm_${k}_${tag}@test.com`,
+            password: 'clave12345',
+            commercialName: `T ${k}`,
+            subdomain: sub,
+            whatsappNumber: '+51900000000',
+          })
       ).body.accessToken as string;
 
     tokenA = await reg('a', subA);
@@ -85,6 +91,22 @@ describe('Panel de pedidos del dueño (e2e)', () => {
       .expect(404);
   });
 
+  it('lista automáticamente al cliente creado por checkout', async () => {
+    const res = await http().get('/api/customers').set(A()).expect(200);
+    expect(res.body.total).toBeGreaterThanOrEqual(1);
+    expect(
+      res.body.items.some((customer: { phone: string }) =>
+        customer.phone.includes('987000000'),
+      ),
+    ).toBe(true);
+  });
+
+  it('otra empresa NO puede consultar el detalle del cliente', async () => {
+    const list = await http().get('/api/customers').set(A()).expect(200);
+    const customerId = list.body.items[0].id as string;
+    await http().get(`/api/customers/${customerId}`).set(B()).expect(404);
+  });
+
   it('aprobar el pago confirma el pedido y compromete el stock', async () => {
     const res = await http()
       .post(`/api/admin/orders/${orderId}/payment/approve`)
@@ -98,6 +120,17 @@ describe('Panel de pedidos del dueño (e2e)', () => {
       .get(`/api/public/stores/${subA}/products/prod-adm`)
       .expect(200);
     expect(prod.body.available).toBe(3);
+  });
+
+  it('incluye métricas y productos más vendidos en el dashboard', async () => {
+    const res = await http().get('/api/admin/dashboard').set(A()).expect(200);
+    expect(res.body).toHaveProperty('salesToday');
+    expect(res.body).toHaveProperty('topProducts');
+    expect(
+      res.body.topProducts.some(
+        (product: { name: string }) => product.name === 'Prod Adm',
+      ),
+    ).toBe(true);
   });
 
   it('rechaza una transición inválida de estado', async () => {

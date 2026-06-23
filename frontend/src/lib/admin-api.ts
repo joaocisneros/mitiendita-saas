@@ -51,6 +51,12 @@ async function authFetch(path: string, init: RequestInit = {}): Promise<Response
   if (res.status === 401 && (await tryRefresh())) {
     res = await fetch(`${API}${path}`, withAuth(getAccess()));
   }
+  if (res.status === 401 && typeof window !== "undefined") {
+    clearTokens();
+    if (!window.location.pathname.startsWith("/panel/login")) {
+      window.location.assign("/panel/login?expired=1");
+    }
+  }
   return res;
 }
 
@@ -67,6 +73,7 @@ export interface DashboardData {
   pendingOrders: number;
   lowStockCount: number;
   lowStockProducts: { id: string; name: string; available: number }[];
+  topProducts: { id: string | null; name: string; units: number }[];
   recentOrders: AdminOrderRow[];
 }
 export interface AdminOrderRow {
@@ -94,6 +101,22 @@ export interface AdminOrderDetail extends AdminOrderRow {
 
 // ───────────────────── API ─────────────────────
 export const adminApi = {
+  async register(body: RegisterInput) {
+    const res = await fetch(`${API}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await jsonOrThrow<{
+      accessToken: string;
+      refreshToken: string;
+      company: { id: string; name: string; subdomain: string };
+      user: { id: string; name: string; email: string };
+    }>(res, "No se pudo crear la cuenta.");
+    setTokens(data.accessToken, data.refreshToken);
+    return data;
+  },
+
   async login(email: string, password: string) {
     const res = await fetch(`${API}/auth/login`, {
       method: "POST",
@@ -110,6 +133,18 @@ export const adminApi = {
   },
 
   me: () => authFetch("/auth/me").then((r) => jsonOrThrow(r, "No autorizado")),
+
+  async logout() {
+    const refreshToken = typeof window === "undefined" ? null : localStorage.getItem(REFRESH_KEY);
+    if (refreshToken) {
+      await fetch(`${API}/auth/logout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken }),
+      }).catch(() => undefined);
+    }
+    clearTokens();
+  },
 
   dashboard: () =>
     authFetch("/admin/dashboard").then((r) =>
@@ -192,15 +227,35 @@ export const adminApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name }),
     }).then((r) => jsonOrThrow<AdminCategory>(r, "No se pudo crear.")),
+  updateCategory: (id: string, body: Partial<AdminCategory>) =>
+    authFetch(`/categories/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => jsonOrThrow<AdminCategory>(r, "No se pudo actualizar.")),
   deleteCategory: (id: string) =>
     authFetch(`/categories/${id}`, { method: "DELETE" }).then((r) =>
       jsonOrThrow(r, "No se pudo eliminar."),
     ),
 
+  customers: (params: { search?: string; page?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.search) q.set("search", params.search);
+    if (params.page) q.set("page", String(params.page));
+    const query = q.toString();
+    return authFetch(`/customers${query ? `?${query}` : ""}`).then((r) =>
+      jsonOrThrow<{ items: AdminCustomer[]; total: number; page: number; pages: number }>(r, "No se pudieron cargar los clientes."),
+    );
+  },
+  customer: (id: string) =>
+    authFetch(`/customers/${id}`).then((r) =>
+      jsonOrThrow<AdminCustomerDetail>(r, "Cliente no encontrado."),
+    ),
+
   // ── Configuración ──
   settings: () =>
     authFetch(`/admin/settings`).then((r) => jsonOrThrow<StoreSettings>(r, "Error")),
-  updateSettings: (body: Partial<StoreSettings>) =>
+  updateSettings: (body: UpdateSettingsInput) =>
     authFetch(`/admin/settings`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -251,6 +306,28 @@ export interface AdminCategory {
   isActive: boolean;
   sortOrder: number;
 }
+export interface RegisterInput {
+  responsibleName: string;
+  email: string;
+  password: string;
+  commercialName: string;
+  subdomain: string;
+  whatsappNumber: string;
+  businessType?: string;
+}
+export interface AdminCustomer {
+  id: string;
+  name: string;
+  phone: string;
+  address: string | null;
+  firstPurchaseAt: string | null;
+  lastPurchaseAt: string | null;
+  ordersCount: number;
+  totalSpent: string;
+}
+export interface AdminCustomerDetail extends Omit<AdminCustomer, "ordersCount" | "totalSpent"> {
+  orders: AdminOrderRow[];
+}
 export interface StoreSettings {
   storeName: string;
   businessType: string | null;
@@ -272,3 +349,11 @@ export interface StoreSettings {
   subdomain?: string;
   status?: string;
 }
+
+export type UpdateSettingsInput = Omit<
+  Partial<StoreSettings>,
+  "deliveryFee" | "minOrder" | "subdomain" | "status"
+> & {
+  deliveryFee?: number;
+  minOrder?: number;
+};

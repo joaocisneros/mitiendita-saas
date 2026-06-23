@@ -1,42 +1,129 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { clearSuperToken, getSuperToken } from "@/lib/superadmin-api";
+import { DashboardIcon } from "@/components/DashboardIcon";
+
+const NAV = [
+  { href: "/superadmin", label: "Dashboard", icon: "dashboard" as const },
+  {
+    href: "/superadmin/empresas",
+    label: "Empresas",
+    icon: "companies" as const,
+  },
+  { href: "/superadmin/planes", label: "Planes", icon: "plans" as const },
+  {
+    href: "/superadmin/actividad",
+    label: "Actividad",
+    icon: "activity" as const,
+  },
+];
 
 export default function SaLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (!getSuperToken()) router.replace("/superadmin/login");
-    else setReady(true);
+    else queueMicrotask(() => setReady(true));
   }, [router]);
+
+  function logout() {
+    clearSuperToken();
+    router.replace("/superadmin/login");
+  }
 
   if (!ready)
     return (
-      <div className="flex min-h-screen flex-1 items-center justify-center bg-gray-900 text-gray-400">
-        Cargando...
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 font-semibold text-slate-200">
+        Cargando plataforma...
       </div>
     );
 
   return (
-    <div className="flex min-h-screen flex-1 flex-col bg-gray-900">
-      <header className="flex items-center justify-between border-b border-white/10 px-5 py-3">
-        <span className="font-extrabold text-white">
-          MiTiendita <span className="text-violet-400">ADMIN</span>
-        </span>
+    <div className="admin-shell flex min-h-screen bg-slate-100 text-slate-950">
+      <aside className="hidden w-68 shrink-0 flex-col bg-slate-950 px-4 py-5 text-white shadow-xl md:flex">
+        <Link href="/superadmin" className="mb-8 flex items-center gap-3 px-2">
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-600 shadow-lg shadow-violet-950/40">
+            <DashboardIcon name="store" />
+          </span>
+          <span>
+            <span className="block text-lg font-black">MiTiendita</span>
+            <span className="block text-[10px] font-bold uppercase tracking-[0.2em] text-violet-300">
+              Super Admin
+            </span>
+          </span>
+        </Link>
+        <p className="mb-2 px-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
+          Plataforma
+        </p>
+        <nav className="flex-1 space-y-1.5">
+          {NAV.map((item) => {
+            const active =
+              item.href === "/superadmin"
+                ? pathname === "/superadmin"
+                : pathname.startsWith(item.href);
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${active ? "bg-violet-600 text-white shadow-md shadow-violet-950/30" : "text-slate-300 hover:bg-white/10 hover:text-white"}`}
+              >
+                <DashboardIcon name={item.icon} />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+        <div className="rounded-xl bg-white/5 p-3 ring-1 ring-white/10">
+          <p className="text-xs font-bold text-white">Administrador global</p>
+          <p className="mt-1 text-[11px] leading-4 text-slate-400">
+            Acceso y control de todas las empresas.
+          </p>
+        </div>
         <button
-          onClick={() => {
-            clearSuperToken();
-            router.replace("/superadmin/login");
-          }}
-          className="text-sm text-gray-400 hover:text-white"
+          onClick={logout}
+          className="mt-3 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-300 hover:bg-red-500/15 hover:text-red-300"
         >
+          <DashboardIcon name="logout" />
           Cerrar sesión
         </button>
-      </header>
-      <main className="flex-1 p-5">{children}</main>
+      </aside>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur md:px-7">
+          <div>
+            <p className="font-black text-slate-950">
+              Administración de plataforma
+            </p>
+            <p className="hidden text-xs font-medium text-slate-600 sm:block">
+              Métricas, empresas y planes
+            </p>
+          </div>
+          <button
+            onClick={logout}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 md:hidden"
+          >
+            Salir
+          </button>
+        </header>
+        <main className="flex-1 p-4 text-slate-950 md:p-7">{children}</main>
+        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-slate-200 bg-white p-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] md:hidden">
+          {NAV.map((item) => (
+            <Link
+              key={item.label}
+              href={item.href}
+              className="flex flex-col items-center gap-1 py-1 text-xs font-bold text-slate-700"
+            >
+              <DashboardIcon name={item.icon} />
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+      </div>
     </div>
   );
 }

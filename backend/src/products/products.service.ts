@@ -15,6 +15,21 @@ export class ProductsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(companyId: string, dto: CreateProductDto) {
+    const company = await this.prisma.company.findUnique({
+      where: { id: companyId },
+      include: { plan: { select: { maxProducts: true, name: true } } },
+    });
+    if (!company) throw new NotFoundException('Empresa no encontrada.');
+    if (company.plan?.maxProducts != null) {
+      const current = await this.prisma.product.count({
+        where: { companyId, deletedAt: null },
+      });
+      if (current >= company.plan.maxProducts) {
+        throw new BadRequestException(
+          `Tu plan ${company.plan.name} permite hasta ${company.plan.maxProducts} productos.`,
+        );
+      }
+    }
     await this.assertCategory(companyId, dto.categoryId);
     await this.assertSkuFree(companyId, dto.sku);
     const slug = await this.uniqueSlug(companyId, slugify(dto.name));
@@ -45,9 +60,7 @@ export class ProductsService {
       deletedAt: null,
       ...(q.categoryId ? { categoryId: q.categoryId } : {}),
       ...(q.isActive !== undefined ? { isActive: q.isActive === 'true' } : {}),
-      ...(q.search
-        ? { name: { contains: q.search } }
-        : {}),
+      ...(q.search ? { name: { contains: q.search } } : {}),
     };
 
     const [items, total] = await Promise.all([

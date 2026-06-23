@@ -19,10 +19,10 @@ export default function Home() {
             Mi<span className="text-violet-600">Tiendita</span>
           </span>
           <Link
-            href={`/tienda/${DEMO}`}
+            href="/registro"
             className="rounded-full bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700"
           >
-            Ver tienda demo
+            Crear mi tienda
           </Link>
         </div>
       </header>
@@ -42,14 +42,12 @@ export default function Home() {
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
-            href={`/tienda/${DEMO}`}
+            href="/registro"
             className="w-full rounded-full bg-violet-600 px-6 py-3 font-semibold text-white hover:bg-violet-700 sm:w-auto"
           >
-            👀 Ver una tienda de ejemplo
+            Crear mi tienda gratis
           </Link>
-          <span className="text-sm text-gray-400">
-            Próximamente: crea la tuya gratis
-          </span>
+          <Link href={`/tienda/${DEMO}`} className="text-sm font-bold text-violet-700 hover:underline">Ver tienda de ejemplo →</Link>
         </div>
       </section>
 

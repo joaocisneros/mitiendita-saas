@@ -47,6 +47,11 @@ export default async function StorePage({
       </header>
 
       <main className="mx-auto max-w-3xl px-4 py-5">
+        <form className="mb-4 flex gap-2" action={`/tienda/${subdomain}`}>
+          {category && <input type="hidden" name="category" value={category} />}
+          <input name="search" defaultValue={search} placeholder="Buscar productos..." className="h-11 flex-1 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-500 focus:border-violet-600" />
+          <button className="rounded-xl bg-violet-600 px-4 text-sm font-bold text-white hover:bg-violet-700">Buscar</button>
+        </form>
         {/* Categorías */}
         {categories.length > 0 && (
           <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
@@ -73,7 +78,7 @@ export default async function StorePage({
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {products.items.map((p) => (
-              <ProductCard key={p.id} product={p} currency={store.currency} />
+              <ProductCard key={p.id} product={p} currency={store.currency} subdomain={subdomain} />
             ))}
           </div>
         )}

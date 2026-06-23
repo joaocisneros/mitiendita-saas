@@ -16,9 +16,28 @@ const PLANS = [
 
 // Subdominios que ninguna empresa puede tomar.
 const RESERVED = [
-  'www', 'api', 'admin', 'app', 'panel', 'soporte', 'status', 'mail',
-  'store', 'tienda', 'blog', 'ftp', 'cdn', 'assets', 'static',
-  'dashboard', 'login', 'signup', 'help', 'ayuda', 'pay', 'pagos',
+  'www',
+  'api',
+  'admin',
+  'app',
+  'panel',
+  'soporte',
+  'status',
+  'mail',
+  'store',
+  'tienda',
+  'blog',
+  'ftp',
+  'cdn',
+  'assets',
+  'static',
+  'dashboard',
+  'login',
+  'signup',
+  'help',
+  'ayuda',
+  'pay',
+  'pagos',
 ];
 
 async function main() {
@@ -26,7 +45,11 @@ async function main() {
   for (const p of PLANS) {
     await prisma.plan.upsert({
       where: { slug: p.slug },
-      update: { name: p.name, priceMonth: p.priceMonth, maxProducts: p.maxProducts },
+      update: {
+        name: p.name,
+        priceMonth: p.priceMonth,
+        maxProducts: p.maxProducts,
+      },
       create: p,
     });
   }
@@ -51,7 +74,7 @@ async function main() {
     update: {},
     create: { name: 'Super Administrador', email, passwordHash },
   });
-  console.log(`✓ Superadmin: ${email} (contraseña: ${password})`);
+  console.log(`✓ Superadmin inicial configurado: ${email}`);
 }
 
 main()

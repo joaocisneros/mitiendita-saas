@@ -13,14 +13,14 @@ por **Yape** y coordina por **WhatsApp**. Mobile-first.
 ```
 MiTiendita/
 ├── backend/    API REST (NestJS + Prisma + MySQL)   ← el "cerebro"
-└── frontend/   Web (Next.js + Tailwind)  [Fase 3]   ← la "cara"
+└── frontend/   Web (Next.js + Tailwind)             ← la "cara"
 ```
 
 ## 🧱 Stack
 
 - **Backend:** NestJS 11, TypeScript, Prisma 7 (driver adapter MariaDB), MySQL 8, JWT.
-- **Frontend:** Next.js + React + Tailwind (mobile-first). *(pendiente, Fase 3)*
-- **Imágenes:** Cloudinary. *(pendiente, Fase 2)*
+- **Frontend:** Next.js 16 + React 19 + Tailwind 4 (mobile-first).
+- **Imágenes:** Cloudinary mediante un servicio de medios centralizado.
 
 ---
 
@@ -32,7 +32,7 @@ Bloque dedicado para no chocar con otros proyectos de Laragon
 | Servicio | Puerto |
 |---|---|
 | Backend API | **8300** |
-| Frontend | **8301** *(Fase 3)* |
+| Frontend | **8301** |
 
 ## ▶️ Cómo correr el backend (desarrollo)
 
@@ -50,8 +50,12 @@ npm run start:dev           # API en http://localhost:8300/api
 Pruebas:
 
 ```bash
+# Crear una sola vez la base mitiendita_test y aplicar sus migraciones.
+DATABASE_URL=mysql://root:@localhost:3306/mitiendita_test npx prisma migrate deploy
 npm run test:e2e
 ```
+
+Las pruebas usan `mitiendita_test`; nunca deben ejecutarse contra `mitiendita_db`.
 
 ---
 
@@ -67,10 +71,18 @@ npm run test:e2e
 - **Fase 7 — Superadmin** ✅ empresas, suspender/activar, planes, métricas globales.
 
 ### URLs (desarrollo)
+- Registro de negocio: `http://localhost:8301/registro`
 - Tienda: `http://localhost:8301/tienda/<subdominio>`
 - Panel del dueño: `http://localhost:8301/panel/login`
 - Superadmin: `http://localhost:8301/superadmin/login`
+- Empresas: `http://localhost:8301/superadmin/empresas`
+- Planes: `http://localhost:8301/superadmin/planes`
+- Auditoría: `http://localhost:8301/superadmin/actividad`
 - API: `http://localhost:8300/api`
 
-35 pruebas e2e cubren auth, aislamiento multi-tenant, catálogo, pedidos,
-anti-sobreventa, idempotencia, pagos y superadmin.
+37 pruebas e2e cubren auth, aislamiento multi-tenant, catálogo, clientes,
+pedidos, anti-sobreventa, idempotencia, pagos y superadmin.
+
+El panel del negocio incluye dashboard, productos, categorías, clientes,
+pedidos y configuración. La tienda pública incluye buscador, detalle de
+producto, carrito, checkout invitado, Yape, comprobante y WhatsApp.

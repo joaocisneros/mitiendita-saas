@@ -17,6 +17,7 @@ export class DashboardService {
       approvedToday,
       recentOrders,
       lowStock,
+      topProducts,
     ] = await Promise.all([
       this.prisma.order.count({
         where: { companyId, createdAt: { gte: startOfDay } },
@@ -52,12 +53,27 @@ export class DashboardService {
         where: { companyId, deletedAt: null, isActive: true },
         select: { id: true, name: true, stock: true, reserved: true },
       }),
+      this.prisma.$queryRaw<
+        Array<{ productId: string | null; name: string; units: bigint }>
+      >`
+        SELECT oi.product_id AS productId, oi.name, SUM(oi.quantity) AS units
+        FROM order_items oi
+        INNER JOIN orders o ON o.id = oi.order_id
+        WHERE o.company_id = ${companyId}
+          AND o.payment_status = 'approved'
+        GROUP BY oi.product_id, oi.name
+        ORDER BY units DESC
+        LIMIT 5`,
     ]);
 
     const salesToday = approvedToday.reduce((s, o) => s + Number(o.total), 0);
     const lowStockProducts = lowStock
       .filter((p) => p.stock - p.reserved <= LOW_STOCK_THRESHOLD)
-      .map((p) => ({ id: p.id, name: p.name, available: p.stock - p.reserved }));
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        available: p.stock - p.reserved,
+      }));
 
     return {
       salesToday: salesToday.toFixed(2),
@@ -66,6 +82,11 @@ export class DashboardService {
       lowStockCount: lowStockProducts.length,
       lowStockProducts: lowStockProducts.slice(0, 10),
       recentOrders,
+      topProducts: topProducts.map((product) => ({
+        id: product.productId,
+        name: product.name,
+        units: Number(product.units),
+      })),
     };
   }
 }

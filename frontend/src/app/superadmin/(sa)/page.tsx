@@ -1,128 +1,243 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   superApi,
   type GlobalStats,
-  type Plan,
   type SaCompany,
 } from "@/lib/superadmin-api";
 import { formatPrice } from "@/lib/format";
+import { DashboardIcon } from "@/components/DashboardIcon";
+import { CompanyDetailModal } from "@/components/CompanyDetailModal";
 
 export default function SuperDashboard() {
   const [stats, setStats] = useState<GlobalStats | null>(null);
   const [companies, setCompanies] = useState<SaCompany[]>([]);
-  const [plans, setPlans] = useState<Plan[]>([]);
-  const [search, setSearch] = useState("");
   const [error, setError] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  function load() {
-    superApi.stats().then(setStats).catch((e) => setError(e.message));
-    superApi.companies(search || undefined).then(setCompanies).catch(() => {});
-    superApi.plans().then(setPlans).catch(() => {});
-  }
-  useEffect(load, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function toggle(c: SaCompany) {
-    if (c.status === "active") await superApi.suspend(c.id);
-    else await superApi.activate(c.id);
-    load();
-  }
-  async function changePlan(c: SaCompany, planId: number) {
-    await superApi.assignPlan(c.id, planId);
-    load();
-  }
+  useEffect(() => {
+    Promise.all([superApi.stats(), superApi.companies({ limit: 6 })])
+      .then(([summary, result]) => {
+        setStats(summary);
+        setCompanies(result.items);
+      })
+      .catch((reason) =>
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : "No se pudo cargar el dashboard.",
+        ),
+      );
+  }, []);
 
   return (
-    <div className="space-y-6 text-white">
-      <h1 className="text-2xl font-extrabold">Dashboard global</h1>
-      {error && <p className="text-red-400">{error}</p>}
-
-      {stats && (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-          <Stat label="Empresas" value={String(stats.totalCompanies)} />
-          <Stat label="Activas" value={String(stats.activeCompanies)} />
-          <Stat label="Suspendidas" value={String(stats.suspendedCompanies)} />
-          <Stat label="Pedidos" value={String(stats.totalOrders)} />
-          <Stat label="Volumen bruto" value={formatPrice(stats.grossVolume)} accent />
+    <div className="space-y-7 pb-20 md:pb-0">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm font-bold text-violet-700">Vista general</p>
+          <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-950">
+            Dashboard global
+          </h1>
+          <p className="mt-2 text-sm font-medium text-slate-600">
+            Supervisa el estado y crecimiento de toda la plataforma.
+          </p>
         </div>
+        <Link
+          href="/superadmin/empresas"
+          className="inline-flex items-center justify-center rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-violet-700"
+        >
+          Administrar empresas
+        </Link>
+      </div>
+      {error && (
+        <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">
+          {error}
+        </p>
+      )}
+      {stats ? (
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+          <Stat
+            icon="companies"
+            label="Empresas"
+            value={String(stats.totalCompanies)}
+          />
+          <Stat
+            icon="store"
+            label="Activas"
+            value={String(stats.activeCompanies)}
+            positive
+          />
+          <Stat
+            icon="settings"
+            label="Suspendidas"
+            value={String(stats.suspendedCompanies)}
+          />
+          <Stat
+            icon="orders"
+            label="Pedidos"
+            value={String(stats.totalOrders)}
+          />
+          <Stat
+            icon="activity"
+            label="Nuevas este mes"
+            value={String(stats.newCompaniesThisMonth)}
+          />
+          <Stat
+            icon="plans"
+            label="Volumen bruto"
+            value={formatPrice(stats.grossVolume)}
+            accent
+          />
+        </section>
+      ) : (
+        <div className="h-32 animate-pulse rounded-2xl bg-white ring-1 ring-slate-200" />
       )}
 
-      <div className="flex gap-2">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && load()}
-          placeholder="Buscar empresa..."
-          className="flex-1 rounded-lg bg-white/10 px-3 py-2 text-white placeholder-gray-400 outline-none"
-        />
-        <button onClick={load} className="rounded-lg bg-violet-600 px-4 font-semibold">
-          Buscar
-        </button>
-      </div>
+      <section className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+        <div className="flex items-center justify-between border-b border-slate-200 p-5">
+          <div>
+            <h2 className="text-lg font-black text-slate-950">
+              Empresas recientes
+            </h2>
+            <p className="mt-1 text-sm font-medium text-slate-600">
+              Últimos negocios registrados.
+            </p>
+          </div>
+          <Link
+            href="/superadmin/empresas"
+            className="text-sm font-bold text-violet-700 hover:underline"
+          >
+            Ver todas →
+          </Link>
+        </div>
+        <div className="divide-y divide-slate-200">
+          {companies.map((company) => (
+            <button
+              key={company.id}
+              onClick={() => setSelectedId(company.id)}
+              className="flex w-full flex-col gap-2 p-4 text-left hover:bg-slate-50 sm:flex-row sm:items-center"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-bold text-slate-950">
+                  {company.name}
+                </p>
+                <p className="truncate text-xs font-medium text-slate-600">
+                  {company.subdomain} ·{" "}
+                  {company.owner?.email ?? "Sin propietario"}
+                </p>
+              </div>
+              <span
+                className={`w-fit rounded-full px-2.5 py-1 text-xs font-bold ${company.status === "active" ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}
+              >
+                {company.status === "active" ? "Activa" : "Suspendida"}
+              </span>
+              <span className="text-sm font-semibold text-slate-700">
+                {company.orders} pedidos
+              </span>
+            </button>
+          ))}
+          {!error && companies.length === 0 && (
+            <p className="p-8 text-center font-medium text-slate-600">
+              No hay empresas registradas.
+            </p>
+          )}
+        </div>
+      </section>
 
-      <div className="overflow-x-auto rounded-2xl bg-white/5 ring-1 ring-white/10">
-        <table className="w-full text-sm">
-          <thead className="text-left text-gray-400">
-            <tr>
-              <th className="p-3">Empresa</th>
-              <th className="p-3">Subdominio</th>
-              <th className="p-3">Estado</th>
-              <th className="p-3">Plan</th>
-              <th className="p-3">Pedidos</th>
-              <th className="p-3">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {companies.slice(0, 50).map((c) => (
-              <tr key={c.id} className="border-t border-white/10">
-                <td className="p-3 font-medium">{c.name}</td>
-                <td className="p-3 text-gray-400">{c.subdomain}</td>
-                <td className="p-3">
-                  <span className={c.status === "active" ? "text-green-400" : "text-red-400"}>
-                    {c.status === "active" ? "Activa" : "Suspendida"}
-                  </span>
-                </td>
-                <td className="p-3">
-                  <select
-                    value={plans.find((p) => p.name === c.plan)?.id ?? ""}
-                    onChange={(e) => changePlan(c, Number(e.target.value))}
-                    className="rounded bg-white/10 px-2 py-1"
-                  >
-                    {plans.map((p) => (
-                      <option key={p.id} value={p.id} className="text-black">
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td className="p-3">{c.orders}</td>
-                <td className="p-3">
-                  <button
-                    onClick={() => toggle(c)}
-                    className={`rounded px-3 py-1 text-xs font-semibold ${
-                      c.status === "active"
-                        ? "bg-red-500/20 text-red-300"
-                        : "bg-green-500/20 text-green-300"
-                    }`}
-                  >
-                    {c.status === "active" ? "Suspender" : "Activar"}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <section className="grid gap-4 md:grid-cols-3">
+        <QuickLink
+          href="/superadmin/empresas"
+          icon="companies"
+          title="Gestionar empresas"
+          text="Busca, filtra, cambia planes y controla accesos."
+        />
+        <QuickLink
+          href="/superadmin/planes"
+          icon="plans"
+          title="Configurar planes"
+          text="Define precios, límites y disponibilidad comercial."
+        />
+        <QuickLink
+          href="/superadmin/actividad"
+          icon="activity"
+          title="Revisar actividad"
+          text="Consulta quién realizó cada acción sensible."
+        />
+      </section>
+
+      {selectedId && (
+        <CompanyDetailModal
+          companyId={selectedId}
+          onClose={() => setSelectedId(null)}
+        />
+      )}
     </div>
   );
 }
 
-function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+type StatIcon =
+  | "companies"
+  | "store"
+  | "settings"
+  | "orders"
+  | "plans"
+  | "activity";
+function Stat({
+  icon,
+  label,
+  value,
+  accent,
+  positive,
+}: {
+  icon: StatIcon;
+  label: string;
+  value: string;
+  accent?: boolean;
+  positive?: boolean;
+}) {
   return (
-    <div className={`rounded-2xl p-4 ring-1 ring-white/10 ${accent ? "bg-violet-600" : "bg-white/5"}`}>
-      <p className="text-xs text-gray-300">{label}</p>
-      <p className="mt-1 text-xl font-extrabold">{value}</p>
+    <div
+      className={`rounded-2xl p-5 shadow-sm ring-1 ${accent ? "bg-violet-600 text-white ring-violet-600" : "bg-white text-slate-950 ring-slate-200"}`}
+    >
+      <span
+        className={`flex h-10 w-10 items-center justify-center rounded-xl ${accent ? "bg-white/15" : positive ? "bg-emerald-100 text-emerald-800" : "bg-violet-100 text-violet-700"}`}
+      >
+        <DashboardIcon name={icon} />
+      </span>
+      <p
+        className={`mt-4 text-[11px] font-bold uppercase tracking-wide ${accent ? "text-violet-100" : "text-slate-600"}`}
+      >
+        {label}
+      </p>
+      <p className="mt-1 text-2xl font-black">{value}</p>
     </div>
+  );
+}
+function QuickLink({
+  href,
+  icon,
+  title,
+  text,
+}: {
+  href: string;
+  icon: "companies" | "plans" | "activity";
+  title: string;
+  text: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md"
+    >
+      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
+        <DashboardIcon name={icon} />
+      </span>
+      <h3 className="mt-4 font-black text-slate-950">{title}</h3>
+      <p className="mt-1 text-sm font-medium leading-5 text-slate-600">
+        {text}
+      </p>
+    </Link>
   );
 }

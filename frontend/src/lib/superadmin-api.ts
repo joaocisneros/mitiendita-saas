@@ -4,27 +4,33 @@ const KEY = "mt_super";
 export function getSuperToken(): string | null {
   return typeof window === "undefined" ? null : localStorage.getItem(KEY);
 }
-export function setSuperToken(t: string) {
-  localStorage.setItem(KEY, t);
+export function setSuperToken(token: string) {
+  localStorage.setItem(KEY, token);
 }
 export function clearSuperToken() {
   localStorage.removeItem(KEY);
 }
 
-async function sfetch(path: string, init: RequestInit = {}) {
+async function sfetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     ...init,
     headers: {
       ...(init.headers ?? {}),
-      ...(getSuperToken() ? { Authorization: `Bearer ${getSuperToken()}` } : {}),
+      ...(getSuperToken()
+        ? { Authorization: `Bearer ${getSuperToken()}` }
+        : {}),
     },
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const m = (data as { message?: string }).message;
-    throw new Error(m ?? "Error");
+    if (res.status === 401 && typeof window !== "undefined") {
+      clearSuperToken();
+      window.location.assign("/superadmin/login");
+    }
+    const message = (data as { message?: string | string[] }).message;
+    throw new Error(Array.isArray(message) ? message[0] : (message ?? "Error"));
   }
-  return data;
+  return data as T;
 }
 
 export interface GlobalStats {
@@ -33,21 +39,89 @@ export interface GlobalStats {
   suspendedCompanies: number;
   totalOrders: number;
   grossVolume: string;
-}
-export interface SaCompany {
-  id: string;
-  name: string;
-  subdomain: string;
-  status: string;
-  plan: string | null;
-  orders: number;
-  createdAt: string;
+  newCompaniesThisMonth: number;
 }
 export interface Plan {
   id: number;
   name: string;
   slug: string;
   priceMonth: string;
+  maxProducts: number | null;
+  isActive: boolean;
+}
+export interface CompanyOwner {
+  name: string;
+  email: string;
+}
+export interface SaCompany {
+  id: string;
+  name: string;
+  subdomain: string;
+  status: "active" | "suspended" | "inactive";
+  plan: { id: number; name: string; slug: string } | null;
+  businessType: string | null;
+  owner: CompanyOwner | null;
+  orders: number;
+  products: number;
+  customers: number;
+  createdAt: string;
+}
+export interface SaCompanyDetail {
+  id: string;
+  name: string;
+  subdomain: string;
+  status: "active" | "suspended" | "inactive";
+  createdAt: string;
+  plan: Plan | null;
+  settings: {
+    storeName: string;
+    businessType: string | null;
+    whatsappNumber: string | null;
+    yapeHolderName: string | null;
+    yapeNumber: string | null;
+    allowsPickup: boolean;
+    allowsDelivery: boolean;
+    storeAddress: string | null;
+  } | null;
+  memberships: Array<{
+    role: string;
+    user: { id: string; name: string; email: string; isActive: boolean };
+  }>;
+  _count: { orders: number; products: number; customers: number };
+  grossVolume: string;
+  recentOrders: Array<{
+    id: string;
+    publicCode: string;
+    customerName: string;
+    status: string;
+    paymentStatus: string;
+    total: string;
+    currency: string;
+    createdAt: string;
+  }>;
+}
+export interface AuditRow {
+  id: string;
+  action: string;
+  companyId: string | null;
+  companyName: string | null;
+  details: Record<string, unknown> | null;
+  createdAt: string;
+  superAdmin: { name: string; email: string };
+}
+export interface PageResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pages: number;
+  limit?: number;
+}
+export interface PlanInput {
+  name: string;
+  slug: string;
+  priceMonth: number;
+  maxProducts?: number | null;
+  isActive?: boolean;
 }
 
 export const superApi = {
@@ -58,20 +132,65 @@ export const superApi = {
       body: JSON.stringify({ email, password }),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error((data as { message?: string }).message ?? "Credenciales incorrectas.");
+    if (!res.ok)
+      throw new Error(
+        (data as { message?: string }).message ?? "Credenciales incorrectas.",
+      );
     setSuperToken(data.accessToken);
     return data;
   },
-  stats: () => sfetch("/superadmin/stats") as Promise<GlobalStats>,
-  companies: (search?: string) =>
-    sfetch(`/superadmin/companies${search ? `?search=${encodeURIComponent(search)}` : ""}`) as Promise<SaCompany[]>,
-  plans: () => sfetch("/superadmin/plans") as Promise<Plan[]>,
-  suspend: (id: string) => sfetch(`/superadmin/companies/${id}/suspend`, { method: "POST" }),
-  activate: (id: string) => sfetch(`/superadmin/companies/${id}/activate`, { method: "POST" }),
+  stats: () => sfetch<GlobalStats>("/superadmin/stats"),
+  companies: (
+    params: {
+      search?: string;
+      status?: string;
+      planId?: number;
+      page?: number;
+      limit?: number;
+    } = {},
+  ) => {
+    const query = new URLSearchParams();
+    if (params.search) query.set("search", params.search);
+    if (params.status) query.set("status", params.status);
+    if (params.planId) query.set("planId", String(params.planId));
+    if (params.page) query.set("page", String(params.page));
+    if (params.limit) query.set("limit", String(params.limit));
+    const suffix = query.toString();
+    return sfetch<PageResult<SaCompany>>(
+      `/superadmin/companies${suffix ? `?${suffix}` : ""}`,
+    );
+  },
+  company: (id: string) =>
+    sfetch<SaCompanyDetail>(`/superadmin/companies/${id}`),
+  plans: () => sfetch<Plan[]>("/superadmin/plans"),
+  createPlan: (body: PlanInput) =>
+    sfetch<Plan>("/superadmin/plans", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  updatePlan: (id: number, body: Partial<PlanInput>) =>
+    sfetch<Plan>(`/superadmin/plans/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  suspend: (id: string) =>
+    sfetch<{ ok: boolean; status: string }>(
+      `/superadmin/companies/${id}/suspend`,
+      { method: "POST" },
+    ),
+  activate: (id: string) =>
+    sfetch<{ ok: boolean; status: string }>(
+      `/superadmin/companies/${id}/activate`,
+      { method: "POST" },
+    ),
   assignPlan: (id: string, planId: number) =>
     sfetch(`/superadmin/companies/${id}/plan`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ planId }),
     }),
+  audits: (page = 1) =>
+    sfetch<PageResult<AuditRow>>(`/superadmin/audits?page=${page}`),
 };

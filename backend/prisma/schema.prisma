@@ -105,7 +105,25 @@ model SuperAdmin {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
+  audits SuperAdminAudit[]
+
   @@map("super_admins")
+}
+
+/// Registro de acciones sensibles realizadas desde el panel global.
+model SuperAdminAudit {
+  id           String   @id @default(uuid())
+  superAdminId String   @map("super_admin_id")
+  action       String
+  companyId    String?  @map("company_id")
+  details      Json?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  superAdmin SuperAdmin @relation(fields: [superAdminId], references: [id])
+
+  @@index([superAdminId, createdAt])
+  @@index([companyId, createdAt])
+  @@map("super_admin_audits")
 }
 
 /// Subdominios reservados que ninguna empresa puede usar (www, api, admin...).

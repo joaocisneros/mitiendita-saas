@@ -29,3 +29,19 @@ input::placeholder,
 textarea::placeholder {
   color: #9ca3af;
 }
+
+/* Contraste mínimo para información secundaria de los paneles. */
+.admin-shell .text-gray-400 {
+  color: #475569;
+}
+
+.admin-shell .text-gray-500,
+.admin-shell .text-gray-600 {
+  color: #334155;
+}
+
+.admin-shell input,
+.admin-shell textarea,
+.admin-shell select {
+  color: #0f172a;
+}
