@@ -217,6 +217,22 @@ export function actionOf(category: BusinessCategory): string {
   return ACTION_BY_CATEGORY[category.id] ?? "Agregar";
 }
 
+const DEFAULT_PRIMARY = "#2563eb";
+
+/**
+ * Color principal de la tienda: el del rubro por defecto, o el que el dueño
+ * personalizó (si difiere del azul por defecto). Úsalo en todo el flujo de compra.
+ */
+export function storeAccent(store: {
+  primaryColor?: string | null;
+  businessType?: string | null;
+}): string {
+  if (store.primaryColor && store.primaryColor !== DEFAULT_PRIMARY) {
+    return store.primaryColor;
+  }
+  return resolveCategory(store.businessType).theme.primary;
+}
+
 function normalize(value: string) {
   return value
     .toLowerCase()

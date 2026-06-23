@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCart } from "@/lib/cart-context";
 import { storefrontApi } from "@/lib/api";
+import { storeAccent } from "@/lib/business-categories";
 import { formatPrice } from "@/lib/format";
 import type { StoreBrand } from "@/lib/types";
 
@@ -42,6 +43,7 @@ export default function CheckoutPage() {
   );
   const total = subtotal + deliveryFee;
   const currency = store?.currency ?? "PEN";
+  const accent = store ? storeAccent(store) : "#0f172a";
 
   async function submit() {
     setError("");
@@ -90,7 +92,8 @@ export default function CheckoutPage() {
         <p className="text-gray-500">Tu carrito está vacío.</p>
         <Link
           href={`/tienda/${subdomain}`}
-          className="mt-4 inline-block rounded-full bg-violet-600 px-5 py-2 font-semibold text-white"
+          style={{ backgroundColor: accent }}
+          className="mt-4 inline-block rounded-full px-5 py-2 font-semibold text-white"
         >
           Ver productos
         </Link>
@@ -100,7 +103,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-full flex-1 bg-gray-50 pb-10">
-      <header className="bg-violet-600 px-4 py-4 text-white">
+      <header style={{ backgroundColor: accent }} className="px-4 py-4 text-white">
         <div className="mx-auto flex max-w-2xl items-center gap-3">
           <Link href={`/tienda/${subdomain}/carrito`} className="text-2xl">
             ←
@@ -140,6 +143,7 @@ export default function CheckoutPage() {
                 onClick={() => setMethod("pickup")}
                 title="🏪 Recojo"
                 sub="En la tienda"
+                accent={accent}
               />
             )}
             {store?.allowsDelivery && (
@@ -152,6 +156,7 @@ export default function CheckoutPage() {
                     ? formatPrice(store.deliveryFee, currency)
                     : "A domicilio"
                 }
+                accent={accent}
               />
             )}
           </div>
@@ -206,13 +211,14 @@ export default function CheckoutPage() {
         <button
           onClick={submit}
           disabled={saving}
-          className="w-full rounded-full bg-violet-600 py-3 font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
+          style={{ backgroundColor: accent }}
+          className="w-full rounded-full py-3 font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
         >
           {saving ? "Creando pedido..." : "Confirmar pedido →"}
         </button>
       </main>
 
-      <style>{`.input{width:100%;border-radius:0.75rem;border:1px solid #e5e7eb;padding:0.6rem 0.75rem;font-size:0.95rem;outline:none}.input:focus{border-color:#7c3aed}`}</style>
+      <style>{`.input{width:100%;border-radius:0.75rem;border:1px solid #e5e7eb;padding:0.6rem 0.75rem;font-size:0.95rem;outline:none}.input:focus{border-color:#94a3b8}`}</style>
     </div>
   );
 }
@@ -239,19 +245,24 @@ function MethodBtn({
   onClick,
   title,
   sub,
+  accent,
 }: {
   active: boolean;
   onClick: () => void;
   title: string;
   sub: string;
+  accent: string;
 }) {
   return (
     <button
       onClick={onClick}
-      className={`rounded-xl border p-3 text-left transition ${
+      style={
         active
-          ? "border-violet-600 bg-violet-50 ring-1 ring-violet-600"
-          : "border-gray-200 bg-white"
+          ? { borderColor: accent, boxShadow: `inset 0 0 0 1px ${accent}`, backgroundColor: `${accent}14` }
+          : undefined
+      }
+      className={`rounded-xl border p-3 text-left transition ${
+        active ? "" : "border-gray-200 bg-white"
       }`}
     >
       <p className="font-semibold">{title}</p>

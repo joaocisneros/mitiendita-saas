@@ -2,17 +2,28 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useCart } from "@/lib/cart-context";
+import { storefrontApi } from "@/lib/api";
+import { storeAccent } from "@/lib/business-categories";
 import { formatPrice } from "@/lib/format";
 
 export default function CartPage() {
   const { subdomain } = useParams<{ subdomain: string }>();
   const { items, setQty, remove, subtotal } = useCart();
+  const [accent, setAccent] = useState("#0f172a");
+
+  useEffect(() => {
+    storefrontApi
+      .getStore(subdomain)
+      .then((d) => setAccent(storeAccent(d.store)))
+      .catch(() => {});
+  }, [subdomain]);
 
   return (
     <div className="min-h-full flex-1 bg-gray-50 pb-28">
-      <header className="bg-violet-600 px-4 py-4 text-white">
+      <header style={{ backgroundColor: accent }} className="px-4 py-4 text-white">
         <div className="mx-auto flex max-w-2xl items-center gap-3">
           <Link href={`/tienda/${subdomain}`} className="text-2xl">
             ←
@@ -28,7 +39,8 @@ export default function CartPage() {
             <p className="mt-4 text-gray-500">Tu carrito está vacío.</p>
             <Link
               href={`/tienda/${subdomain}`}
-              className="mt-4 inline-block rounded-full bg-violet-600 px-5 py-2 font-semibold text-white"
+              style={{ backgroundColor: accent }}
+              className="mt-4 inline-block rounded-full px-5 py-2 font-semibold text-white"
             >
               Ver productos
             </Link>
@@ -58,7 +70,7 @@ export default function CartPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{it.name}</p>
-                    <p className="text-sm font-bold text-violet-700">
+                    <p className="text-sm font-bold" style={{ color: accent }}>
                       {formatPrice(it.price)}
                     </p>
                     <div className="mt-1 flex items-center gap-2">
@@ -101,7 +113,8 @@ export default function CartPage() {
 
             <Link
               href={`/tienda/${subdomain}/checkout`}
-              className="mt-4 block w-full rounded-full bg-violet-600 py-3 text-center font-semibold text-white hover:bg-violet-700"
+              style={{ backgroundColor: accent }}
+              className="mt-4 block w-full rounded-full py-3 text-center font-semibold text-white transition hover:opacity-90"
             >
               Continuar al pago →
             </Link>
