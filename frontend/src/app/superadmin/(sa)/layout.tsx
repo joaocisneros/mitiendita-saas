@@ -15,9 +15,19 @@ const NAV = [
   },
   { href: "/superadmin/planes", label: "Planes", icon: "plans" as const },
   {
+    href: "/superadmin/suscripciones",
+    label: "Suscripciones",
+    icon: "orders" as const,
+  },
+  {
     href: "/superadmin/actividad",
     label: "Actividad",
     icon: "activity" as const,
+  },
+  {
+    href: "/superadmin/configuracion",
+    label: "Configuración",
+    icon: "settings" as const,
   },
 ];
 
@@ -111,7 +121,7 @@ export default function SaLayout({ children }: { children: React.ReactNode }) {
           </button>
         </header>
         <main className="flex-1 p-4 text-slate-950 md:p-7">{children}</main>
-        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-slate-200 bg-white p-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] md:hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 border-t border-slate-200 bg-white p-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] md:hidden">
           {NAV.map((item) => (
             <Link
               key={item.label}

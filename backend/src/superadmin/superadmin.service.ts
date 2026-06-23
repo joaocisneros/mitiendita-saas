@@ -9,7 +9,11 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
-import type { CompanyStatus, Prisma } from '../../generated/prisma/client';
+import type {
+  CompanyStatus,
+  Prisma,
+  SubscriptionStatus,
+} from '../../generated/prisma/client';
 import { CreatePlanDto, UpdatePlanDto } from './dto/superadmin.dto';
 
 @Injectable()
@@ -306,6 +310,127 @@ export class SuperAdminService {
       page: safePage,
       pages: Math.ceil(total / safeLimit),
     };
+  }
+
+  // ───────────────────── Suscripciones ─────────────────────
+
+  async subscriptions(opts: { status?: string; page?: number; limit?: number }) {
+    const page = Math.max(1, opts.page ?? 1);
+    const limit = Math.min(100, Math.max(1, opts.limit ?? 20));
+    const valid = ['trial', 'active', 'past_due', 'cancelled'];
+    const where = {
+      deletedAt: null,
+      ...(opts.status && valid.includes(opts.status)
+        ? { subscriptionStatus: opts.status as SubscriptionStatus }
+        : {}),
+    };
+    const [rows, total] = await Promise.all([
+      this.prisma.company.findMany({
+        where,
+        orderBy: { currentPeriodEndsAt: 'asc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        include: { plan: { select: { name: true, priceMonth: true } } },
+      }),
+      this.prisma.company.count({ where }),
+    ]);
+    return {
+      items: rows.map((c) => ({
+        id: c.id,
+        name: c.name,
+        subdomain: c.subdomain,
+        subscriptionStatus: c.subscriptionStatus,
+        currentPeriodEndsAt: c.currentPeriodEndsAt,
+        plan: c.plan?.name ?? null,
+        price: (c.plan?.priceMonth ?? 0).toString(),
+        notes: c.subscriptionNotes,
+      })),
+      total,
+      page,
+      pages: Math.ceil(total / limit),
+    };
+  }
+
+  async markSubscriptionPaid(actorId: string, id: string, months = 1) {
+    const company = await this.prisma.company.findFirst({
+      where: { id, deletedAt: null },
+    });
+    if (!company) throw new NotFoundException('Empresa no encontrada.');
+    const base =
+      company.currentPeriodEndsAt && company.currentPeriodEndsAt > new Date()
+        ? new Date(company.currentPeriodEndsAt)
+        : new Date();
+    base.setMonth(base.getMonth() + months);
+    await this.prisma.company.update({
+      where: { id },
+      data: { subscriptionStatus: 'active', currentPeriodEndsAt: base },
+    });
+    await this.audit(actorId, 'subscription.paid', id, { months });
+    return { ok: true, currentPeriodEndsAt: base };
+  }
+
+  async updateSubscription(
+    actorId: string,
+    id: string,
+    dto: { status?: string; notes?: string; currentPeriodEndsAt?: string },
+  ) {
+    const company = await this.prisma.company.findFirst({
+      where: { id, deletedAt: null },
+    });
+    if (!company) throw new NotFoundException('Empresa no encontrada.');
+    const valid = ['trial', 'active', 'past_due', 'cancelled'];
+    await this.prisma.company.update({
+      where: { id },
+      data: {
+        ...(dto.status && valid.includes(dto.status)
+          ? { subscriptionStatus: dto.status as SubscriptionStatus }
+          : {}),
+        ...(dto.notes !== undefined ? { subscriptionNotes: dto.notes } : {}),
+        ...(dto.currentPeriodEndsAt
+          ? { currentPeriodEndsAt: new Date(dto.currentPeriodEndsAt) }
+          : {}),
+      },
+    });
+    await this.audit(actorId, 'subscription.updated', id, { status: dto.status });
+    return { ok: true };
+  }
+
+  // ───────────────────── Configuración de plataforma ─────────────────────
+
+  getPlatformSettings() {
+    return this.prisma.platformSettings.upsert({
+      where: { id: 1 },
+      update: {},
+      create: { id: 1 },
+    });
+  }
+
+  async updatePlatformSettings(
+    actorId: string,
+    dto: Record<string, unknown>,
+  ) {
+    const allowed = [
+      'platformName',
+      'logoUrl',
+      'mainDomain',
+      'currency',
+      'supportWhatsapp',
+      'supportEmail',
+      'terms',
+      'privacy',
+      'trialDays',
+    ];
+    const data: Record<string, unknown> = {};
+    for (const key of allowed) {
+      if (dto[key] !== undefined) data[key] = dto[key];
+    }
+    await this.prisma.platformSettings.upsert({
+      where: { id: 1 },
+      update: data,
+      create: { id: 1, ...data },
+    });
+    await this.audit(actorId, 'platform.settings_updated');
+    return this.getPlatformSettings();
   }
 
   private async audit(

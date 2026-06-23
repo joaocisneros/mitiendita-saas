@@ -193,4 +193,57 @@ export const superApi = {
     }),
   audits: (page = 1) =>
     sfetch<PageResult<AuditRow>>(`/superadmin/audits?page=${page}`),
+
+  subscriptions: (status?: string, page = 1) => {
+    const q = new URLSearchParams();
+    if (status) q.set("status", status);
+    q.set("page", String(page));
+    return sfetch<PageResult<SubscriptionRow>>(
+      `/superadmin/subscriptions?${q.toString()}`,
+    );
+  },
+  markPaid: (id: string, months = 1) =>
+    sfetch(`/superadmin/companies/${id}/subscription/mark-paid`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ months }),
+    }),
+  updateSubscription: (
+    id: string,
+    body: { status?: string; notes?: string; currentPeriodEndsAt?: string },
+  ) =>
+    sfetch(`/superadmin/companies/${id}/subscription`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  getSettings: () => sfetch<PlatformSettings>("/superadmin/settings"),
+  updateSettings: (body: Partial<PlatformSettings>) =>
+    sfetch<PlatformSettings>("/superadmin/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
 };
+
+export interface SubscriptionRow {
+  id: string;
+  name: string;
+  subdomain: string;
+  subscriptionStatus: "trial" | "active" | "past_due" | "cancelled";
+  currentPeriodEndsAt: string | null;
+  plan: string | null;
+  price: string;
+  notes: string | null;
+}
+export interface PlatformSettings {
+  platformName: string;
+  logoUrl: string | null;
+  mainDomain: string;
+  currency: string;
+  supportWhatsapp: string | null;
+  supportEmail: string | null;
+  terms: string | null;
+  privacy: string | null;
+  trialDays: number;
+}

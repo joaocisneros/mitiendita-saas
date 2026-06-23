@@ -119,4 +119,51 @@ export class SuperAdminController {
       limit ? Number(limit) : 30,
     );
   }
+
+  // ── Suscripciones ──
+  @UseGuards(SuperAdminGuard)
+  @Get('subscriptions')
+  subscriptions(@Query('status') status?: string, @Query('page') page?: string) {
+    return this.superadmin.subscriptions({
+      status: status || undefined,
+      page: page ? Number(page) : 1,
+    });
+  }
+
+  @UseGuards(SuperAdminGuard)
+  @HttpCode(200)
+  @Post('companies/:id/subscription/mark-paid')
+  markPaid(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body('months') months?: number,
+  ) {
+    return this.superadmin.markSubscriptionPaid(user.userId, id, months ?? 1);
+  }
+
+  @UseGuards(SuperAdminGuard)
+  @Patch('companies/:id/subscription')
+  updateSubscription(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: { status?: string; notes?: string; currentPeriodEndsAt?: string },
+  ) {
+    return this.superadmin.updateSubscription(user.userId, id, dto);
+  }
+
+  // ── Configuración de plataforma ──
+  @UseGuards(SuperAdminGuard)
+  @Get('settings')
+  getSettings() {
+    return this.superadmin.getPlatformSettings();
+  }
+
+  @UseGuards(SuperAdminGuard)
+  @Patch('settings')
+  updateSettings(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: Record<string, unknown>,
+  ) {
+    return this.superadmin.updatePlatformSettings(user.userId, dto);
+  }
 }

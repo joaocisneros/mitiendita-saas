@@ -53,6 +53,13 @@ enum PaymentMethod {
   yape
 }
 
+enum SubscriptionStatus {
+  trial // periodo de prueba
+  active // pagado / al día
+  past_due // pago pendiente / vencido
+  cancelled // cancelado
+}
+
 // ════════════════ ENTIDADES GLOBALES (sin company_id) ════════════════
 
 /// Planes comerciales (Básico, Pro, Premium). Asignados manualmente en el MVP.
@@ -78,6 +85,12 @@ model Company {
   subdomain String        @unique
   status    CompanyStatus @default(active)
   planId    Int?          @map("plan_id")
+
+  // Suscripción comercial (gestionada por el superadmin).
+  subscriptionStatus   SubscriptionStatus @default(trial) @map("subscription_status")
+  currentPeriodEndsAt  DateTime?          @map("current_period_ends_at")
+  subscriptionNotes    String?            @map("subscription_notes") @db.Text
+
   createdAt DateTime      @default(now()) @map("created_at")
   updatedAt DateTime      @updatedAt @map("updated_at")
   deletedAt DateTime?     @map("deleted_at")
@@ -426,4 +439,21 @@ model StockMovement {
   @@index([companyId])
   @@index([productId])
   @@map("stock_movements")
+}
+
+/// Configuración global de la plataforma (fila única, id = 1).
+model PlatformSettings {
+  id              Int      @id @default(1)
+  platformName    String   @default("MiTiendita") @map("platform_name")
+  logoUrl         String?  @map("logo_url")
+  mainDomain      String   @default("mitiendita.com") @map("main_domain")
+  currency        String   @default("PEN")
+  supportWhatsapp String?  @map("support_whatsapp")
+  supportEmail    String?  @map("support_email")
+  terms           String?  @db.Text
+  privacy         String?  @db.Text
+  trialDays       Int      @default(14) @map("trial_days")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("platform_settings")
 }
