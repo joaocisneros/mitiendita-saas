@@ -105,6 +105,16 @@ export class AdminOrdersService {
             SET stock = GREATEST(0, stock - ${item.quantity}),
                 reserved = GREATEST(0, reserved - ${item.quantity})
             WHERE id = ${item.productId} AND company_id = ${companyId}`;
+          await tx.stockMovement.create({
+            data: {
+              companyId,
+              productId: item.productId,
+              type: 'sale',
+              quantity: -item.quantity,
+              reason: `Venta pedido ${order.publicCode}`,
+              createdByUserId: userId,
+            },
+          });
         }
         await tx.order.update({
           where: { id: order.id },
@@ -189,6 +199,16 @@ export class AdminOrdersService {
             await tx.$executeRaw`
               UPDATE products SET stock = stock + ${item.quantity}
               WHERE id = ${item.productId} AND company_id = ${companyId}`;
+            await tx.stockMovement.create({
+              data: {
+                companyId,
+                productId: item.productId,
+                type: 'cancellation',
+                quantity: item.quantity,
+                reason: `Cancelación pedido ${order.publicCode}`,
+                createdByUserId: userId,
+              },
+            });
           }
         }
       }

@@ -90,6 +90,7 @@ model Company {
   customers   Customer[]
   orders      Order[]
   payments    Payment[]
+  stockMovements StockMovement[]
 
   @@index([status])
   @@map("companies")
@@ -267,6 +268,7 @@ model Product {
   company    Company     @relation(fields: [companyId], references: [id])
   category   Category?   @relation(fields: [categoryId], references: [id])
   orderItems OrderItem[]
+  stockMovements StockMovement[]
 
   // slug y SKU únicos por empresa. SKU es opcional (varios NULL permitidos).
   @@unique([companyId, slug])
@@ -397,4 +399,31 @@ model Payment {
 
   @@index([companyId, status])
   @@map("payments")
+}
+
+enum StockMovementType {
+  entry // entrada / reposición
+  sale // salida por venta
+  adjustment // ajuste manual
+  return // devolución
+  cancellation // cancelación de pedido
+}
+
+/// Historial de movimientos de stock (inventario).
+model StockMovement {
+  id              String            @id @default(uuid())
+  companyId       String            @map("company_id")
+  productId       String            @map("product_id")
+  type            StockMovementType
+  quantity        Int // delta aplicado al stock (positivo o negativo)
+  reason          String?
+  createdByUserId String?           @map("created_by_user_id")
+  createdAt       DateTime          @default(now()) @map("created_at")
+
+  company Company @relation(fields: [companyId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([companyId])
+  @@index([productId])
+  @@map("stock_movements")
 }

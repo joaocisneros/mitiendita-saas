@@ -20,6 +20,8 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { StoreSettingsModule } from './store-settings/store-settings.module';
 import { SuperAdminModule } from './superadmin/superadmin.module';
 import { CustomersModule } from './customers/customers.module';
+import { InventoryModule } from './inventory/inventory.module';
+import { ReportsModule } from './reports/reports.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { TenancyMiddleware } from './tenancy/tenancy.middleware';
@@ -41,6 +43,8 @@ import { TenancyMiddleware } from './tenancy/tenancy.middleware';
     StoreSettingsModule,
     SuperAdminModule,
     CustomersModule,
+    InventoryModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [

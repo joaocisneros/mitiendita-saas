@@ -12,7 +12,9 @@ type IconName =
   | "mail"
   | "lock"
   | "store"
-  | "menu";
+  | "menu"
+  | "inventory"
+  | "reports";
 
 const paths: Record<IconName, React.ReactNode> = {
   dashboard: (
@@ -91,6 +93,17 @@ const paths: Record<IconName, React.ReactNode> = {
   menu: (
     <>
       <path d="M4 7h16M4 12h16M4 17h16" />
+    </>
+  ),
+  inventory: (
+    <>
+      <path d="M3 7l9-4 9 4v10l-9 4-9-4V7Z" />
+      <path d="M3 7l9 4 9-4M12 11v10" />
+    </>
+  ),
+  reports: (
+    <>
+      <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
     </>
   ),
 };

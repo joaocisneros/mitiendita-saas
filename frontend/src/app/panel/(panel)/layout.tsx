@@ -11,7 +11,9 @@ const NAV = [
   { href: "/panel/pedidos", label: "Pedidos", icon: "orders" as const },
   { href: "/panel/productos", label: "Productos", icon: "products" as const },
   { href: "/panel/categorias", label: "Categorías", icon: "categories" as const },
+  { href: "/panel/inventario", label: "Inventario", icon: "inventory" as const },
   { href: "/panel/clientes", label: "Clientes", icon: "customers" as const },
+  { href: "/panel/reportes", label: "Reportes", icon: "reports" as const },
   { href: "/panel/config", label: "Configuración", icon: "settings" as const },
 ];
 
@@ -84,7 +86,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         <main className="flex-1 overflow-y-auto p-4 pb-24 text-slate-950 md:p-7 md:pb-7">{children}</main>
 
         <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-slate-200 bg-white px-1 py-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] md:hidden">
-          {NAV.filter((item) => item.href !== "/panel/categorias").map((item) => {
+          {NAV.filter((item) =>
+            ["/panel", "/panel/pedidos", "/panel/productos", "/panel/inventario", "/panel/reportes"].includes(item.href),
+          ).map((item) => {
             const active = item.href === "/panel" ? pathname === "/panel" : pathname.startsWith(item.href);
             return <Link key={item.href} href={item.href} className={`flex flex-col items-center gap-1 rounded-lg py-1 text-[10px] font-bold ${active ? "text-violet-700" : "text-slate-600"}`}><DashboardIcon name={item.icon} className="h-5 w-5" />{item.label}</Link>;
           })}

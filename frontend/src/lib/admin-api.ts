@@ -272,7 +272,66 @@ export const adminApi = {
     });
     return jsonOrThrow<{ url: string; publicId: string }>(res, "No se pudo subir la imagen.");
   },
+
+  // ── Inventario ──
+  inventoryProducts: () =>
+    authFetch("/admin/inventory/products").then((r) =>
+      jsonOrThrow<InventoryProduct[]>(r, "Error"),
+    ),
+  inventoryMovements: (productId?: string, page = 1) => {
+    const q = new URLSearchParams();
+    if (productId) q.set("productId", productId);
+    q.set("page", String(page));
+    return authFetch(`/admin/inventory/movements?${q.toString()}`).then((r) =>
+      jsonOrThrow<{ items: StockMovementRow[]; total: number; pages: number }>(r, "Error"),
+    );
+  },
+  adjustStock: (body: { productId: string; type: string; quantity: number; reason?: string }) =>
+    authFetch("/admin/inventory/adjust", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => jsonOrThrow<{ ok: boolean; stock: number }>(r, "No se pudo ajustar.")),
+
+  // ── Reportes ──
+  reports: (from?: string, to?: string) => {
+    const q = new URLSearchParams();
+    if (from) q.set("from", from);
+    if (to) q.set("to", to);
+    const qs = q.toString();
+    return authFetch(`/admin/reports${qs ? `?${qs}` : ""}`).then((r) =>
+      jsonOrThrow<ReportsData>(r, "Error"),
+    );
+  },
 };
+
+export interface InventoryProduct {
+  id: string;
+  name: string;
+  sku: string | null;
+  stock: number;
+  reserved: number;
+  available: number;
+  isActive: boolean;
+}
+export interface StockMovementRow {
+  id: string;
+  productName: string;
+  type: string;
+  quantity: number;
+  reason: string | null;
+  createdAt: string;
+}
+export interface ReportsData {
+  from: string;
+  to: string;
+  totalRevenue: string;
+  totalOrders: number;
+  salesByDay: { date: string; revenue: string; orders: number }[];
+  ordersByStatus: { status: string; count: number }[];
+  topProducts: { name: string; units: number; revenue: string }[];
+  frequentCustomers: { name: string; phone: string; orders: number; total: string }[];
+}
 
 export interface AdminProduct {
   id: string;
