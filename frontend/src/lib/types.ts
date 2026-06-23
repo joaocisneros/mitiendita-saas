@@ -1,6 +1,7 @@
 export interface StoreBrand {
   name: string;
   description: string | null;
+  businessType: string | null;
   logoUrl: string | null;
   primaryColor: string;
   secondaryColor: string;

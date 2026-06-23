@@ -5,12 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { adminApi } from "@/lib/admin-api";
 import { DashboardIcon } from "@/components/DashboardIcon";
-
-const BUSINESS_TYPES = ["Bodega o minimarket", "Farmacia", "Ferretería", "Ropa y accesorios", "Cosméticos", "Veterinaria", "Otro"];
+import { BUSINESS_CATEGORIES } from "@/lib/business-categories";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ responsibleName: "", email: "", password: "", commercialName: "", subdomain: "", whatsappNumber: "", businessType: BUSINESS_TYPES[0] });
+  const [form, setForm] = useState({ responsibleName: "", email: "", password: "", commercialName: "", subdomain: "", whatsappNumber: "", businessType: BUSINESS_CATEGORIES[0].subtypes[0] });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -46,7 +45,7 @@ export default function RegisterPage() {
             <Field label="Nombre del responsable"><input required minLength={2} value={form.responsibleName} onChange={(e) => set("responsibleName", e.target.value)} className="field" placeholder="María Pérez" /></Field>
             <Field label="Correo electrónico"><input required type="email" autoComplete="email" value={form.email} onChange={(e) => set("email", e.target.value)} className="field" placeholder="maria@empresa.com" /></Field>
             <Field label="Nombre comercial"><input required minLength={2} value={form.commercialName} onChange={(e) => { const value = e.target.value; setForm((current) => ({ ...current, commercialName: value, subdomain: current.subdomain || normalizeSubdomain(value) })); }} className="field" placeholder="Bodega María" /></Field>
-            <Field label="Rubro"><select value={form.businessType} onChange={(e) => set("businessType", e.target.value)} className="field">{BUSINESS_TYPES.map((type) => <option key={type}>{type}</option>)}</select></Field>
+            <Field label="Rubro"><select value={form.businessType} onChange={(e) => set("businessType", e.target.value)} className="field">{BUSINESS_CATEGORIES.map((cat) => <optgroup key={cat.id} label={`${cat.emoji} ${cat.label}`}>{cat.subtypes.map((type) => <option key={type}>{type}</option>)}</optgroup>)}</select></Field>
             <Field label="Dirección web"><div className="flex"><input required minLength={3} value={form.subdomain} onChange={(e) => set("subdomain", normalizeSubdomain(e.target.value))} className="field rounded-r-none" placeholder="bodega-maria" /><span className="flex items-center rounded-r-xl border border-l-0 border-slate-300 bg-slate-50 px-2 text-xs font-bold text-slate-600">.mitiendita.com</span></div></Field>
             <Field label="WhatsApp"><input required inputMode="tel" minLength={6} value={form.whatsappNumber} onChange={(e) => set("whatsappNumber", e.target.value)} className="field" placeholder="51987654321" /></Field>
             <div className="sm:col-span-2"><Field label="Contraseña"><div className="relative"><input required type={showPassword ? "text" : "password"} minLength={8} autoComplete="new-password" value={form.password} onChange={(e) => set("password", e.target.value)} className="field pr-20" placeholder="Mínimo 8 caracteres" /><button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-violet-700">{showPassword ? "Ocultar" : "Mostrar"}</button></div></Field></div>

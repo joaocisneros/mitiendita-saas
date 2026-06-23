@@ -2,6 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { storefrontApi } from "@/lib/api";
 import { ProductCard } from "@/components/ProductCard";
+import { resolveCategory } from "@/lib/business-categories";
+
+const DEFAULT_PRIMARY = "#2563eb";
 
 export default async function StorePage({
   params,
@@ -25,7 +28,14 @@ export default async function StorePage({
   }
 
   const { store, categories } = data;
-  const accent = store.primaryColor;
+  const businessCategory = resolveCategory(store.businessType);
+  // El color del rubro es el predeterminado; si el dueño personalizó su color
+  // (distinto del azul por defecto), se respeta el suyo.
+  const accent =
+    store.primaryColor && store.primaryColor !== DEFAULT_PRIMARY
+      ? store.primaryColor
+      : businessCategory.theme.primary;
+  const terms = businessCategory.terms;
 
   return (
     <div className="flex-1 bg-gray-50">
@@ -49,13 +59,13 @@ export default async function StorePage({
       <main className="mx-auto max-w-3xl px-4 py-5">
         <form className="mb-4 flex gap-2" action={`/tienda/${subdomain}`}>
           {category && <input type="hidden" name="category" value={category} />}
-          <input name="search" defaultValue={search} placeholder="Buscar productos..." className="h-11 flex-1 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-500 focus:border-violet-600" />
-          <button className="rounded-xl bg-violet-600 px-4 text-sm font-bold text-white hover:bg-violet-700">Buscar</button>
+          <input name="search" defaultValue={search} placeholder={terms.search} className="h-11 flex-1 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-500 focus:border-slate-400" />
+          <button style={{ backgroundColor: accent }} className="rounded-xl px-4 text-sm font-bold text-white">Buscar</button>
         </form>
         {/* Categorías */}
         {categories.length > 0 && (
           <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
-            <Chip href={`/tienda/${subdomain}`} active={!category}>
+            <Chip href={`/tienda/${subdomain}`} active={!category} accent={accent}>
               Todos
             </Chip>
             {categories.map((c) => (
@@ -63,6 +73,7 @@ export default async function StorePage({
                 key={c.id}
                 href={`/tienda/${subdomain}?category=${c.slug}`}
                 active={category === c.slug}
+                accent={accent}
               >
                 {c.name}
               </Chip>
@@ -72,9 +83,7 @@ export default async function StorePage({
 
         {/* Productos */}
         {products.items.length === 0 ? (
-          <p className="py-16 text-center text-gray-500">
-            Esta tienda aún no tiene productos publicados.
-          </p>
+          <p className="py-16 text-center text-gray-500">{terms.empty}</p>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {products.items.map((p) => (
@@ -103,18 +112,21 @@ export default async function StorePage({
 function Chip({
   href,
   active,
+  accent,
   children,
 }: {
   href: string;
   active: boolean;
+  accent: string;
   children: React.ReactNode;
 }) {
   return (
     <Link
       href={href}
+      style={active ? { backgroundColor: accent } : undefined}
       className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-semibold transition ${
         active
-          ? "bg-violet-600 text-white"
+          ? "text-white"
           : "bg-white text-gray-700 ring-1 ring-black/10 hover:bg-gray-100"
       }`}
     >

@@ -2,22 +2,14 @@
 
 import { useState } from "react";
 import { Overlay } from "@/components/OrderDetailModal";
+import { BUSINESS_CATEGORIES } from "@/lib/business-categories";
 import {
   superApi,
   type CreatedCompany,
   type Plan,
 } from "@/lib/superadmin-api";
 
-const BUSINESS_TYPES = [
-  "Bodega o minimarket",
-  "Farmacia",
-  "Ferretería",
-  "Ropa y accesorios",
-  "Cosméticos",
-  "Veterinaria",
-  "Belleza y bienestar",
-  "Otro",
-];
+const DEFAULT_BUSINESS_TYPE = BUSINESS_CATEGORIES[0].subtypes[0];
 
 export function CreateCompanyModal({
   plans,
@@ -35,7 +27,7 @@ export function CreateCompanyModal({
     commercialName: "",
     subdomain: "",
     whatsappNumber: "",
-    businessType: BUSINESS_TYPES[0],
+    businessType: DEFAULT_BUSINESS_TYPE,
     planId: plans.find((plan) => plan.slug === "basico")?.id ?? plans[0]?.id ?? 0,
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -101,7 +93,11 @@ export function CreateCompanyModal({
           </Field>
           <Field label="Rubro">
             <select value={form.businessType} onChange={(event) => update("businessType", event.target.value)} className={CONTROL}>
-              {BUSINESS_TYPES.map((type) => <option key={type}>{type}</option>)}
+              {BUSINESS_CATEGORIES.map((cat) => (
+                <optgroup key={cat.id} label={`${cat.emoji} ${cat.label}`}>
+                  {cat.subtypes.map((type) => <option key={type}>{type}</option>)}
+                </optgroup>
+              ))}
             </select>
           </Field>
           <Field label="Nombre del propietario">

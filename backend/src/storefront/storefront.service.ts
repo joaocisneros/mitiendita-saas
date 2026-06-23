@@ -28,6 +28,7 @@ export class StorefrontService {
       store: {
         name: s?.storeName ?? company.name,
         description: s?.description ?? null,
+        businessType: s?.businessType ?? null,
         logoUrl: s?.logoUrl ?? null,
         primaryColor: s?.primaryColor ?? '#2563eb',
         secondaryColor: s?.secondaryColor ?? '#f59e0b',

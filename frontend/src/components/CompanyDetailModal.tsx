@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Overlay } from "@/components/OrderDetailModal";
+import { BUSINESS_CATEGORIES } from "@/lib/business-categories";
 import { formatPrice } from "@/lib/format";
 import { superApi, type SaCompanyDetail } from "@/lib/superadmin-api";
 
@@ -151,7 +152,14 @@ export function CompanyDetailModal({
                   <input value={form.subdomain} onChange={(e) => setForm({ ...form, subdomain: e.target.value })} className={INPUT} />
                 </FormField>
                 <FormField label="Rubro">
-                  <input value={form.businessType} onChange={(e) => setForm({ ...form, businessType: e.target.value })} className={INPUT} placeholder="Bodega, Farmacia…" />
+                  <select value={form.businessType} onChange={(e) => setForm({ ...form, businessType: e.target.value })} className={INPUT}>
+                    <option value="">— Sin definir —</option>
+                    {BUSINESS_CATEGORIES.map((cat) => (
+                      <optgroup key={cat.id} label={`${cat.emoji} ${cat.label}`}>
+                        {cat.subtypes.map((type) => <option key={type}>{type}</option>)}
+                      </optgroup>
+                    ))}
+                  </select>
                 </FormField>
                 <FormField label="WhatsApp">
                   <input value={form.whatsappNumber} onChange={(e) => setForm({ ...form, whatsappNumber: e.target.value })} className={INPUT} placeholder="51987654321" />
