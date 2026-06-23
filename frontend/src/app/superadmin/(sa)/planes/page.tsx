@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { superApi, type Plan } from "@/lib/superadmin-api";
 import { formatPrice } from "@/lib/format";
+import { Overlay } from "@/components/OrderDetailModal";
 
 const EMPTY = {
   name: "",
@@ -172,9 +173,9 @@ export default function PlansPage() {
         )}
       </section>
       {editing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4">
-          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
-            <h2 className="text-xl font-black text-slate-950">
+        <Overlay onClose={() => setEditing(null)}>
+          <div>
+            <h2 className="pr-9 text-xl font-black text-slate-950">
               {editing === "new" ? "Nuevo plan" : "Editar plan"}
             </h2>
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -261,7 +262,7 @@ export default function PlansPage() {
               </button>
             </div>
           </div>
-        </div>
+        </Overlay>
       )}
       <style>{`.field{height:2.75rem;width:100%;border-radius:.75rem;border:1px solid #cbd5e1;padding:0 .75rem;color:#0f172a;outline:none}.field:focus{border-color:#7c3aed;box-shadow:0 0 0 3px #ede9fe}`}</style>
     </div>

@@ -26,8 +26,6 @@ body {
 html:has(.admin-shell),
 body:has(.admin-shell) {
   background: #f1f5f9;
-}
-body:has(.admin-shell) {
   overflow-x: clip;
 }
 
