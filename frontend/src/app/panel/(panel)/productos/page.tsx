@@ -8,6 +8,7 @@ import {
   type AdminProduct,
 } from "@/lib/admin-api";
 import { formatPrice } from "@/lib/format";
+import { Overlay } from "@/components/OrderDetailModal";
 
 const EMPTY = {
   name: "",
@@ -154,12 +155,11 @@ export default function ProductosPage() {
 
       {/* Modal de formulario */}
       {editing && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-5 sm:rounded-2xl">
-            <h2 className="mb-3 text-lg font-bold">
-              {editing === "new" ? "Nuevo producto" : "Editar producto"}
-            </h2>
-            <div className="space-y-3">
+        <Overlay onClose={() => setEditing(null)}>
+          <h2 className="mb-4 text-xl font-black text-slate-950">
+            {editing === "new" ? "Nuevo producto" : "Editar producto"}
+          </h2>
+          <div className="space-y-3">
               <Input label="Nombre *" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
               <div className="grid grid-cols-2 gap-3">
                 <Input label="Precio *" type="number" value={form.price} onChange={(v) => setForm({ ...form, price: v })} />
@@ -216,8 +216,7 @@ export default function ProductosPage() {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
+        </Overlay>
       )}
     </div>
   );
