@@ -87,6 +87,27 @@ describe('Superadmin y configuración (e2e)', () => {
     expect(detail.body).toHaveProperty('grossVolume');
   });
 
+  it('permite al superadmin crear una empresa con propietario y subdominio', async () => {
+    const created = await http()
+      .post('/api/superadmin/companies')
+      .set('Authorization', `Bearer ${superToken}`)
+      .send({
+        responsibleName: 'Propietaria Nueva',
+        email: `nueva_${tag}@test.com`,
+        password: 'clave12345',
+        commercialName: 'Empresa Nueva',
+        subdomain: `empresa-nueva-${tag}`,
+        whatsappNumber: '51987654321',
+        businessType: 'Bodega o minimarket',
+      })
+      .expect(201);
+
+    expect(created.body.name).toBe('Empresa Nueva');
+    expect(created.body.subdomain).toBe(`empresa-nueva-${tag}`);
+    expect(created.body.owner.email).toBe(`nueva_${tag}@test.com`);
+    expect(created.body.trialEndsAt).toBeDefined();
+  });
+
   it('crea, actualiza y asigna un plan', async () => {
     const created = await http()
       .post('/api/superadmin/plans')

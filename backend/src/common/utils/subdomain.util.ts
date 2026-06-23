@@ -1,23 +1,17 @@
-/**
- * Reglas para los subdominios de las tiendas (negocio.mitiendita.com).
- */
+/** Reglas para los subdominios de las tiendas (negocio.mitiendita.com). */
 
-// Solo letras, números y guiones. No puede empezar ni terminar en guion.
 const SUBDOMAIN_REGEX = /^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?$/;
 
-/**
- * Normaliza un texto a un slug de subdominio válido:
- * minúsculas, sin acentos, sin espacios ni caracteres raros.
- */
+/** Convierte un texto en un slug válido para usarlo como subdominio. */
 export function normalizeSubdomain(input: string): string {
   return (input || '')
     .toLowerCase()
     .trim()
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '') // quita acentos
-    .replace(/[^a-z0-9-]+/g, '-') // reemplaza inválidos por guion
-    .replace(/-+/g, '-') // colapsa guiones repetidos
-    .replace(/^-+|-+$/g, ''); // quita guiones de los extremos
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 /** Valida longitud y formato del slug ya normalizado. */
