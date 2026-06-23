@@ -40,6 +40,8 @@ export interface GlobalStats {
   totalOrders: number;
   grossVolume: string;
   newCompaniesThisMonth: number;
+  companiesByMonth: { month: string; count: number }[];
+  planDistribution: { plan: string; count: number }[];
 }
 export interface Plan {
   id: number;

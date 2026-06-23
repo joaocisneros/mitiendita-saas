@@ -10,6 +10,7 @@ import {
 import { formatPrice } from "@/lib/format";
 import { DashboardIcon } from "@/components/DashboardIcon";
 import { CompanyDetailModal } from "@/components/CompanyDetailModal";
+import { BarChart, DonutChart } from "@/components/Charts";
 
 export default function SuperDashboard() {
   const [stats, setStats] = useState<GlobalStats | null>(null);
@@ -93,6 +94,25 @@ export default function SuperDashboard() {
         </section>
       ) : (
         <div className="h-32 animate-pulse rounded-2xl bg-white ring-1 ring-slate-200" />
+      )}
+
+      {stats && (
+        <div className="grid gap-4 lg:grid-cols-3">
+          <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 lg:col-span-2">
+            <h2 className="mb-3 font-black text-slate-950">Empresas nuevas por mes</h2>
+            <BarChart data={stats.companiesByMonth.map((m) => ({ label: m.month.slice(5), value: m.count }))} />
+          </section>
+          <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+            <h2 className="mb-3 font-black text-slate-950">Empresas por plan</h2>
+            <DonutChart
+              data={stats.planDistribution.map((p, i) => ({
+                label: p.plan,
+                value: p.count,
+                color: ["#7c3aed", "#6366f1", "#0ea5e9", "#10b981", "#f59e0b", "#94a3b8"][i % 6],
+              }))}
+            />
+          </section>
+        </div>
       )}
 
       <section className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">

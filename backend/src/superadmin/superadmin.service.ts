@@ -68,6 +68,27 @@ export class SuperAdminService {
           where: { deletedAt: null, createdAt: { gte: monthStart } },
         }),
       ]);
+    // Crecimiento de empresas por mes (últimos 6 meses).
+    const growthRaw = await this.prisma.$queryRaw<
+      Array<{ ym: string; c: bigint }>
+    >`
+      SELECT DATE_FORMAT(created_at, '%Y-%m') AS ym, COUNT(*) AS c
+      FROM companies
+      WHERE deleted_at IS NULL
+        AND created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+      GROUP BY ym ORDER BY ym`;
+
+    // Distribución por plan.
+    const [planGroups, plans] = await Promise.all([
+      this.prisma.company.groupBy({
+        by: ['planId'],
+        where: { deletedAt: null },
+        _count: { _all: true },
+      }),
+      this.prisma.plan.findMany({ select: { id: true, name: true } }),
+    ]);
+    const planNames = new Map(plans.map((p) => [p.id, p.name]));
+
     return {
       totalCompanies: total,
       activeCompanies: active,
@@ -75,6 +96,14 @@ export class SuperAdminService {
       totalOrders: orders,
       grossVolume: (gross._sum.total ?? 0).toString(),
       newCompaniesThisMonth: newThisMonth,
+      companiesByMonth: growthRaw.map((r) => ({
+        month: r.ym,
+        count: Number(r.c),
+      })),
+      planDistribution: planGroups.map((g) => ({
+        plan: g.planId ? (planNames.get(g.planId) ?? 'Plan') : 'Sin plan',
+        count: g._count._all,
+      })),
     };
   }
 

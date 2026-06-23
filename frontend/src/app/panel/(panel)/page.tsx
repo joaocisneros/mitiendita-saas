@@ -6,6 +6,7 @@ import { adminApi, type DashboardData } from "@/lib/admin-api";
 import { formatPrice } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { OrderDetailModal } from "@/components/OrderDetailModal";
+import { BarChart } from "@/components/Charts";
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -30,11 +31,34 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-extrabold">Dashboard</h1>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Stat label="Ventas de hoy" value={formatPrice(data.salesToday)} accent />
+        <Stat label="Ventas del mes" value={formatPrice(data.salesMonth)} />
         <Stat label="Pedidos de hoy" value={String(data.ordersToday)} />
         <Stat label="Pendientes" value={String(data.pendingOrders)} />
-        <Stat label="Stock bajo" value={String(data.lowStockCount)} />
+        <Stat label="Clientes nuevos" value={String(data.newCustomersMonth)} />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5 lg:col-span-2">
+          <h2 className="mb-3 font-bold text-slate-900">Ventas (últimos 14 días)</h2>
+          <BarChart
+            data={data.salesTrend.map((d) => ({ label: d.date, value: d.value }))}
+            format={(v) => formatPrice(v)}
+          />
+        </section>
+        <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+          <h2 className="mb-3 font-bold text-slate-900">Pedidos por estado</h2>
+          <div className="flex flex-wrap gap-2">
+            {data.ordersByStatus.map((s) => (
+              <span key={s.status} className="flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5">
+                <StatusBadge status={s.status} />
+                <b className="text-slate-800">{s.count}</b>
+              </span>
+            ))}
+            {data.ordersByStatus.length === 0 && <p className="text-sm text-slate-500">Sin pedidos aún.</p>}
+          </div>
+        </section>
       </div>
 
       <section>

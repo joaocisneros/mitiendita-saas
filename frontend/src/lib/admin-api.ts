@@ -69,12 +69,16 @@ async function jsonOrThrow<T>(res: Response, fallback: string): Promise<T> {
 // ───────────────────── Tipos ─────────────────────
 export interface DashboardData {
   salesToday: string;
+  salesMonth: string;
   ordersToday: number;
   pendingOrders: number;
+  newCustomersMonth: number;
   lowStockCount: number;
   lowStockProducts: { id: string; name: string; available: number }[];
   topProducts: { id: string | null; name: string; units: number }[];
   recentOrders: AdminOrderRow[];
+  salesTrend: { date: string; value: number }[];
+  ordersByStatus: { status: string; count: number }[];
 }
 export interface AdminOrderRow {
   id: string;

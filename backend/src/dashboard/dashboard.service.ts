@@ -10,6 +10,11 @@ export class DashboardService {
   async summary(companyId: string) {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+    const trendStart = new Date(Date.now() - 13 * 86_400_000);
+    trendStart.setHours(0, 0, 0, 0);
 
     const [
       ordersToday,
@@ -18,6 +23,9 @@ export class DashboardService {
       recentOrders,
       lowStock,
       topProducts,
+      approvedTrend,
+      byStatus,
+      newCustomersMonth,
     ] = await Promise.all([
       this.prisma.order.count({
         where: { companyId, createdAt: { gte: startOfDay } },
@@ -64,7 +72,45 @@ export class DashboardService {
         GROUP BY oi.product_id, oi.name
         ORDER BY units DESC
         LIMIT 5`,
+      this.prisma.order.findMany({
+        where: {
+          companyId,
+          paymentStatus: 'approved',
+          confirmedAt: { gte: trendStart },
+        },
+        select: { total: true, confirmedAt: true },
+      }),
+      this.prisma.order.groupBy({
+        by: ['status'],
+        where: { companyId },
+        _count: { _all: true },
+      }),
+      this.prisma.customer.count({
+        where: { companyId, firstPurchaseAt: { gte: startOfMonth } },
+      }),
     ]);
+
+    // Tendencia de ventas: 14 días, rellenando días sin venta.
+    const trendMap = new Map<string, number>();
+    for (const o of approvedTrend) {
+      const key = (o.confirmedAt ?? new Date()).toISOString().slice(0, 10);
+      trendMap.set(key, (trendMap.get(key) ?? 0) + Number(o.total));
+    }
+    const salesTrend: { date: string; value: number }[] = [];
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(trendStart.getTime() + i * 86_400_000);
+      const key = d.toISOString().slice(0, 10);
+      salesTrend.push({ date: key.slice(5), value: trendMap.get(key) ?? 0 });
+    }
+    const monthAgg = await this.prisma.order.aggregate({
+      where: {
+        companyId,
+        paymentStatus: 'approved',
+        confirmedAt: { gte: startOfMonth },
+      },
+      _sum: { total: true },
+    });
+    const salesMonth = Number(monthAgg._sum.total ?? 0);
 
     const salesToday = approvedToday.reduce((s, o) => s + Number(o.total), 0);
     const lowStockProducts = lowStock
@@ -77,11 +123,18 @@ export class DashboardService {
 
     return {
       salesToday: salesToday.toFixed(2),
+      salesMonth: salesMonth.toFixed(2),
       ordersToday,
       pendingOrders,
+      newCustomersMonth,
       lowStockCount: lowStockProducts.length,
       lowStockProducts: lowStockProducts.slice(0, 10),
       recentOrders,
+      salesTrend,
+      ordersByStatus: byStatus.map((s) => ({
+        status: s.status,
+        count: s._count._all,
+      })),
       topProducts: topProducts.map((product) => ({
         id: product.productId,
         name: product.name,
