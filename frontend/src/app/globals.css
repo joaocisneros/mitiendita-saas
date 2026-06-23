@@ -19,6 +19,12 @@ body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
+/* En los paneles (admin/superadmin) el fondo del body iguala al del shell
+   (slate-100) para que no asome una franja blanca al final de la página. */
+body:has(.admin-shell) {
+  background: #f1f5f9;
+}
+
 /* Los campos de formulario heredan el color de texto oscuro (no blanco). */
 input,
 textarea,
