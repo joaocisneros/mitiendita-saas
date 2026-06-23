@@ -19,10 +19,16 @@ body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
-/* En los paneles (admin/superadmin) el fondo del body iguala al del shell
-   (slate-100) para que no asome una franja blanca al final de la página. */
+/* En los paneles (admin/superadmin) el fondo iguala al del shell (slate-100)
+   y se evita el desborde horizontal a nivel de página: así no aparece la
+   franja blanca de la barra de scroll horizontal al final ni un fondo blanco
+   asomando bajo el contenido. Las tablas anchas siguen con su propio scroll. */
+html:has(.admin-shell),
 body:has(.admin-shell) {
   background: #f1f5f9;
+}
+body:has(.admin-shell) {
+  overflow-x: clip;
 }
 
 /* Los campos de formulario heredan el color de texto oscuro (no blanco). */
