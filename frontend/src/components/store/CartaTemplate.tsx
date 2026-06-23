@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { AddToCart } from "@/components/AddToCart";
 import { StoreSearch } from "@/components/store/StoreSearch";
+import { StoreEmpty } from "@/components/store/StoreEmpty";
 import { formatPrice } from "@/lib/format";
 import type { PublicProduct } from "@/lib/types";
 
@@ -42,7 +43,7 @@ export function CartaTemplate({
       />
 
       {products.length === 0 ? (
-        <p className="py-16 text-center text-gray-500">{emptyLabel}</p>
+        <StoreEmpty accent={accent} message={emptyLabel} icon="🍽️" />
       ) : (
         <div className="space-y-8">
           {featured.length > 0 && (

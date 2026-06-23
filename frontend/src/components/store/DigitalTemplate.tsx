@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { StoreSearch } from "@/components/store/StoreSearch";
+import { StoreEmpty } from "@/components/store/StoreEmpty";
 import { formatPrice } from "@/lib/format";
 import type { PublicProduct } from "@/lib/types";
 
@@ -42,7 +43,7 @@ export function DigitalTemplate({
       />
 
       {products.length === 0 ? (
-        <p className="py-16 text-center text-gray-500">{emptyLabel}</p>
+        <StoreEmpty accent={accent} message={emptyLabel} icon="🎬" />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {products.map((p) => {

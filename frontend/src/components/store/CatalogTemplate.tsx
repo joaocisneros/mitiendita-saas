@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ProductCard } from "@/components/ProductCard";
 import { StoreSearch } from "@/components/store/StoreSearch";
+import { StoreEmpty } from "@/components/store/StoreEmpty";
 import type { PublicProduct, StoreCategory } from "@/lib/types";
 
 /** Plantilla Catálogo: grilla de productos + filtros por categoría. (Comercio) */
@@ -56,7 +57,7 @@ export function CatalogTemplate({
       )}
 
       {products.length === 0 ? (
-        <p className="py-16 text-center text-gray-500">{emptyLabel}</p>
+        <StoreEmpty accent={accent} message={emptyLabel} icon="🛒" />
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {products.map((p) => (
