@@ -19,6 +19,7 @@ import { SuperAdminGuard } from '../common/guards/super-admin.guard';
 import {
   AssignPlanDto,
   CreatePlanDto,
+  ResetPasswordDto,
   SuperAdminLoginDto,
   UpdatePlanDto,
 } from './dto/superadmin.dto';
@@ -152,6 +153,60 @@ export class SuperAdminController {
   }
 
   // ── Configuración de plataforma ──
+  // ── Usuarios globales ──
+  @UseGuards(SuperAdminGuard)
+  @Get('users')
+  users(@Query('search') search?: string, @Query('page') page?: string) {
+    return this.superadmin.listUsers({
+      search: search?.trim() || undefined,
+      page: page ? Number(page) : 1,
+    });
+  }
+
+  @UseGuards(SuperAdminGuard)
+  @HttpCode(200)
+  @Post('users/:id/reset-password')
+  resetUserPassword(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: ResetPasswordDto,
+  ) {
+    return this.superadmin.resetUserPassword(user.userId, id, dto.newPassword);
+  }
+
+  @UseGuards(SuperAdminGuard)
+  @HttpCode(200)
+  @Post('users/:id/toggle')
+  toggleUser(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.superadmin.toggleUser(user.userId, id);
+  }
+
+  // ── Acciones sobre empresas ──
+  @UseGuards(SuperAdminGuard)
+  @HttpCode(200)
+  @Post('companies/:id/delete')
+  deleteCompany(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.superadmin.deleteCompany(user.userId, id);
+  }
+
+  @UseGuards(SuperAdminGuard)
+  @HttpCode(200)
+  @Post('companies/:id/reset-owner-password')
+  resetOwnerPassword(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: ResetPasswordDto,
+  ) {
+    return this.superadmin.resetOwnerPassword(user.userId, id, dto.newPassword);
+  }
+
+  @UseGuards(SuperAdminGuard)
+  @HttpCode(200)
+  @Post('companies/:id/impersonate')
+  impersonate(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.superadmin.impersonate(user.userId, id);
+  }
+
   @UseGuards(SuperAdminGuard)
   @Get('settings')
   getSettings() {

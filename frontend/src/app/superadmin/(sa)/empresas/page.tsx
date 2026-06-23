@@ -267,6 +267,7 @@ export default function CompaniesPage() {
         <CompanyDetailModal
           companyId={selectedId}
           onClose={() => setSelectedId(null)}
+          onChanged={() => load()}
         />
       )}
     </div>

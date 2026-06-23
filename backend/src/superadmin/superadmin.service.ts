@@ -395,6 +395,118 @@ export class SuperAdminService {
     return { ok: true };
   }
 
+  // ───────────────────── Usuarios globales ─────────────────────
+
+  async listUsers(opts: { search?: string; page?: number; limit?: number }) {
+    const page = Math.max(1, opts.page ?? 1);
+    const limit = Math.min(100, Math.max(1, opts.limit ?? 20));
+    const where = opts.search
+      ? {
+          OR: [
+            { name: { contains: opts.search } },
+            { email: { contains: opts.search } },
+          ],
+        }
+      : {};
+    const [users, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        include: {
+          memberships: {
+            include: { company: { select: { id: true, name: true } } },
+          },
+        },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+    return {
+      items: users.map((u) => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        isActive: u.isActive,
+        role: u.memberships[0]?.role ?? null,
+        company: u.memberships[0]?.company ?? null,
+        createdAt: u.createdAt,
+      })),
+      total,
+      page,
+      pages: Math.ceil(total / limit),
+    };
+  }
+
+  async resetUserPassword(actorId: string, userId: string, newPassword: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Usuario no encontrado.');
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+    await this.audit(actorId, 'user.password_reset', undefined, { userId });
+    return { ok: true };
+  }
+
+  async toggleUser(actorId: string, userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Usuario no encontrado.');
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { isActive: !user.isActive },
+    });
+    await this.audit(actorId, 'user.toggled', undefined, {
+      userId,
+      isActive: !user.isActive,
+    });
+    return { ok: true, isActive: !user.isActive };
+  }
+
+  // ───────────────────── Acciones sobre empresas ─────────────────────
+
+  async deleteCompany(actorId: string, id: string) {
+    const company = await this.prisma.company.findFirst({
+      where: { id, deletedAt: null },
+    });
+    if (!company) throw new NotFoundException('Empresa no encontrada.');
+    await this.prisma.company.update({
+      where: { id },
+      data: { deletedAt: new Date(), status: 'inactive' },
+    });
+    await this.audit(actorId, 'company.deleted', id);
+    return { ok: true };
+  }
+
+  async resetOwnerPassword(actorId: string, companyId: string, newPassword: string) {
+    const membership = await this.prisma.membership.findFirst({
+      where: { companyId, role: 'OWNER' },
+    });
+    if (!membership) throw new NotFoundException('La empresa no tiene propietario.');
+    return this.resetUserPassword(actorId, membership.userId, newPassword);
+  }
+
+  /** Genera un token de acceso del propietario para dar soporte (impersonar). */
+  async impersonate(actorId: string, companyId: string) {
+    const membership = await this.prisma.membership.findFirst({
+      where: { companyId, role: 'OWNER' },
+      include: { user: true },
+    });
+    if (!membership) throw new NotFoundException('La empresa no tiene propietario.');
+    const accessToken = await this.jwt.signAsync(
+      {
+        sub: membership.userId,
+        email: membership.user.email,
+        companyId,
+        role: 'OWNER',
+      },
+      {
+        secret: this.config.get<string>('JWT_ACCESS_SECRET'),
+        expiresIn: 60 * 60, // 1 hora de soporte
+      },
+    );
+    await this.audit(actorId, 'company.impersonated', companyId);
+    return { accessToken };
+  }
+
   // ───────────────────── Configuración de plataforma ─────────────────────
 
   getPlatformSettings() {

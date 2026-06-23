@@ -14,12 +14,47 @@ const STATUS: Record<string, { label: string; cls: string }> = {
 export function CompanyDetailModal({
   companyId,
   onClose,
+  onChanged,
 }: {
   companyId: string;
   onClose: () => void;
+  onChanged?: () => void;
 }) {
   const [c, setC] = useState<SaCompanyDetail | null>(null);
   const [error, setError] = useState("");
+
+  async function impersonate() {
+    try {
+      const { accessToken } = await superApi.impersonate(companyId);
+      localStorage.setItem("mt_access", accessToken);
+      window.open("/panel", "_blank");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error");
+    }
+  }
+  async function resetOwner() {
+    const pwd = prompt("Nueva contraseña para el dueño (mínimo 8):");
+    if (!pwd || pwd.length < 8) {
+      if (pwd) alert("Mínimo 8 caracteres.");
+      return;
+    }
+    try {
+      await superApi.resetOwnerPassword(companyId, pwd);
+      alert("Contraseña del dueño actualizada.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error");
+    }
+  }
+  async function removeCompany() {
+    if (!confirm("¿Eliminar esta empresa? Quedará inactiva y oculta.")) return;
+    try {
+      await superApi.deleteCompany(companyId);
+      onChanged?.();
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error");
+    }
+  }
 
   useEffect(() => {
     superApi
@@ -86,6 +121,19 @@ export function CompanyDetailModal({
               </ul>
             )}
           </Card>
+
+          {/* Acciones del superadmin */}
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <button onClick={impersonate} className="rounded-lg bg-violet-600 py-2 text-sm font-bold text-white hover:bg-violet-700">
+              Ingresar como soporte
+            </button>
+            <button onClick={resetOwner} className="rounded-lg bg-slate-100 py-2 text-sm font-bold text-slate-700 hover:bg-slate-200">
+              Reset contraseña dueño
+            </button>
+            <button onClick={removeCompany} className="rounded-lg bg-red-50 py-2 text-sm font-bold text-red-700 hover:bg-red-100">
+              Eliminar empresa
+            </button>
+          </div>
         </div>
       )}
     </Overlay>

@@ -224,7 +224,49 @@ export const superApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }),
+
+  // ── Usuarios globales ──
+  users: (search?: string, page = 1) => {
+    const q = new URLSearchParams();
+    if (search) q.set("search", search);
+    q.set("page", String(page));
+    return sfetch<PageResult<GlobalUser>>(`/superadmin/users?${q.toString()}`);
+  },
+  resetUserPassword: (id: string, newPassword: string) =>
+    sfetch(`/superadmin/users/${id}/reset-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newPassword }),
+    }),
+  toggleUser: (id: string) =>
+    sfetch<{ ok: boolean; isActive: boolean }>(`/superadmin/users/${id}/toggle`, {
+      method: "POST",
+    }),
+
+  // ── Acciones sobre empresas ──
+  deleteCompany: (id: string) =>
+    sfetch(`/superadmin/companies/${id}/delete`, { method: "POST" }),
+  resetOwnerPassword: (id: string, newPassword: string) =>
+    sfetch(`/superadmin/companies/${id}/reset-owner-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newPassword }),
+    }),
+  impersonate: (id: string) =>
+    sfetch<{ accessToken: string }>(`/superadmin/companies/${id}/impersonate`, {
+      method: "POST",
+    }),
 };
+
+export interface GlobalUser {
+  id: string;
+  name: string;
+  email: string;
+  isActive: boolean;
+  role: string | null;
+  company: { id: string; name: string } | null;
+  createdAt: string;
+}
 
 export interface SubscriptionRow {
   id: string;

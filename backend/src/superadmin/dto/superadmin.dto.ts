@@ -76,3 +76,10 @@ export class UpdatePlanDto {
   @IsBoolean()
   isActive?: boolean;
 }
+
+export class ResetPasswordDto {
+  @IsString()
+  @MinLength(8)
+  @MaxLength(72)
+  newPassword!: string;
+}

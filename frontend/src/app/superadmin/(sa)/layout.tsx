@@ -13,6 +13,7 @@ const NAV = [
     label: "Empresas",
     icon: "companies" as const,
   },
+  { href: "/superadmin/usuarios", label: "Usuarios", icon: "customers" as const },
   { href: "/superadmin/planes", label: "Planes", icon: "plans" as const },
   {
     href: "/superadmin/suscripciones",
@@ -121,8 +122,10 @@ export default function SaLayout({ children }: { children: React.ReactNode }) {
           </button>
         </header>
         <main className="flex-1 p-4 text-slate-950 md:p-7">{children}</main>
-        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 border-t border-slate-200 bg-white p-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] md:hidden">
-          {NAV.map((item) => (
+        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-slate-200 bg-white p-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] md:hidden">
+          {NAV.filter((item) =>
+            ["/superadmin", "/superadmin/empresas", "/superadmin/suscripciones", "/superadmin/planes", "/superadmin/actividad"].includes(item.href),
+          ).map((item) => (
             <Link
               key={item.label}
               href={item.href}
