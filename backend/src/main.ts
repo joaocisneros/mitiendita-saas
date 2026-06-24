@@ -1,3 +1,4 @@
+import 'dotenv/config'; // Carga el archivo .env ANTES de validar los secretos.
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
