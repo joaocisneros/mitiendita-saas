@@ -12,21 +12,29 @@ export function BarChart({
   height?: number;
   format?: (v: number) => string;
 }) {
-  if (data.length === 0)
-    return <p className="py-8 text-center text-sm text-slate-500">Sin datos.</p>;
+  const hasValues = data.some((d) => d.value > 0);
+  if (data.length === 0 || !hasValues)
+    return (
+      <div
+        className="flex items-center justify-center rounded-xl bg-slate-50 text-sm font-medium text-slate-400"
+        style={{ height }}
+      >
+        Aún no hay datos para mostrar.
+      </div>
+    );
   const max = Math.max(...data.map((d) => d.value), 1);
   return (
-    <div className="flex items-end gap-1" style={{ height }}>
+    <div className="flex items-end justify-center gap-3" style={{ height }}>
       {data.map((d, i) => (
-        <div key={i} className="group flex flex-1 flex-col items-center justify-end gap-1">
+        <div key={i} className="group flex flex-1 flex-col items-center justify-end gap-1" style={{ maxWidth: 64 }}>
           <span className="text-[10px] font-bold text-slate-700 opacity-0 group-hover:opacity-100">
             {format(d.value)}
           </span>
           <div
             className="w-full rounded-t transition-all"
             style={{
-              height: `${Math.max((d.value / max) * (height - 24), d.value > 0 ? 3 : 0)}px`,
-              backgroundColor: color,
+              height: `${Math.max((d.value / max) * (height - 24), d.value > 0 ? 4 : 2)}px`,
+              backgroundColor: d.value > 0 ? color : "#e2e8f0",
             }}
             title={`${d.label}: ${format(d.value)}`}
           />

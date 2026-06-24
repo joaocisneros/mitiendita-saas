@@ -16,6 +16,8 @@ import { ProductsModule } from './products/products.module';
 import { MediaModule } from './media/media.module';
 import { StorefrontModule } from './storefront/storefront.module';
 import { OrdersModule } from './orders/orders.module';
+import { AppointmentsModule } from './appointments/appointments.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { StoreSettingsModule } from './store-settings/store-settings.module';
 import { SuperAdminModule } from './superadmin/superadmin.module';
@@ -39,6 +41,8 @@ import { TenancyMiddleware } from './tenancy/tenancy.middleware';
     MediaModule,
     StorefrontModule,
     OrdersModule,
+    AppointmentsModule,
+    SubscriptionsModule,
     DashboardModule,
     StoreSettingsModule,
     SuperAdminModule,

@@ -1,12 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { MediaService } from '../media/media.service';
 import { slugify } from '../common/utils/slug.util';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 
 @Injectable()
 export class CategoriesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly media: MediaService,
+  ) {}
 
   async create(companyId: string, dto: CreateCategoryDto) {
     const slug = await this.uniqueSlug(companyId, slugify(dto.name));
@@ -41,12 +45,16 @@ export class CategoriesService {
   }
 
   async update(companyId: string, id: string, dto: UpdateCategoryDto) {
-    await this.findOne(companyId, id); // valida pertenencia
+    const current = await this.findOne(companyId, id); // valida pertenencia
     const data: Record<string, unknown> = { ...dto };
     if (dto.name) {
       data.slug = await this.uniqueSlug(companyId, slugify(dto.name), id);
     }
-    return this.prisma.category.update({ where: { id }, data });
+    const updated = await this.prisma.category.update({ where: { id }, data });
+    if (dto.imageUrl !== undefined && current.imageUrl && current.imageUrl !== dto.imageUrl) {
+      void this.media.deleteByUrl(current.imageUrl);
+    }
+    return updated;
   }
 
   /** Eliminación lógica. Libera el slug renombrándolo para poder reutilizarlo. */
@@ -60,6 +68,7 @@ export class CategoriesService {
         slug: `${category.slug}--del-${Date.now()}`,
       },
     });
+    void this.media.deleteByUrl(category.imageUrl);
     return { ok: true };
   }
 

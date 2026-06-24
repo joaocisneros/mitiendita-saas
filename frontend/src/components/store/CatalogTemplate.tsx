@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ProductCard } from "@/components/ProductCard";
 import { StoreSearch } from "@/components/store/StoreSearch";
 import { StoreEmpty } from "@/components/store/StoreEmpty";
+import { StoreToolbar } from "@/components/store/StoreToolbar";
 import type { PublicProduct, StoreCategory } from "@/lib/types";
 
 /** Plantilla Catálogo: grilla de productos + filtros por categoría. (Comercio) */
@@ -11,10 +12,13 @@ export function CatalogTemplate({
   actionLabel,
   currency,
   products,
+  total,
+  sort,
   categories,
   category,
   search,
   searchPlaceholder,
+  catalogLabel,
   emptyLabel,
 }: {
   subdomain: string;
@@ -22,12 +26,17 @@ export function CatalogTemplate({
   actionLabel: string;
   currency: string;
   products: PublicProduct[];
+  total: number;
+  sort?: string;
   categories: StoreCategory[];
   category?: string;
   search?: string;
   searchPlaceholder: string;
+  catalogLabel: string;
   emptyLabel: string;
 }) {
+  const activeName = category ? categories.find((c) => c.slug === category)?.name : undefined;
+  const title = search ? `Resultados de "${search}"` : (activeName ?? catalogLabel);
   return (
     <>
       <StoreSearch
@@ -59,7 +68,9 @@ export function CatalogTemplate({
       {products.length === 0 ? (
         <StoreEmpty accent={accent} message={emptyLabel} icon="🛒" />
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <>
+        <StoreToolbar subdomain={subdomain} title={title} total={total} sort={sort} />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
           {products.map((p) => (
             <ProductCard
               key={p.id}
@@ -71,6 +82,7 @@ export function CatalogTemplate({
             />
           ))}
         </div>
+        </>
       )}
     </>
   );

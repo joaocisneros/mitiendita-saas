@@ -187,7 +187,7 @@ const ARCHETYPE_BY_CATEGORY: Record<string, StoreArchetype> = {
   alimentos: "carta",
   belleza: "servicios",
   salud: "servicios",
-  educacion: "servicios",
+  educacion: "digital", // academias/cursos: mensualidad con vencimiento (suscripción)
   turismo: "servicios",
   automotriz: "servicios",
   inmobiliario: "servicios",
@@ -211,6 +211,48 @@ const ACTION_BY_CATEGORY: Record<string, string> = {
 
 export function archetypeOf(category: BusinessCategory): StoreArchetype {
   return ARCHETYPE_BY_CATEGORY[category.id] ?? "catalogo";
+}
+
+/** Contenido del encabezado (hero) propio de cada tipo de tienda. */
+export interface StoreHero {
+  /** Frase corta bajo el nombre de la tienda. */
+  tagline: string;
+  /** Llamada a la acción destacada en el hero. */
+  cta: string;
+}
+
+const HERO_BY_ARCHETYPE: Record<StoreArchetype, StoreHero> = {
+  catalogo: {
+    tagline: "Tu tienda online — compra fácil y al toque",
+    cta: "🛍️ Explora el catálogo y arma tu pedido",
+  },
+  carta: {
+    tagline: "Pide tu comida favorita en minutos",
+    cta: "🍴 Mira la carta y arma tu pedido",
+  },
+  servicios: {
+    tagline: "Reserva tu atención en segundos",
+    cta: "📅 Elige un servicio y reserva por WhatsApp",
+  },
+  digital: {
+    tagline: "Planes y membresías al instante",
+    cta: "⚡ Activa tu plan al toque por WhatsApp",
+  },
+};
+
+// Algunos rubros comparten arquetipo pero merecen su propio mensaje.
+const HERO_BY_CATEGORY: Partial<Record<string, StoreHero>> = {
+  educacion: {
+    tagline: "Inscríbete y empieza a aprender",
+    cta: "🎓 Elige tu curso e inscríbete",
+  },
+};
+
+export function heroOf(archetype: StoreArchetype, categoryId?: string): StoreHero {
+  if (categoryId && HERO_BY_CATEGORY[categoryId]) {
+    return HERO_BY_CATEGORY[categoryId]!;
+  }
+  return HERO_BY_ARCHETYPE[archetype];
 }
 
 export function actionOf(category: BusinessCategory): string {

@@ -1,8 +1,11 @@
+"use client";
+
 import Image from "next/image";
-import Link from "next/link";
-import type { PublicProduct } from "@/lib/types";
+import { useState } from "react";
+import { AddToCart } from "@/components/AddToCart";
+import { ProductDetailModal } from "@/components/store/ProductDetailModal";
 import { formatPrice } from "@/lib/format";
-import { AddToCart } from "./AddToCart";
+import type { PublicProduct } from "@/lib/types";
 
 export function ProductCard({
   product,
@@ -10,49 +13,84 @@ export function ProductCard({
   subdomain,
   accent,
   actionLabel,
+  placeholderIcon = "🛒",
 }: {
   product: PublicProduct;
   currency: string;
   subdomain: string;
   accent?: string;
   actionLabel?: string;
+  placeholderIcon?: string;
 }) {
+  const [showDetail, setShowDetail] = useState(false);
+
   return (
-    <article className="overflow-hidden rounded-2xl bg-white ring-1 ring-black/5 transition hover:shadow-md">
-      <Link href={`/tienda/${subdomain}/producto/${product.slug}`} className="relative block aspect-square bg-gray-100">
-        {product.imageUrl ? (
-          <Image
-            src={product.imageUrl}
-            alt={product.name}
-            fill
-            sizes="(max-width: 640px) 50vw, 25vw"
-            className="object-cover"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-4xl text-gray-300">
-            🛒
+    <>
+      <article className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/70 transition duration-200 hover:-translate-y-0.5 hover:shadow-lg">
+        <button
+          type="button"
+          onClick={() => setShowDetail(true)}
+          className="relative block aspect-square w-full overflow-hidden bg-slate-100 text-left"
+          aria-label={`Ver detalle de ${product.name}`}
+        >
+          {product.imageUrl ? (
+            <Image
+              src={product.imageUrl}
+              alt={product.name}
+              fill
+              sizes="(max-width: 640px) 50vw, 20vw"
+              className="object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+          ) : (
+            <span className="flex h-full items-center justify-center text-5xl text-slate-300">
+              {placeholderIcon}
+            </span>
+          )}
+          {product.isFeatured && (
+            <span className="absolute left-2 top-2 rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-black text-amber-950 shadow-sm">
+              ⭐ Destacado
+            </span>
+          )}
+          {!product.inStock && (
+            <span className="absolute inset-0 flex items-center justify-center bg-white/60 text-sm font-black text-slate-700 backdrop-blur-[1px]">
+              Agotado
+            </span>
+          )}
+        </button>
+
+        <div className="flex flex-1 flex-col p-3">
+          {product.category && (
+            <span className="mb-0.5 text-[11px] font-bold uppercase tracking-wide text-slate-400">
+              {product.category.name}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => setShowDetail(true)}
+            className="line-clamp-2 min-h-[2.5rem] text-left text-sm font-semibold leading-tight text-slate-800 transition hover:text-slate-950"
+          >
+            {product.name}
+          </button>
+          <p className="mt-1 text-lg font-black tracking-tight" style={{ color: accent }}>
+            {formatPrice(product.price, currency)}
+          </p>
+          <div className="mt-auto pt-2">
+            <AddToCart product={product} accent={accent} label={actionLabel} />
           </div>
-        )}
-        {product.isFeatured && (
-          <span className="absolute left-2 top-2 rounded-full bg-amber-400 px-2 py-0.5 text-xs font-bold text-amber-900">
-            ⭐ Destacado
-          </span>
-        )}
-        {!product.inStock && (
-          <span className="absolute right-2 top-2 rounded-full bg-gray-800/80 px-2 py-0.5 text-xs font-semibold text-white">
-            Agotado
-          </span>
-        )}
-      </Link>
-      <div className="p-3">
-        <Link href={`/tienda/${subdomain}/producto/${product.slug}`} className="line-clamp-2 text-sm font-bold text-gray-800 hover:opacity-80">
-          {product.name}
-        </Link>
-        <p className="mt-1 text-lg font-extrabold text-gray-900">
-          {formatPrice(product.price, currency)}
-        </p>
-        <AddToCart product={product} accent={accent} label={actionLabel} />
-      </div>
-    </article>
+        </div>
+      </article>
+
+      {showDetail && (
+        <ProductDetailModal
+          product={product}
+          currency={currency}
+          subdomain={subdomain}
+          accent={accent}
+          actionLabel={actionLabel}
+          placeholderIcon={placeholderIcon}
+          onClose={() => setShowDetail(false)}
+        />
+      )}
+    </>
   );
 }

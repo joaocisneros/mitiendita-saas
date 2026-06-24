@@ -4,6 +4,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -24,6 +25,12 @@ interface CartContextValue {
   clear: () => void;
   count: number;
   subtotal: number;
+  // Drawer del carrito (compartido entre el header y la barra inferior).
+  isOpen: boolean;
+  openCart: () => void;
+  closeCart: () => void;
+  // Aviso flotante ("Agregado ✓").
+  toast: string | null;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -38,6 +45,15 @@ export function CartProvider({
   const KEY = `mitiendita_cart_${storeKey}`;
   const [items, setItems] = useState<CartItem[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = (message: string) => {
+    setToast(message);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 1700);
+  };
 
   // Cargar carrito guardado.
   useEffect(() => {
@@ -57,7 +73,7 @@ export function CartProvider({
     if (loaded) localStorage.setItem(KEY, JSON.stringify(items));
   }, [items, loaded, KEY]);
 
-  const add = (item: Omit<CartItem, "quantity">, qty = 1) =>
+  const add = (item: Omit<CartItem, "quantity">, qty = 1) => {
     setItems((prev) => {
       const found = prev.find((p) => p.productId === item.productId);
       if (found) {
@@ -69,6 +85,8 @@ export function CartProvider({
       }
       return [...prev, { ...item, quantity: qty }];
     });
+    showToast("Agregado al carrito ✓");
+  };
 
   const setQty = (productId: string, qty: number) =>
     setItems((prev) =>
@@ -91,7 +109,19 @@ export function CartProvider({
 
   return (
     <CartContext.Provider
-      value={{ items, add, setQty, remove, clear, count, subtotal }}
+      value={{
+        items,
+        add,
+        setQty,
+        remove,
+        clear,
+        count,
+        subtotal,
+        isOpen,
+        openCart: () => setIsOpen(true),
+        closeCart: () => setIsOpen(false),
+        toast,
+      }}
     >
       {children}
     </CartContext.Provider>

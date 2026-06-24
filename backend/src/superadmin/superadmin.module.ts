@@ -5,6 +5,7 @@ import { SaAuthController } from './controllers/sa-auth.controller';
 import { SaStatsController } from './controllers/sa-stats.controller';
 import { SaCompaniesController } from './controllers/sa-companies.controller';
 import { SaPlansController } from './controllers/sa-plans.controller';
+import { PublicPlansController } from './controllers/public-plans.controller';
 import { SaSubscriptionsController } from './controllers/sa-subscriptions.controller';
 import { SaUsersController } from './controllers/sa-users.controller';
 import { SaAuditsController } from './controllers/sa-audits.controller';
@@ -26,6 +27,7 @@ import { SaSettingsService } from './services/sa-settings.service';
     SaStatsController,
     SaCompaniesController,
     SaPlansController,
+    PublicPlansController,
     SaSubscriptionsController,
     SaUsersController,
     SaAuditsController,

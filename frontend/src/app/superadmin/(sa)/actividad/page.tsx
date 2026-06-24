@@ -38,11 +38,10 @@ export default function ActivityPage() {
 
   const load = useCallback(
     (target = 1) => {
-      setLoading(true);
-      setError("");
       superApi
         .audits(target, action || undefined)
         .then((result) => {
+          setError("");
           setRows(result.items);
           setPage(result.page);
           setPages(result.pages || 1);

@@ -62,8 +62,8 @@ export default function SaLayout({ children }: { children: React.ReactNode }) {
     );
 
   return (
-    <div className="admin-shell flex min-h-screen bg-slate-100 text-slate-950">
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col overflow-y-auto bg-slate-950 px-4 py-5 text-white shadow-xl md:flex">
+    <div className="admin-shell flex h-dvh min-h-0 overflow-hidden bg-slate-100 text-slate-950">
+      <aside className="hidden h-dvh w-64 shrink-0 flex-col overflow-y-auto bg-slate-950 px-4 py-5 text-white shadow-xl md:flex">
         <Link href="/superadmin" className="mb-8 flex items-center gap-3 px-2">
           <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-600 shadow-lg shadow-violet-950/40">
             <DashboardIcon name="store" />
@@ -108,7 +108,7 @@ export default function SaLayout({ children }: { children: React.ReactNode }) {
         </button>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex h-dvh min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur md:px-7">
           <div>
             <p className="font-black text-slate-950">
@@ -125,7 +125,7 @@ export default function SaLayout({ children }: { children: React.ReactNode }) {
             Salir
           </button>
         </header>
-        <main className="flex-1 p-4 text-slate-950 md:p-7">{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto p-4 pb-20 text-slate-950 md:p-7 md:pb-7">{children}</main>
         <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-slate-200 bg-white p-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] md:hidden">
           {NAV.filter((item) =>
             ["/superadmin", "/superadmin/empresas", "/superadmin/suscripciones", "/superadmin/planes", "/superadmin/actividad"].includes(item.href),

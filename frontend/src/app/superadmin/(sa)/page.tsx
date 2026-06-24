@@ -160,8 +160,8 @@ export default function SuperDashboard() {
 
       <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
         <div className="flex flex-col gap-3 border-b border-slate-200 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div><h2 className="text-lg font-black text-slate-950">Empresas recientes</h2><p className="mt-1 text-sm font-medium text-slate-600">Estado comercial y operaciones rápidas.</p></div>
-          <Link href="/superadmin/empresas" className="text-sm font-bold text-violet-700 hover:underline">Ver todas →</Link>
+          <div><h2 className="text-lg font-black text-slate-950">Atajo · últimas empresas</h2><p className="mt-1 text-sm font-medium text-slate-600">Acciones rápidas sin salir del panel. La gestión completa está en el módulo Empresas.</p></div>
+          <Link href="/superadmin/empresas" className="text-sm font-bold text-violet-700 hover:underline">Ir a Empresas →</Link>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1120px] text-sm">

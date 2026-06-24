@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { MediaService } from '../media/media.service';
 import { slugify } from '../common/utils/slug.util';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -12,7 +13,10 @@ import { QueryProductsDto } from './dto/query-products.dto';
 
 @Injectable()
 export class ProductsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly media: MediaService,
+  ) {}
 
   async create(companyId: string, dto: CreateProductDto) {
     const company = await this.prisma.company.findUnique({
@@ -85,7 +89,7 @@ export class ProductsService {
   }
 
   async update(companyId: string, id: string, dto: UpdateProductDto) {
-    await this.findOne(companyId, id); // valida pertenencia
+    const current = await this.findOne(companyId, id); // valida pertenencia
 
     if (dto.categoryId !== undefined && dto.categoryId !== null) {
       await this.assertCategory(companyId, dto.categoryId);
@@ -98,7 +102,17 @@ export class ProductsService {
     if (dto.name) {
       data.slug = await this.uniqueSlug(companyId, slugify(dto.name), id);
     }
-    return this.prisma.product.update({ where: { id }, data });
+    const updated = await this.prisma.product.update({ where: { id }, data });
+
+    // Si cambió la imagen, borra la anterior para no acumular archivos.
+    if (
+      dto.imageUrl !== undefined &&
+      current.imageUrl &&
+      current.imageUrl !== dto.imageUrl
+    ) {
+      void this.media.deleteByUrl(current.imageUrl);
+    }
+    return updated;
   }
 
   /** Eliminación lógica. Libera slug y SKU para poder reutilizarlos. */
@@ -113,6 +127,8 @@ export class ProductsService {
         sku: product.sku ? `${product.sku}--del-${Date.now()}` : null,
       },
     });
+    // El producto se elimina: su imagen ya no se necesita.
+    void this.media.deleteByUrl(product.imageUrl);
     return { ok: true };
   }
 

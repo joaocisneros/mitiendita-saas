@@ -15,6 +15,11 @@ const PAYMENT_STATUS: Record<string, { label: string; cls: string }> = {
   rejected: { label: "Rechazado", cls: "bg-red-100 text-red-700" },
 };
 
+/** Etiqueta en español de un estado de pedido (para historial, etc.). */
+export function orderStatusLabel(status: string): string {
+  return ORDER_STATUS[status]?.label ?? status;
+}
+
 export function StatusBadge({
   status,
   type = "order",

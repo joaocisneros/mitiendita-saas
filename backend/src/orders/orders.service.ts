@@ -10,6 +10,7 @@ import { MediaService } from '../media/media.service';
 import { normalizePhone } from '../common/utils/phone.util';
 import { generateOrderCode } from '../common/utils/order-code.util';
 import { CheckoutDto } from './dto/checkout.dto';
+import { WhatsappService } from '../whatsapp/whatsapp.service';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -18,6 +19,7 @@ export class OrdersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly media: MediaService,
+    private readonly whatsapp: WhatsappService,
   ) {}
 
   /**
@@ -205,6 +207,17 @@ export class OrdersService {
       return created;
     });
 
+    // Aviso "nuevo pedido" al WhatsApp del dueño (desde la plataforma). No bloquea el checkout.
+    void this.whatsapp.sendOrderNotification({
+      recipient: settings?.whatsappNumber,
+      storeName: settings?.storeName || company.name,
+      orderCode: order.publicCode,
+      customerName: order.customerName,
+      total: String(order.total),
+      currency,
+      deliveryMethod: order.deliveryMethod,
+    });
+
     return this.format(order, currency);
   }
 
@@ -273,7 +286,26 @@ export class OrdersService {
       where: { id: order.id },
       include: { items: true, payment: true },
     });
-    return this.format(updated!, company.settings?.currency ?? 'PEN');
+    const formatted = this.format(updated!, company.settings?.currency ?? 'PEN');
+    const whatsappNotification = await this.whatsapp.sendProofNotification({
+      recipient: company.settings?.whatsappNumber,
+      storeName: company.settings?.storeName || company.name,
+      orderCode: order.publicCode,
+      customerName: order.customerName,
+      total: String(order.total),
+      currency: company.settings?.currency ?? 'PEN',
+      proofUrl: uploaded.url,
+    });
+    return { ...formatted, whatsappNotification };
+  }
+
+  /** Devuelve la URL del comprobante de un pedido por su código (para el link corto). */
+  async getProofUrlByCode(code: string): Promise<string | null> {
+    const order = await this.prisma.order.findUnique({
+      where: { publicCode: code },
+      include: { payment: true },
+    });
+    return order?.payment?.proofUrl ?? null;
   }
 
   // ───────────────────── helpers ─────────────────────

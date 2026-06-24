@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary, type UploadApiResponse } from 'cloudinary';
-import { mkdir, readFile, writeFile } from 'fs/promises';
+import { mkdir, readFile, unlink, writeFile } from 'fs/promises';
 import { randomUUID } from 'crypto';
 import { extname, join } from 'path';
 
@@ -72,6 +72,49 @@ export class MediaService {
       );
       return this.saveLocal(file, companyId, folder);
     }
+  }
+
+  /**
+   * Borra una imagen por su URL (Cloudinary o local). No lanza si falla:
+   * la limpieza nunca debe romper la operación principal.
+   */
+  async deleteByUrl(url: string | null | undefined): Promise<void> {
+    if (!url) return;
+    try {
+      // Almacenamiento local de desarrollo.
+      if (url.includes('/media/local/')) {
+        const parts = url.split('/media/local/')[1]?.split('/');
+        if (parts && parts.length === 3) {
+          const [companyId, folder, filename] = parts;
+          if (
+            /^[a-zA-Z0-9-]+$/.test(companyId) &&
+            /^[a-zA-Z0-9-]+$/.test(folder) &&
+            /^[a-zA-Z0-9._-]+$/.test(filename)
+          ) {
+            await unlink(
+              join(process.cwd(), 'uploads', companyId, folder, filename),
+            ).catch(() => undefined);
+          }
+        }
+        return;
+      }
+      // Cloudinary: derivar el public_id desde la URL y destruir.
+      if (!this.cloudinaryEnabled) return;
+      const publicId = this.cloudinaryPublicId(url);
+      if (publicId) {
+        await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+      }
+    } catch (error) {
+      this.logger.warn(
+        `No se pudo borrar la imagen (${url}): ${error instanceof Error ? error.message : 'error'}`,
+      );
+    }
+  }
+
+  /** Extrae el public_id de una URL de Cloudinary (sin versión ni extensión). */
+  private cloudinaryPublicId(url: string): string | null {
+    const match = url.match(/\/upload\/(?:v\d+\/)?(.+)\.\w+$/);
+    return match ? match[1] : null;
   }
 
   async readLocal(companyId: string, folder: string, filename: string) {

@@ -80,7 +80,7 @@ Las pruebas usan `mitiendita_test`; nunca deben ejecutarse contra `mitiendita_db
 - Auditoría: `http://localhost:8301/superadmin/actividad`
 - API: `http://localhost:8300/api`
 
-37 pruebas e2e cubren auth, aislamiento multi-tenant, catálogo, clientes,
+42 pruebas e2e cubren auth, aislamiento multi-tenant, catálogo, clientes,
 pedidos, anti-sobreventa, idempotencia, pagos y superadmin.
 
 El panel del negocio incluye dashboard, productos, categorías, clientes,

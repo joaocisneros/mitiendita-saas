@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { adminApi, type AdminOrderDetail } from "@/lib/admin-api";
 import { formatPrice } from "@/lib/format";
-import { StatusBadge } from "@/components/StatusBadge";
+import { StatusBadge, orderStatusLabel } from "@/components/StatusBadge";
 
 const NEXT: Record<string, { value: string; label: string }[]> = {
   pending: [{ value: "cancelled", label: "Cancelar" }],
@@ -57,12 +57,12 @@ export function OrderDetailModal({
     ["proof_submitted", "pending", "rejected"].includes(order.payment.status);
 
   return (
-    <Overlay onClose={onClose}>
+    <Overlay onClose={onClose} size="medium">
       {!order ? (
         <p className="p-8 text-center text-slate-500">{error || "Cargando..."}</p>
       ) : (
         <div className="space-y-4">
-          <div className="flex items-start justify-between gap-3 pr-9">
+          <div className="sticky top-0 z-10 -mx-5 -mt-5 mb-1 flex items-start justify-between gap-3 border-b border-slate-100 bg-white/95 px-5 pb-3 pt-5 pr-14 backdrop-blur">
             <div className="min-w-0">
               <h2 className="text-xl font-black text-slate-950">{order.publicCode}</h2>
               <p className="text-sm text-slate-500">
@@ -79,6 +79,8 @@ export function OrderDetailModal({
             <p className="rounded-lg bg-red-50 p-2 text-sm text-red-600">{error}</p>
           )}
 
+          <div className="grid gap-4 md:grid-cols-2 md:items-start">
+          <div className="space-y-4">
           <Card title="Cliente">
             <p className="font-semibold text-slate-900">{order.customerName}</p>
             <p className="text-sm text-slate-600">{order.customerPhone}</p>
@@ -110,12 +112,14 @@ export function OrderDetailModal({
               </div>
             </div>
           </Card>
+          </div>
 
+          <div className="space-y-4">
           <Card title="Pago (Yape)">
             {order.payment?.proofUrl ? (
-              <a href={order.payment.proofUrl} target="_blank" rel="noopener noreferrer" className="block">
-                <Image src={order.payment.proofUrl} alt="Comprobante" width={200} height={260} className="rounded-lg ring-1 ring-slate-200" />
-                <span className="text-xs text-violet-600">Ver comprobante completo</span>
+              <a href={order.payment.proofUrl} target="_blank" rel="noopener noreferrer" className="inline-flex flex-col">
+                <Image src={order.payment.proofUrl} alt="Comprobante" width={120} height={150} className="h-32 w-auto rounded-lg object-cover ring-1 ring-slate-200" />
+                <span className="mt-1 text-xs font-semibold text-violet-600">Ver comprobante completo →</span>
               </a>
             ) : (
               <p className="text-sm text-slate-400">El cliente aún no subió comprobante.</p>
@@ -151,18 +155,31 @@ export function OrderDetailModal({
           )}
 
           <Card title="Historial">
-            <ul className="space-y-1 text-sm text-slate-600">
-              {order.history.map((h, i) => (
-                <li key={i}>
-                  <span className="text-slate-400">
-                    {new Date(h.createdAt).toLocaleString("es-PE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
-                  </span>{" "}
-                  — {h.fromStatus ? `${h.fromStatus} → ` : ""}<b>{h.toStatus}</b>
-                  {h.comment ? ` (${h.comment})` : ""}
-                </li>
-              ))}
-            </ul>
+            <ol className="space-y-3">
+              {order.history.map((h, i) => {
+                const last = i === order.history.length - 1;
+                return (
+                  <li key={i} className="flex gap-3">
+                    <div className="flex flex-col items-center">
+                      <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${last ? "bg-violet-600" : "bg-slate-300"}`} />
+                      {!last && <span className="mt-0.5 w-px flex-1 bg-slate-200" />}
+                    </div>
+                    <div className="-mt-0.5 pb-0.5">
+                      <p className="text-sm font-bold text-slate-900">
+                        {orderStatusLabel(h.toStatus)}
+                        {h.comment ? <span className="font-medium text-slate-500"> · {h.comment}</span> : ""}
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        {new Date(h.createdAt).toLocaleString("es-PE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
           </Card>
+          </div>
+          </div>
         </div>
       )}
     </Overlay>
@@ -177,7 +194,7 @@ export function Overlay({
 }: {
   children: React.ReactNode;
   onClose: () => void;
-  size?: "default" | "wide";
+  size?: "default" | "medium" | "wide";
 }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -195,19 +212,21 @@ export function Overlay({
       onClick={onClose}
     >
       <div
-        className={`relative max-h-[92vh] w-full overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl sm:rounded-3xl ${
-          size === "wide" ? "sm:max-w-5xl sm:p-6" : "max-w-lg"
+        className={`relative flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl ${
+          size === "wide" ? "sm:max-w-5xl" : size === "medium" ? "sm:max-w-3xl" : "max-w-lg"
         }`}
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"
+          className="absolute right-4 top-4 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-200"
           aria-label="Cerrar"
         >
           ✕
         </button>
-        {children}
+        <div className={`overflow-y-auto ${size === "wide" ? "p-5 sm:p-6" : "p-5"}`}>
+          {children}
+        </div>
       </div>
     </div>
   );

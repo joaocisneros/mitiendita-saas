@@ -1,6 +1,7 @@
-import Link from "next/link";
 import { StoreSearch } from "@/components/store/StoreSearch";
 import { StoreEmpty } from "@/components/store/StoreEmpty";
+import { StoreToolbar } from "@/components/store/StoreToolbar";
+import { SubscribeButton } from "@/components/store/SubscribeButton";
 import { formatPrice } from "@/lib/format";
 import type { PublicProduct } from "@/lib/types";
 
@@ -14,6 +15,9 @@ export function DigitalTemplate({
   actionLabel,
   currency,
   products,
+  total,
+  sort,
+  catalogLabel,
   whatsappNumber,
   storeName,
   search,
@@ -25,14 +29,15 @@ export function DigitalTemplate({
   actionLabel: string;
   currency: string;
   products: PublicProduct[];
+  total: number;
+  sort?: string;
+  catalogLabel: string;
   whatsappNumber: string | null;
   storeName: string;
   search?: string;
   searchPlaceholder: string;
   emptyLabel: string;
 }) {
-  const phone = whatsappNumber?.replace(/[^0-9]/g, "");
-
   return (
     <>
       <StoreSearch
@@ -45,18 +50,14 @@ export function DigitalTemplate({
       {products.length === 0 ? (
         <StoreEmpty accent={accent} message={emptyLabel} icon="🎬" />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <>
+        <StoreToolbar subdomain={subdomain} title={search ? `Resultados de "${search}"` : catalogLabel} total={total} sort={sort} />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {products.map((p) => {
             const features = (p.description ?? "")
               .split(/\n|·|•/)
               .map((f) => f.trim())
               .filter(Boolean);
-            const message = encodeURIComponent(
-              `Hola ${storeName}, quiero ${actionLabel.toLowerCase()}: ${p.name}`,
-            );
-            const href = phone
-              ? `https://wa.me/${phone}?text=${message}`
-              : `/tienda/${subdomain}/producto/${p.slug}`;
             return (
               <article
                 key={p.id}
@@ -90,19 +91,20 @@ export function DigitalTemplate({
                     ))}
                   </ul>
                 )}
-                <Link
-                  href={href}
-                  target={phone ? "_blank" : undefined}
-                  rel={phone ? "noopener noreferrer" : undefined}
-                  style={{ backgroundColor: accent }}
-                  className="mt-5 inline-flex w-full items-center justify-center rounded-xl py-2.5 text-sm font-bold text-white transition hover:opacity-90"
-                >
-                  {actionLabel}
-                </Link>
+                <SubscribeButton
+                  subdomain={subdomain}
+                  storeName={storeName}
+                  planName={p.name}
+                  productId={p.id}
+                  accent={accent}
+                  whatsappNumber={whatsappNumber}
+                  actionLabel={actionLabel}
+                />
               </article>
             );
           })}
         </div>
+        </>
       )}
     </>
   );

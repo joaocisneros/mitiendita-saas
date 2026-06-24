@@ -60,6 +60,19 @@ enum SubscriptionStatus {
   cancelled // cancelado
 }
 
+enum AppointmentStatus {
+  pending // solicitada, sin confirmar
+  confirmed // confirmada por el negocio
+  completed // atendida
+  cancelled // cancelada
+}
+
+enum SubStatus {
+  pending // solicitada, sin activar
+  active // activa (con fecha de vencimiento)
+  cancelled // cancelada / dada de baja
+}
+
 // ════════════════ ENTIDADES GLOBALES (sin company_id) ════════════════
 
 /// Planes comerciales (Básico, Pro, Premium). Asignados manualmente en el MVP.
@@ -104,6 +117,8 @@ model Company {
   orders      Order[]
   payments    Payment[]
   stockMovements StockMovement[]
+  appointments Appointment[]
+  subscriptions Subscription[]
 
   @@index([status])
   @@map("companies")
@@ -282,6 +297,8 @@ model Product {
   category   Category?   @relation(fields: [categoryId], references: [id])
   orderItems OrderItem[]
   stockMovements StockMovement[]
+  appointments Appointment[]
+  subscriptions Subscription[]
 
   // slug y SKU únicos por empresa. SKU es opcional (varios NULL permitidos).
   @@unique([companyId, slug])
@@ -439,6 +456,53 @@ model StockMovement {
   @@index([companyId])
   @@index([productId])
   @@map("stock_movements")
+}
+
+/// Cita/reserva de un servicio (rubros de Servicios: belleza, salud, etc.).
+/// No mueve stock ni pagos; el negocio confirma y coordina la atención.
+model Appointment {
+  id            String            @id @default(uuid())
+  companyId     String            @map("company_id")
+  productId     String?           @map("product_id") // servicio relacionado (opcional)
+  serviceName   String            @map("service_name") // copia histórica del nombre
+  customerName  String            @map("customer_name")
+  customerPhone String            @map("customer_phone")
+  preferredAt   DateTime          @map("preferred_at") // día/hora deseado por el cliente
+  note          String?           @db.Text
+  status        AppointmentStatus @default(pending)
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  company Company  @relation(fields: [companyId], references: [id])
+  product Product? @relation(fields: [productId], references: [id])
+
+  @@index([companyId, status])
+  @@index([companyId, preferredAt])
+  @@map("appointments")
+}
+
+/// Suscripción de un cliente a un plan digital (streaming, membresías, cursos).
+/// Tiene período: el dueño la activa y controla su vencimiento para renovar.
+model Subscription {
+  id            String    @id @default(uuid())
+  companyId     String    @map("company_id")
+  productId     String?   @map("product_id") // plan relacionado (opcional)
+  planName      String    @map("plan_name") // copia histórica del nombre del plan
+  customerName  String    @map("customer_name")
+  customerPhone String    @map("customer_phone")
+  status        SubStatus @default(pending)
+  startsAt      DateTime? @map("starts_at") // cuándo se activó
+  endsAt        DateTime? @map("ends_at") // vencimiento (para avisar/renovar)
+  note          String?   @db.Text
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  company Company  @relation(fields: [companyId], references: [id])
+  product Product? @relation(fields: [productId], references: [id])
+
+  @@index([companyId, status])
+  @@index([companyId, endsAt])
+  @@map("subscriptions")
 }
 
 /// Configuración global de la plataforma (fila única, id = 1).

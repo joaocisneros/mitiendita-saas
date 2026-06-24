@@ -23,3 +23,10 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 backend/uploads/
+
+# Sesiones de Claude / asistentes
+.claude/
+
+# Certificados locales (HTTPS de desarrollo)
+certs/
+*.pem

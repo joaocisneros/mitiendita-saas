@@ -5,6 +5,7 @@ import { adminApi, type AdminOrderRow } from "@/lib/admin-api";
 import { formatPrice } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { OrderDetailModal } from "@/components/OrderDetailModal";
+import { Skeleton } from "@/components/Skeleton";
 
 const FILTERS = [
   { value: "", label: "Todos" },
@@ -27,18 +28,31 @@ export default function OrdersListPage() {
   const load = useCallback(() => {
     adminApi
       .orders({ status: status || undefined, search: appliedSearch || undefined })
-      .then((d) => setRows(d.items))
+      .then((d) => {
+        setRows(d.items);
+        setError("");
+      })
       .catch((e) => setError(e instanceof Error ? e.message : "Error"))
       .finally(() => setLoading(false));
   }, [status, appliedSearch]);
 
   useEffect(() => {
     load();
+    const interval = window.setInterval(load, 15_000);
+    const onFocus = () => load();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
   }, [load]);
 
   return (
     <div className="space-y-4">
-      <div><p className="text-sm font-bold text-violet-700">Operaciones</p><h1 className="mt-1 text-3xl font-black text-slate-950">Pedidos</h1></div>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div><p className="text-sm font-bold text-violet-700">Operaciones</p><h1 className="mt-1 text-3xl font-black text-slate-950">Pedidos</h1><p className="mt-1 text-xs font-medium text-slate-500">Los nuevos pedidos y comprobantes se actualizan automáticamente.</p></div>
+        <button onClick={() => { setLoading(true); load(); }} className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-violet-700 ring-1 ring-violet-200 hover:bg-violet-50">Actualizar ahora</button>
+      </div>
 
       <div className="flex max-w-xl gap-2"><input value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { setLoading(true); setAppliedSearch(search.trim()); } }} placeholder="Código, cliente o teléfono" className="h-11 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-500 focus:border-violet-600" /><button onClick={() => { setLoading(true); setAppliedSearch(search.trim()); }} className="rounded-xl bg-violet-600 px-5 text-sm font-bold text-white">Buscar</button></div>
 
@@ -62,7 +76,14 @@ export default function OrdersListPage() {
 
       <div className="overflow-hidden rounded-2xl bg-white ring-1 ring-black/5">
         {loading ? (
-          <p className="p-6 text-center text-gray-400">Cargando...</p>
+          <ul className="divide-y divide-black/5">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <li key={i} className="flex items-center justify-between px-4 py-3.5">
+                <div className="space-y-2"><Skeleton className="h-4 w-40" /><Skeleton className="h-3 w-24" /></div>
+                <Skeleton className="h-6 w-24 rounded-full" />
+              </li>
+            ))}
+          </ul>
         ) : rows.length === 0 ? (
           <p className="p-6 text-center text-gray-400">No hay pedidos aquí.</p>
         ) : (

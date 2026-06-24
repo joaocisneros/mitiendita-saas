@@ -23,12 +23,14 @@ export class StorefrontController {
     @Query('search') search?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('sort') sort?: string,
   ) {
     return this.storefront.listProducts(subdomain, {
       categorySlug,
       search,
       page: page ? Number(page) : undefined,
       limit: limit ? Number(limit) : undefined,
+      sort,
     });
   }
 

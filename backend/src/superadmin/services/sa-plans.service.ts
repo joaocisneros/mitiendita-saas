@@ -18,6 +18,15 @@ export class SaPlansService {
     return this.prisma.plan.findMany({ orderBy: { priceMonth: 'asc' } });
   }
 
+  /** Planes activos para mostrar en la landing pública (sin datos sensibles). */
+  listPublic() {
+    return this.prisma.plan.findMany({
+      where: { isActive: true },
+      orderBy: { priceMonth: 'asc' },
+      select: { id: true, name: true, slug: true, priceMonth: true, maxProducts: true },
+    });
+  }
+
   private slugify(value: string) {
     return value
       .toLowerCase()

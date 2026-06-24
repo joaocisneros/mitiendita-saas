@@ -13,7 +13,7 @@ export function StoreSearch({
   category?: string;
 }) {
   return (
-    <form className="mb-5 flex gap-2" action={`/tienda/${subdomain}`}>
+    <form className="mb-5 flex max-w-xl gap-2" action={`/tienda/${subdomain}`}>
       {category && <input type="hidden" name="category" value={category} />}
       <input
         name="search"

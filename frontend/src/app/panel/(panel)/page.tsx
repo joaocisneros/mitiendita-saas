@@ -2,14 +2,17 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { adminApi, type DashboardData } from "@/lib/admin-api";
+import { adminApi, type DashboardData, type AdminAppointment } from "@/lib/admin-api";
 import { formatPrice } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { OrderDetailModal } from "@/components/OrderDetailModal";
 import { BarChart } from "@/components/Charts";
+import { Skeleton } from "@/components/Skeleton";
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
+  const [appointments, setAppointments] = useState<AdminAppointment[]>([]);
+  const [subs, setSubs] = useState<{ active: number; expiring: number; expired: number } | null>(null);
   const [error, setError] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -18,14 +21,43 @@ export default function DashboardPage() {
       .dashboard()
       .then(setData)
       .catch((e) => setError(e instanceof Error ? e.message : "Error"));
+    // Citas pendientes (si el negocio usa reservas). No bloquea el resumen.
+    adminApi.appointments("pending").then(setAppointments).catch(() => {});
+    // Resumen de suscripciones (si el negocio es digital). No bloquea el resumen.
+    adminApi.subscriptionsSummary().then(setSubs).catch(() => {});
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  if (error) return <p className="text-red-600">{error}</p>;
-  if (!data) return <p className="text-gray-400">Cargando...</p>;
+  if (error)
+    return (
+      <div className="mx-auto mt-10 max-w-md rounded-2xl bg-white p-8 text-center ring-1 ring-black/5">
+        <p className="text-4xl">⚠️</p>
+        <p className="mt-3 font-bold text-slate-800">No se pudo cargar el resumen</p>
+        <p className="mt-1 text-sm text-slate-500">{error}</p>
+        <button onClick={() => { setError(""); setData(null); load(); }} className="mt-5 rounded-full bg-violet-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-violet-700">
+          Reintentar
+        </button>
+      </div>
+    );
+  if (!data)
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-64" />
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 rounded-2xl" />
+          ))}
+        </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Skeleton className="h-64 rounded-2xl lg:col-span-2" />
+          <Skeleton className="h-64 rounded-2xl" />
+        </div>
+        <Skeleton className="h-48 rounded-2xl" />
+      </div>
+    );
 
   return (
     <div className="space-y-6">
@@ -60,6 +92,53 @@ export default function DashboardPage() {
           </div>
         </section>
       </div>
+
+      {subs && (subs.active + subs.expiring + subs.expired) > 0 && (
+        <section>
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="font-bold">⭐ Suscripciones</h2>
+            <Link href="/panel/suscripciones" className="text-sm text-violet-600">Ver todas →</Link>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-2xl bg-white p-4 ring-1 ring-black/5">
+              <p className="text-xs text-gray-500">Activas</p>
+              <p className="mt-1 text-2xl font-extrabold text-emerald-600">{subs.active}</p>
+            </div>
+            <div className={`rounded-2xl p-4 ring-1 ${subs.expiring > 0 ? "bg-orange-50 ring-orange-200" : "bg-white ring-black/5"}`}>
+              <p className="text-xs text-gray-500">Por vencer</p>
+              <p className="mt-1 text-2xl font-extrabold text-orange-600">{subs.expiring}</p>
+            </div>
+            <div className={`rounded-2xl p-4 ring-1 ${subs.expired > 0 ? "bg-red-50 ring-red-200" : "bg-white ring-black/5"}`}>
+              <p className="text-xs text-gray-500">Vencidas</p>
+              <p className="mt-1 text-2xl font-extrabold text-red-600">{subs.expired}</p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {appointments.length > 0 && (
+        <section>
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="font-bold">📅 Citas pendientes ({appointments.length})</h2>
+            <Link href="/panel/citas" className="text-sm text-violet-600">Ver todas →</Link>
+          </div>
+          <div className="overflow-hidden rounded-2xl bg-white ring-1 ring-black/5">
+            <ul className="divide-y divide-black/5">
+              {appointments.slice(0, 5).map((a) => (
+                <li key={a.id} className="flex items-center justify-between px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-slate-900">{a.serviceName}</p>
+                    <p className="text-xs text-gray-400">{a.customerName} · {a.customerPhone}</p>
+                  </div>
+                  <span className="shrink-0 text-sm font-semibold text-slate-700">
+                    {new Date(a.preferredAt).toLocaleString("es-PE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
 
       <section>
         <div className="mb-2 flex items-center justify-between">

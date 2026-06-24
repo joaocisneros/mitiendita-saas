@@ -34,11 +34,10 @@ export default function SubscriptionsPage() {
 
   const load = useCallback(
     (targetPage = 1) => {
-      setLoading(true);
-      setError("");
       superApi
         .subscriptions(status || undefined, applied || undefined, targetPage)
         .then((result) => {
+          setError("");
           setRows(result.items);
           setPage(result.page);
           setPages(result.pages || 1);

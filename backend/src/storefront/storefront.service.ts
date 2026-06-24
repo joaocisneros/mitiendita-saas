@@ -51,7 +51,7 @@ export class StorefrontService {
   /** Catálogo público: solo productos activos. */
   async listProducts(
     subdomain: string,
-    opts: { categorySlug?: string; search?: string; page?: number; limit?: number },
+    opts: { categorySlug?: string; search?: string; page?: number; limit?: number; sort?: string },
   ) {
     const company = await this.resolveActiveCompany(subdomain);
     const page = opts.page ?? 1;
@@ -67,10 +67,19 @@ export class StorefrontService {
       ...(opts.search ? { name: { contains: opts.search } } : {}),
     };
 
+    const ORDER: Record<string, Record<string, 'asc' | 'desc'>[]> = {
+      featured: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
+      price_asc: [{ price: 'asc' }],
+      price_desc: [{ price: 'desc' }],
+      newest: [{ createdAt: 'desc' }],
+      name: [{ name: 'asc' }],
+    };
+    const orderBy = ORDER[opts.sort ?? 'featured'] ?? ORDER.featured;
+
     const [rows, total] = await Promise.all([
       this.prisma.product.findMany({
         where,
-        orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
+        orderBy,
         skip: (page - 1) * limit,
         take: limit,
         select: {

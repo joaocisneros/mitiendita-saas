@@ -1,19 +1,21 @@
-import Image from "next/image";
-import { AddToCart } from "@/components/AddToCart";
+import { ProductCard } from "@/components/ProductCard";
 import { StoreSearch } from "@/components/store/StoreSearch";
 import { StoreEmpty } from "@/components/store/StoreEmpty";
-import { formatPrice } from "@/lib/format";
+import { StoreToolbar } from "@/components/store/StoreToolbar";
 import type { PublicProduct } from "@/lib/types";
 
-/** Plantilla Carta: platos agrupados por sección, con destacados. (Alimentos) */
+/** Plantilla Carta: platos en tarjetas con foto grande, agrupados por sección. (Alimentos) */
 export function CartaTemplate({
   subdomain,
   accent,
   actionLabel,
   currency,
   products,
+  total,
+  sort,
   search,
   searchPlaceholder,
+  catalogLabel,
   emptyLabel,
 }: {
   subdomain: string;
@@ -21,8 +23,11 @@ export function CartaTemplate({
   actionLabel: string;
   currency: string;
   products: PublicProduct[];
+  total: number;
+  sort?: string;
   search?: string;
   searchPlaceholder: string;
+  catalogLabel: string;
   emptyLabel: string;
 }) {
   const featured = products.filter((p) => p.isFeatured);
@@ -32,6 +37,11 @@ export function CartaTemplate({
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(p);
   }
+
+  const sections: { id: string; label: string; items: PublicProduct[] }[] = [];
+  if (featured.length > 0) sections.push({ id: "destacados", label: "⭐ Destacados", items: featured });
+  let gi = 0;
+  for (const [name, items] of groups) sections.push({ id: `sec-${gi++}`, label: name, items });
 
   return (
     <>
@@ -45,43 +55,54 @@ export function CartaTemplate({
       {products.length === 0 ? (
         <StoreEmpty accent={accent} message={emptyLabel} icon="🍽️" />
       ) : (
-        <div className="space-y-8">
-          {featured.length > 0 && (
-            <section>
-              <SectionTitle accent={accent}>⭐ Destacados</SectionTitle>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {featured.map((p) => (
-                  <FeaturedDish
-                    key={p.id}
-                    product={p}
-                    currency={currency}
-                    accent={accent}
-                    actionLabel={actionLabel}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
+        <>
+        <StoreToolbar subdomain={subdomain} title={search ? `Resultados de "${search}"` : catalogLabel} total={total} sort={sort} />
 
-          {[...groups.entries()].map(([name, items]) => (
-            <section key={name}>
-              <SectionTitle accent={accent}>{name}</SectionTitle>
-              <div className="divide-y divide-slate-100 rounded-2xl bg-white ring-1 ring-black/5">
-                {items.map((p) => (
-                  <DishRow
+        {sections.length > 1 && (
+          <nav className="sticky top-0 z-20 -mx-4 mb-5 flex gap-2 overflow-x-auto border-b border-slate-200 bg-gray-50/95 px-4 py-2.5 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+            {sections.map((s) => (
+              <a
+                key={s.id}
+                href={`#${s.id}`}
+                className="whitespace-nowrap rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-slate-700 ring-1 ring-black/10 transition hover:bg-slate-100"
+              >
+                {s.label}
+              </a>
+            ))}
+          </nav>
+        )}
+
+        <div className="space-y-9">
+          {sections.map((s) => (
+            <section key={s.id} id={s.id} className="scroll-mt-20">
+              <SectionTitle accent={accent}>{s.label}</SectionTitle>
+              <DishGrid>
+                {s.items.map((p) => (
+                  <ProductCard
                     key={p.id}
                     product={p}
                     currency={currency}
+                    subdomain={subdomain}
                     accent={accent}
                     actionLabel={actionLabel}
+                    placeholderIcon="🍽️"
                   />
                 ))}
-              </div>
+              </DishGrid>
             </section>
           ))}
         </div>
+        </>
       )}
     </>
+  );
+}
+
+function DishGrid({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+      {children}
+    </div>
   );
 }
 
@@ -97,77 +118,5 @@ function SectionTitle({
       <span className="h-5 w-1.5 rounded-full" style={{ backgroundColor: accent }} />
       {children}
     </h2>
-  );
-}
-
-function DishRow({
-  product,
-  currency,
-  accent,
-  actionLabel,
-}: {
-  product: PublicProduct;
-  currency: string;
-  accent: string;
-  actionLabel: string;
-}) {
-  return (
-    <div className="flex items-center gap-3 p-3">
-      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-gray-100">
-        {product.imageUrl ? (
-          <Image src={product.imageUrl} alt={product.name} fill sizes="64px" className="object-cover" />
-        ) : (
-          <div className="flex h-full items-center justify-center text-2xl text-gray-300">🍽️</div>
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-bold text-slate-900">{product.name}</p>
-        {product.description && (
-          <p className="line-clamp-2 text-xs text-slate-500">{product.description}</p>
-        )}
-        <p className="mt-0.5 font-extrabold" style={{ color: accent }}>
-          {formatPrice(product.price, currency)}
-        </p>
-      </div>
-      <div className="w-28 shrink-0">
-        <AddToCart product={product} accent={accent} label={actionLabel} />
-      </div>
-    </div>
-  );
-}
-
-function FeaturedDish({
-  product,
-  currency,
-  accent,
-  actionLabel,
-}: {
-  product: PublicProduct;
-  currency: string;
-  accent: string;
-  actionLabel: string;
-}) {
-  return (
-    <article className="flex gap-3 overflow-hidden rounded-2xl bg-white p-3 ring-1 ring-black/5">
-      <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-gray-100">
-        {product.imageUrl ? (
-          <Image src={product.imageUrl} alt={product.name} fill sizes="96px" className="object-cover" />
-        ) : (
-          <div className="flex h-full items-center justify-center text-3xl text-gray-300">🍽️</div>
-        )}
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <p className="font-bold text-slate-900">{product.name}</p>
-        {product.description && (
-          <p className="line-clamp-2 text-xs text-slate-500">{product.description}</p>
-        )}
-        <p className="mt-1 font-extrabold" style={{ color: accent }}>
-          {formatPrice(product.price, currency)}
-        </p>
-        <div className="mt-auto pt-2">
-          <AddToCart product={product} accent={accent} label={actionLabel} />
-        </div>
-      </div>
-    </article>
   );
 }

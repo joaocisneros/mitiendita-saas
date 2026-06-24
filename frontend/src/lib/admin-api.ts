@@ -37,6 +37,17 @@ async function tryRefresh(): Promise<boolean> {
   return true;
 }
 
+/** fetch que convierte errores de red en un mensaje claro en español. */
+async function safeFetch(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch {
+    throw new Error(
+      "No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.",
+    );
+  }
+}
+
 /** fetch autenticado con reintento por refresh ante 401. */
 async function authFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const withAuth = (token: string | null): RequestInit => ({
@@ -47,9 +58,9 @@ async function authFetch(path: string, init: RequestInit = {}): Promise<Response
     },
   });
 
-  let res = await fetch(`${API}${path}`, withAuth(getAccess()));
+  let res = await safeFetch(`${API}${path}`, withAuth(getAccess()));
   if (res.status === 401 && (await tryRefresh())) {
-    res = await fetch(`${API}${path}`, withAuth(getAccess()));
+    res = await safeFetch(`${API}${path}`, withAuth(getAccess()));
   }
   if (res.status === 401 && typeof window !== "undefined") {
     clearTokens();
@@ -297,6 +308,44 @@ export const adminApi = {
       body: JSON.stringify(body),
     }).then((r) => jsonOrThrow<{ ok: boolean; stock: number }>(r, "No se pudo ajustar.")),
 
+  // ── Citas (reservas de servicios) ──
+  appointments: (status?: string) => {
+    const qs = status && status !== "all" ? `?status=${status}` : "";
+    return authFetch(`/admin/appointments${qs}`).then((r) =>
+      jsonOrThrow<AdminAppointment[]>(r, "Error al cargar las citas."),
+    );
+  },
+  updateAppointmentStatus: (id: string, status: string) =>
+    authFetch(`/admin/appointments/${id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    }).then((r) => jsonOrThrow<AdminAppointment>(r, "No se pudo actualizar la cita.")),
+
+  // ── Suscripciones (planes digitales) ──
+  subscriptions: (filter?: string) => {
+    const qs = filter && filter !== "all" ? `?filter=${filter}` : "";
+    return authFetch(`/admin/subscriptions${qs}`).then((r) =>
+      jsonOrThrow<AdminSubscription[]>(r, "Error al cargar las suscripciones."),
+    );
+  },
+  subscriptionsSummary: () =>
+    authFetch(`/admin/subscriptions/summary`).then((r) =>
+      jsonOrThrow<{ active: number; expiring: number; expired: number }>(r, "Error."),
+    ),
+  updateSubscription: (id: string, action: "activate" | "renew" | "cancel", months?: number) =>
+    authFetch(`/admin/subscriptions/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, ...(months ? { months } : {}) }),
+    }).then((r) => jsonOrThrow<AdminSubscription>(r, "No se pudo actualizar la suscripción.")),
+  editSubscription: (id: string, startsAt: string, endsAt: string) =>
+    authFetch(`/admin/subscriptions/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "edit", startsAt, endsAt }),
+    }).then((r) => jsonOrThrow<AdminSubscription>(r, "No se pudo editar la suscripción.")),
+
   // ── Reportes ──
   reports: (from?: string, to?: string) => {
     const q = new URLSearchParams();
@@ -308,6 +357,31 @@ export const adminApi = {
     );
   },
 };
+
+export interface AdminAppointment {
+  id: string;
+  serviceName: string;
+  customerName: string;
+  customerPhone: string;
+  preferredAt: string;
+  note: string | null;
+  status: string;
+  createdAt: string;
+}
+
+export interface AdminSubscription {
+  id: string;
+  planName: string;
+  customerName: string;
+  customerPhone: string;
+  status: string;
+  state: "pending" | "active" | "expiring" | "expired" | "cancelled";
+  daysLeft: number | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  note: string | null;
+  createdAt: string;
+}
 
 export interface InventoryProduct {
   id: string;

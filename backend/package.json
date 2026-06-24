@@ -21,6 +21,7 @@
     "test:e2e": "npm run test:e2e:prepare && cross-env DATABASE_URL=mysql://root:@localhost:3306/mitiendita_test NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json",
     "prisma:seed": "tsx prisma/seed.ts",
     "prisma:seed:demo": "tsx prisma/seed-demo.ts",
+    "prisma:seed:showcase": "tsx prisma/seed-showcase.ts",
     "prisma:studio": "prisma studio"
   },
   "dependencies": {

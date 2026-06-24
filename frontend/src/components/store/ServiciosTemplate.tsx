@@ -1,7 +1,8 @@
 import Image from "next/image";
-import Link from "next/link";
 import { StoreSearch } from "@/components/store/StoreSearch";
 import { StoreEmpty } from "@/components/store/StoreEmpty";
+import { StoreToolbar } from "@/components/store/StoreToolbar";
+import { ServiceReserveButton } from "@/components/store/ServiceReserveButton";
 import { formatPrice } from "@/lib/format";
 import type { PublicProduct } from "@/lib/types";
 
@@ -15,6 +16,9 @@ export function ServiciosTemplate({
   actionLabel,
   currency,
   products,
+  total,
+  sort,
+  catalogLabel,
   whatsappNumber,
   storeName,
   search,
@@ -26,14 +30,15 @@ export function ServiciosTemplate({
   actionLabel: string;
   currency: string;
   products: PublicProduct[];
+  total: number;
+  sort?: string;
+  catalogLabel: string;
   whatsappNumber: string | null;
   storeName: string;
   search?: string;
   searchPlaceholder: string;
   emptyLabel: string;
 }) {
-  const phone = whatsappNumber?.replace(/[^0-9]/g, "");
-
   return (
     <>
       <StoreSearch
@@ -46,15 +51,10 @@ export function ServiciosTemplate({
       {products.length === 0 ? (
         <StoreEmpty accent={accent} message={emptyLabel} icon="✦" />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {products.map((p) => {
-            const message = encodeURIComponent(
-              `Hola ${storeName}, quiero ${actionLabel.toLowerCase()}: ${p.name}`,
-            );
-            const href = phone
-              ? `https://wa.me/${phone}?text=${message}`
-              : `/tienda/${subdomain}/producto/${p.slug}`;
-            return (
+        <>
+        <StoreToolbar subdomain={subdomain} title={search ? `Resultados de "${search}"` : catalogLabel} total={total} sort={sort} />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {products.map((p) => (
               <article
                 key={p.id}
                 className="flex gap-3 rounded-2xl bg-white p-4 ring-1 ring-black/5 transition hover:shadow-md"
@@ -82,20 +82,20 @@ export function ServiciosTemplate({
                       {formatPrice(p.price, currency)}
                     </span>
                   </p>
-                  <Link
-                    href={href}
-                    target={phone ? "_blank" : undefined}
-                    rel={phone ? "noopener noreferrer" : undefined}
-                    style={{ backgroundColor: accent }}
-                    className="mt-auto inline-flex w-full items-center justify-center rounded-lg py-2 text-sm font-bold text-white transition hover:opacity-90"
-                  >
-                    {phone ? `${actionLabel} por WhatsApp` : actionLabel}
-                  </Link>
+                  <ServiceReserveButton
+                    subdomain={subdomain}
+                    storeName={storeName}
+                    serviceName={p.name}
+                    productId={p.id}
+                    accent={accent}
+                    whatsappNumber={whatsappNumber}
+                    actionLabel={actionLabel}
+                  />
                 </div>
               </article>
-            );
-          })}
+          ))}
         </div>
+        </>
       )}
     </>
   );

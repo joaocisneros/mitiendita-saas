@@ -4,7 +4,20 @@ import type {
   StoreResponse,
 } from "./types";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8300/api";
+// En el servidor (SSR) llamamos directo al backend.
+// En el navegador usamos "/api" (mismo origen): Next lo reenvía al backend
+// mediante un rewrite. Así el celular por https no tiene "contenido mixto".
+const API =
+  typeof window === "undefined"
+    ? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8300/api"
+    : "/api";
+
+/** fetch que convierte errores de red en un mensaje claro en español. */
+function safeFetch(url: string, init?: RequestInit): Promise<Response> {
+  return fetch(url, init).catch(() => {
+    throw new Error("No se pudo conectar. Revisa tu internet e inténtalo de nuevo.");
+  });
+}
 
 async function get<T>(path: string, revalidate = 10): Promise<T> {
   const res = await fetch(`${API}${path}`, { next: { revalidate } });
@@ -62,6 +75,55 @@ export interface OrderView {
   reservationExpiresAt: string | null;
   createdAt: string;
   items: OrderItemView[];
+  whatsappNotification?: {
+    status: "sent" | "disabled" | "skipped" | "failed";
+    messageId?: string;
+    reason?: string;
+  };
+}
+
+export interface AppointmentBody {
+  customerName: string;
+  customerPhone: string;
+  serviceName: string;
+  productId?: string;
+  preferredAt: string; // ISO
+  note?: string;
+}
+export interface AppointmentView {
+  id: string;
+  status: string;
+  serviceName: string;
+  preferredAt: string;
+}
+export interface SubscriptionBody {
+  customerName: string;
+  customerPhone: string;
+  planName: string;
+  productId?: string;
+  note?: string;
+}
+export interface SubscriptionView {
+  id: string;
+  status: string;
+  planName: string;
+}
+
+export interface PublicPlan {
+  id: number;
+  name: string;
+  slug: string;
+  priceMonth: string;
+  maxProducts: number | null;
+}
+
+/** Planes activos para la landing. Devuelve [] si el backend no responde. */
+export async function getPublicPlans(): Promise<PublicPlan[]> {
+  try {
+    return await get<PublicPlan[]>("/public/plans", 60);
+  } catch {
+    return [];
+  }
 }
 
 export const storefrontApi = {
@@ -70,13 +132,14 @@ export const storefrontApi = {
 
   getProducts: (
     subdomain: string,
-    params: { category?: string; search?: string; page?: number; limit?: number } = {},
+    params: { category?: string; search?: string; page?: number; limit?: number; sort?: string } = {},
   ) => {
     const q = new URLSearchParams();
     if (params.category) q.set("category", params.category);
     if (params.search) q.set("search", params.search);
     if (params.page) q.set("page", String(params.page));
     if (params.limit) q.set("limit", String(params.limit));
+    if (params.sort) q.set("sort", params.sort);
     const qs = q.toString();
     return get<ProductListResponse>(
       `/public/stores/${subdomain}/products${qs ? `?${qs}` : ""}`,
@@ -91,7 +154,7 @@ export const storefrontApi = {
     body: CheckoutBody,
     idempotencyKey: string,
   ): Promise<OrderView> {
-    const res = await fetch(`${API}/public/stores/${subdomain}/checkout`, {
+    const res = await safeFetch(`${API}/public/stores/${subdomain}/checkout`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -104,8 +167,36 @@ export const storefrontApi = {
     return data as OrderView;
   },
 
+  async createAppointment(
+    subdomain: string,
+    body: AppointmentBody,
+  ): Promise<AppointmentView> {
+    const res = await safeFetch(`${API}/public/stores/${subdomain}/appointments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(errorMessage(data, "No se pudo crear la reserva."));
+    return data as AppointmentView;
+  },
+
+  async createSubscription(
+    subdomain: string,
+    body: SubscriptionBody,
+  ): Promise<SubscriptionView> {
+    const res = await safeFetch(`${API}/public/stores/${subdomain}/subscriptions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(errorMessage(data, "No se pudo crear la suscripción."));
+    return data as SubscriptionView;
+  },
+
   async getOrder(subdomain: string, code: string): Promise<OrderView> {
-    const res = await fetch(
+    const res = await safeFetch(
       `${API}/public/stores/${subdomain}/orders/${code}`,
       { cache: "no-store" },
     );
@@ -121,7 +212,7 @@ export const storefrontApi = {
   ): Promise<OrderView> {
     const form = new FormData();
     form.append("file", file);
-    const res = await fetch(
+    const res = await safeFetch(
       `${API}/public/stores/${subdomain}/orders/${code}/proof`,
       { method: "POST", body: form },
     );

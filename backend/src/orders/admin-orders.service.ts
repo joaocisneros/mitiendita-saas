@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { MediaService } from '../media/media.service';
 import type { OrderStatus } from '../../generated/prisma/enums';
 
 // Transiciones permitidas (según la especificación).
@@ -19,7 +20,10 @@ const TRANSITIONS: Record<string, OrderStatus[]> = {
 
 @Injectable()
 export class AdminOrdersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly media: MediaService,
+  ) {}
 
   /** Lista de pedidos del panel, paginada y con filtros. */
   async list(
@@ -229,6 +233,20 @@ export class AdminOrdersService {
         },
       });
     });
+
+    // Pedido finalizado (entregado/cancelado): el comprobante ya no se necesita
+    // → se borra la foto para no acumular almacenamiento.
+    if (
+      (newStatus === 'delivered' || newStatus === 'cancelled') &&
+      order.payment?.proofUrl
+    ) {
+      const proofUrl = order.payment.proofUrl;
+      await this.prisma.payment.update({
+        where: { orderId: order.id },
+        data: { proofUrl: null },
+      });
+      void this.media.deleteByUrl(proofUrl);
+    }
 
     return this.get(companyId, id);
   }

@@ -20,11 +20,10 @@ export default function UsersPage() {
 
   const load = useCallback(
     (targetPage = 1) => {
-      setLoading(true);
-      setError("");
       superApi
         .users(applied || undefined, targetPage)
         .then((r) => {
+          setError("");
           setRows(r.items);
           setPage(r.page);
           setPages(r.pages || 1);
