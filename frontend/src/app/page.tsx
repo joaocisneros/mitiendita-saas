@@ -2,6 +2,8 @@ import Link from "next/link";
 import { getPublicPlans } from "@/lib/api";
 import { formatPrice } from "@/lib/format";
 import { BUSINESS_CATEGORIES } from "@/lib/business-categories";
+import { WhatsAppFloat } from "@/components/WhatsAppFloat";
+import { whatsappLink } from "@/lib/contact";
 
 // Tienda de ejemplo para la landing. Solo se muestra el botón si está definida,
 // así en producción no queda un enlace roto si no quieres mostrar ninguna.
@@ -288,12 +290,17 @@ export default async function Home() {
             <Link href="/registro" className="hover:text-violet-700">Crear tienda</Link>
             <Link href="/panel/login" className="hover:text-violet-700">Ingresar</Link>
             <Link href="#precios" className="hover:text-violet-700">Precios</Link>
+            <a href={whatsappLink()} target="_blank" rel="noopener noreferrer" className="font-bold text-green-600 hover:text-green-700">
+              WhatsApp
+            </a>
           </nav>
           <span className="text-sm text-gray-400">
             © {new Date().getFullYear()} MiTiendita · Perú
           </span>
         </div>
       </footer>
+
+      <WhatsAppFloat />
     </main>
   );
 }

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { adminApi } from "@/lib/admin-api";
 import { DashboardIcon } from "@/components/DashboardIcon";
 import { BUSINESS_CATEGORIES } from "@/lib/business-categories";
+import { whatsappLink } from "@/lib/contact";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -53,6 +54,7 @@ export default function RegisterPage() {
             <button disabled={loading} className="sm:col-span-2 h-12 rounded-xl bg-violet-600 font-bold text-white shadow-lg shadow-violet-200 hover:bg-violet-700 disabled:opacity-60">{loading ? "Creando tu tienda..." : "Crear mi tienda"}</button>
           </form>
           <p className="mt-6 text-center text-sm font-medium text-slate-600">¿Ya tienes una cuenta? <Link href="/panel/login" className="font-bold text-violet-700 hover:underline">Inicia sesión</Link></p>
+          <p className="mt-3 text-center text-sm font-medium text-slate-600">¿Necesitas ayuda? <a href={whatsappLink("Hola, necesito ayuda para registrar mi tienda en MiTiendita")} target="_blank" rel="noopener noreferrer" className="font-bold text-green-600 hover:underline">Escríbenos por WhatsApp 💬</a></p>
         </section>
       </div>
       <style>{`.field{height:3rem;width:100%;border-radius:.75rem;border:1px solid #cbd5e1;background:#fff;padding:0 .8rem;color:#0f172a;outline:none}.field:focus{border-color:#7c3aed;box-shadow:0 0 0 4px #ede9fe}`}</style>
