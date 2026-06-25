@@ -1,4 +1,9 @@
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8300/api";
+// En el navegador usamos "/api" (mismo origen): Next lo reenvía al backend
+// mediante un rewrite. Así evitamos problemas de CORS en producción.
+const API =
+  typeof window === "undefined"
+    ? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8300/api"
+    : "/api";
 const KEY = "mt_super";
 
 export function getSuperToken(): string | null {
