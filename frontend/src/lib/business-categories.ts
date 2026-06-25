@@ -172,6 +172,23 @@ export const BUSINESS_CATEGORIES: BusinessCategory[] = [
       "Contenido premium",
     ],
   },
+  {
+    id: "telecomunicaciones",
+    label: "Telecomunicaciones",
+    emoji: "📡",
+    theme: { primary: "#dc2626", secondary: "#2563eb" },
+    terms: {
+      catalog: "Planes",
+      search: "Buscar planes...",
+      empty: "Aún no hay planes publicados.",
+    },
+    subtypes: [
+      "Internet hogar",
+      "Portabilidad",
+      "Planes móviles",
+      "Recargas y chips",
+    ],
+  },
 ];
 
 export const DEFAULT_CATEGORY = BUSINESS_CATEGORIES[0];
@@ -193,6 +210,7 @@ const ARCHETYPE_BY_CATEGORY: Record<string, StoreArchetype> = {
   inmobiliario: "servicios",
   servicios: "servicios",
   digital: "digital",
+  telecomunicaciones: "digital", // catálogo de planes; el cliente contacta para contratar
 };
 
 /** Texto del botón de acción principal de cada rubro. */
@@ -207,6 +225,7 @@ const ACTION_BY_CATEGORY: Record<string, string> = {
   inmobiliario: "Consultar",
   servicios: "Solicitar",
   digital: "Suscribirme",
+  telecomunicaciones: "Quiero este plan",
 };
 
 export function archetypeOf(category: BusinessCategory): StoreArchetype {
@@ -245,6 +264,10 @@ const HERO_BY_CATEGORY: Partial<Record<string, StoreHero>> = {
   educacion: {
     tagline: "Inscríbete y empieza a aprender",
     cta: "🎓 Elige tu curso e inscríbete",
+  },
+  telecomunicaciones: {
+    tagline: "Internet hogar y portabilidad al mejor precio",
+    cta: "📡 Elige tu plan y contrata por WhatsApp",
   },
 };
 
