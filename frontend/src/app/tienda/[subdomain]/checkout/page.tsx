@@ -56,7 +56,7 @@ export default function CheckoutPage() {
       return;
     }
     if (method === "delivery" && store?.minOrder && subtotal < Number(store.minOrder)) {
-      setError(`El pedido mínimo para delivery es ${formatPrice(store.minOrder, currency)}.`);
+      setError(`El pedido mínimo para entrega a domicilio es ${formatPrice(store.minOrder, currency)}.`);
       return;
     }
     setSaving(true);
@@ -150,7 +150,7 @@ export default function CheckoutPage() {
               <MethodBtn
                 active={method === "delivery"}
                 onClick={() => setMethod("delivery")}
-                title="🚚 Delivery"
+                title="🚚 Entrega a domicilio"
                 sub={
                   deliveryFee > 0
                     ? formatPrice(store.deliveryFee, currency)
@@ -195,7 +195,7 @@ export default function CheckoutPage() {
         {/* Resumen */}
         <div className="rounded-2xl bg-white p-4 ring-1 ring-black/5">
           <Row label="Subtotal" value={formatPrice(subtotal, currency)} />
-          <Row label="Delivery" value={formatPrice(deliveryFee, currency)} />
+          <Row label="Costo de entrega" value={formatPrice(deliveryFee, currency)} />
           <div className="mt-2 flex justify-between border-t pt-2 text-lg font-extrabold">
             <span>Total</span>
             <span>{formatPrice(total, currency)}</span>

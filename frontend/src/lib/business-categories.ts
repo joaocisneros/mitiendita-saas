@@ -154,7 +154,7 @@ export const BUSINESS_CATEGORIES: BusinessCategory[] = [
       search: "Buscar servicios...",
       empty: "Aún no hay servicios publicados.",
     },
-    subtypes: ["Delivery", "Mensajería", "Empresas de limpieza", "Seguridad"],
+    subtypes: ["Reparto a domicilio", "Mensajería", "Empresas de limpieza", "Seguridad"],
   },
   {
     id: "digital",

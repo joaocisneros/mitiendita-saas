@@ -93,7 +93,7 @@ export default function OrderPage() {
               <span>{formatPrice(order.subtotal, currency)}</span>
             </div>
             <div className="flex justify-between">
-              <span>Delivery</span>
+              <span>Entrega a domicilio</span>
               <span>{formatPrice(order.deliveryFee, currency)}</span>
             </div>
             <div className="flex justify-between text-base font-extrabold text-gray-900">
@@ -206,7 +206,7 @@ function buildWhatsappMessage(order: OrderView, storeName: string): string {
   const lines = [
     `*Pedido ${order.code}* — ${storeName}`,
     `Cliente: ${order.customerName} (${order.customerPhone})`,
-    `Entrega: ${order.deliveryMethod === "delivery" ? "Delivery" : "Recojo en tienda"}`,
+    `Entrega: ${order.deliveryMethod === "delivery" ? "Entrega a domicilio" : "Recojo en tienda"}`,
   ];
   if (order.deliveryMethod === "delivery" && order.address) {
     lines.push(`Dirección: ${order.address}${order.reference ? ` (${order.reference})` : ""}`);
@@ -217,7 +217,7 @@ function buildWhatsappMessage(order: OrderView, storeName: string): string {
   }
   lines.push("--------------------");
   lines.push(`Subtotal: ${order.currency} ${order.subtotal}`);
-  lines.push(`Delivery: ${order.currency} ${order.deliveryFee}`);
+  lines.push(`Costo de entrega: ${order.currency} ${order.deliveryFee}`);
   lines.push(`*Total: ${order.currency} ${order.total}*`);
   if (order.customerNote) lines.push(`Nota: ${order.customerNote}`);
   return lines.join("\n");

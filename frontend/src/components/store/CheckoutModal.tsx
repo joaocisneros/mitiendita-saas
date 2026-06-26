@@ -170,7 +170,7 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
                     <MethodBtn
                       active={method === "delivery"}
                       onClick={() => setMethod("delivery")}
-                      title="🚚 Delivery"
+                      title="🚚 Entrega a domicilio"
                       sub={deliveryFee > 0 ? formatPrice(store!.deliveryFee, currency) : "A domicilio"}
                       accent={accent}
                     />
@@ -195,7 +195,7 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
 
               <div className="rounded-2xl bg-gray-50 p-4 ring-1 ring-black/5 sm:col-span-2">
                 <Row label="Subtotal" value={formatPrice(subtotal, currency)} />
-                <Row label="Delivery" value={formatPrice(deliveryFee, currency)} />
+                <Row label="Costo de entrega" value={formatPrice(deliveryFee, currency)} />
                 <div className="mt-2 flex justify-between border-t pt-2 text-lg font-extrabold">
                   <span>Total</span>
                   <span>{formatPrice(total, currency)}</span>
@@ -235,7 +235,7 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
                   </ul>
                   <div className="mt-2 space-y-1 border-t pt-2 text-sm text-gray-600">
                     <Row label="Subtotal" value={formatPrice(order.subtotal, order.currency)} />
-                    <Row label="Delivery" value={formatPrice(order.deliveryFee, order.currency)} />
+                    <Row label="Costo de entrega" value={formatPrice(order.deliveryFee, order.currency)} />
                     <div className="flex justify-between text-base font-extrabold text-gray-900">
                       <span>Total</span>
                       <span>{formatPrice(order.total, order.currency)}</span>
@@ -349,7 +349,7 @@ function buildWaMessage(order: OrderView, storeName: string): string {
   const lines = [
     `*Pedido ${order.code}* — ${storeName}`,
     `Cliente: ${order.customerName} (${order.customerPhone})`,
-    `Entrega: ${order.deliveryMethod === "delivery" ? "Delivery" : "Recojo en tienda"}`,
+    `Entrega: ${order.deliveryMethod === "delivery" ? "Entrega a domicilio" : "Recojo en tienda"}`,
   ];
   if (order.deliveryMethod === "delivery" && order.address) {
     lines.push(`Dirección: ${order.address}${order.reference ? ` (${order.reference})` : ""}`);
@@ -358,7 +358,7 @@ function buildWaMessage(order: OrderView, storeName: string): string {
   for (const it of order.items) lines.push(`• ${it.quantity}x ${it.name} — ${order.currency} ${it.lineTotal}`);
   lines.push("--------------------");
   lines.push(`Subtotal: ${order.currency} ${order.subtotal}`);
-  lines.push(`Delivery: ${order.currency} ${order.deliveryFee}`);
+  lines.push(`Costo de entrega: ${order.currency} ${order.deliveryFee}`);
   lines.push(`*Total: ${order.currency} ${order.total}*`);
   if (order.customerNote) lines.push(`Nota: ${order.customerNote}`);
   if (order.proofUrl) {

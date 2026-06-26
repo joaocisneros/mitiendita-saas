@@ -13,7 +13,7 @@ const features = [
   { icon: "🛍️", title: "Catálogo en minutos", text: "Sube tus productos o servicios y comparte tu tienda al instante." },
   { icon: "📱", title: "Vende por WhatsApp", text: "Tus pedidos llegan ordenados a tu chat, sin perder ninguno." },
   { icon: "💜", title: "Cobra con Yape", text: "Muestra tu QR y confirma los pagos con el comprobante del cliente." },
-  { icon: "🚚", title: "Delivery o recojo", text: "Tú decides cómo entregar; el cliente elige al hacer el pedido." },
+  { icon: "🚚", title: "Entrega a domicilio o recojo", text: "Tú decides cómo entregar; el cliente elige al hacer el pedido." },
   { icon: "📅", title: "Reservas y citas", text: "Ideal para barberías, spas y consultorios: agenda sin enredos." },
   { icon: "🔁", title: "Suscripciones", text: "Cobra mensualidades y controla los vencimientos automáticamente." },
   { icon: "📦", title: "Control de inventario", text: "Stock al día, alertas de bajo inventario y reportes de ventas." },

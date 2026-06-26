@@ -174,7 +174,7 @@ export class WhatsappService {
       `🛒 Nuevo pedido ${input.orderCode}`,
       input.storeName,
       `Cliente: ${input.customerName}`,
-      `Entrega: ${input.deliveryMethod === 'delivery' ? 'Delivery' : 'Recojo en tienda'}`,
+      `Entrega: ${input.deliveryMethod === 'delivery' ? 'Entrega a domicilio' : 'Recojo en tienda'}`,
       `Total: ${input.currency} ${input.total}`,
       'Revísalo en tu panel de MiTiendita.',
     ].join('\n');

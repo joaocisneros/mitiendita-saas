@@ -174,7 +174,7 @@ export function CompanyDetailModal({
                   </label>
                   <label className="flex items-center gap-2 text-sm font-bold text-slate-800">
                     <input type="checkbox" checked={form.allowsDelivery} onChange={(e) => setForm({ ...form, allowsDelivery: e.target.checked })} className="h-4 w-4" />
-                    Delivery
+                    Entrega a domicilio
                   </label>
                 </div>
               </div>
@@ -216,7 +216,7 @@ export function CompanyDetailModal({
                         value={
                           [
                             company.settings.allowsPickup && "Recojo",
-                            company.settings.allowsDelivery && "Delivery",
+                            company.settings.allowsDelivery && "Entrega a domicilio",
                           ]
                             .filter(Boolean)
                             .join(" · ") || "—"

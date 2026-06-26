@@ -139,7 +139,7 @@ export function OrderDetailModal({
                       ? "Activación/instalación coordinada"
                       : "Atención de servicio coordinada"
                     : order.deliveryMethod === "delivery"
-                      ? `Delivery: ${order.address ?? ""}${order.reference ? ` (${order.reference})` : ""}`
+                      ? `Entrega a domicilio: ${order.address ?? ""}${order.reference ? ` (${order.reference})` : ""}`
                       : "Recojo en tienda"}
                 </p>
                 {order.customerNote && (
@@ -161,7 +161,7 @@ export function OrderDetailModal({
                 <div className="mt-2 space-y-1 border-t border-slate-200 pt-2 text-sm text-slate-600">
                   <Row label="Subtotal" value={formatPrice(order.subtotal, order.currency)} />
                   {!context.isServiceLike && (
-                    <Row label="Delivery" value={formatPrice(order.deliveryFee, order.currency)} />
+                    <Row label="Costo de entrega" value={formatPrice(order.deliveryFee, order.currency)} />
                   )}
                   <div className="flex justify-between text-base font-black text-slate-950">
                     <span>Total</span>

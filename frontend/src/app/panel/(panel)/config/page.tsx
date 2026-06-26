@@ -158,7 +158,7 @@ export default function ConfigPage() {
           <div className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <Check label="Permite recojo en tienda" checked={s.allowsPickup} onChange={(v) => set("allowsPickup", v)} />
-              <Check label="Permite delivery" checked={s.allowsDelivery} onChange={(v) => set("allowsDelivery", v)} />
+              <Check label="Permite entrega a domicilio" checked={s.allowsDelivery} onChange={(v) => set("allowsDelivery", v)} />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <Input label="Costo de delivery" type="number" value={String(s.deliveryFee)} onChange={(v) => set("deliveryFee", v)} />
