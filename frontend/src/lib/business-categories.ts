@@ -33,6 +33,7 @@ export const BUSINESS_CATEGORIES: BusinessCategory[] = [
       "Ferreterías",
       "Tiendas de ropa",
       "Zapaterías",
+      "Moda y accesorios",
       "Librerías",
       "Tiendas de mascotas",
       "Tecnología",
