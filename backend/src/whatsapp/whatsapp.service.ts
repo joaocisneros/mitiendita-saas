@@ -142,6 +142,24 @@ export class WhatsappService {
     return this.send(input.recipient, body);
   }
 
+  /** Aviso con la FOTO del comprobante de una suscripción digital. */
+  async sendSubscriptionProofNotification(input: {
+    recipient: string | null | undefined;
+    storeName: string;
+    planName: string;
+    customerName: string;
+    customerPhone: string;
+    proofUrl: string;
+  }): Promise<WhatsappNotificationResult> {
+    const body = [
+      `🧾 Comprobante de suscripción — ${input.storeName}`,
+      `Plan: ${input.planName}`,
+      `Cliente: ${input.customerName} (${input.customerPhone})`,
+      'Revisa el pago y activa la suscripción en tu panel de MiTiendita.',
+    ].join('\n');
+    return this.send(input.recipient, body, input.proofUrl);
+  }
+
   /** Aviso de texto cuando entra un pedido nuevo. */
   async sendOrderNotification(input: {
     recipient: string | null | undefined;

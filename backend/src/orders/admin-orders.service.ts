@@ -18,6 +18,46 @@ const TRANSITIONS: Record<string, OrderStatus[]> = {
   expired: [],
 };
 
+const SERVICE_KEYWORDS = [
+  'telecom',
+  'internet',
+  'portabilidad',
+  'streaming',
+  'curso',
+  'membresia',
+  'academia',
+  'instituto',
+  'capacitacion',
+  'spa',
+  'barber',
+  'salon',
+  'belleza',
+  'estetic',
+  'clinica',
+  'consultorio',
+  'terapia',
+  'hotel',
+  'hostal',
+  'viaje',
+  'taller',
+  'inmobiliaria',
+  'alquiler',
+  'limpieza',
+  'seguridad',
+];
+
+function normalizeText(value: string | null | undefined) {
+  return (value ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+function isServiceLikeBusiness(businessType: string | null | undefined) {
+  const normalized = normalizeText(businessType);
+  return SERVICE_KEYWORDS.some((keyword) => normalized.includes(keyword));
+}
+
 @Injectable()
 export class AdminOrdersService {
   constructor(
@@ -79,10 +119,19 @@ export class AdminOrdersService {
         items: true,
         payment: true,
         history: { orderBy: { createdAt: 'asc' } },
+        company: {
+          select: {
+            settings: { select: { businessType: true } },
+          },
+        },
       },
     });
     if (!order) throw new NotFoundException('Pedido no encontrado.');
-    return order;
+    const { company, ...rest } = order;
+    return {
+      ...rest,
+      businessType: company.settings?.businessType ?? null,
+    };
   }
 
   /** Aprueba el pago: confirma el pedido y convierte la reserva en salida real. */
@@ -181,7 +230,14 @@ export class AdminOrdersService {
     comment?: string,
   ) {
     const order = await this.get(companyId, id);
-    const allowed = TRANSITIONS[order.status] ?? [];
+    const allowed = [...(TRANSITIONS[order.status] ?? [])];
+    if (
+      order.status === 'confirmed' &&
+      newStatus === 'delivered' &&
+      isServiceLikeBusiness(order.businessType)
+    ) {
+      allowed.push('delivered');
+    }
     if (!allowed.includes(newStatus)) {
       throw new BadRequestException(
         `No se puede pasar de "${order.status}" a "${newStatus}".`,

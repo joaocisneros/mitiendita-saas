@@ -8,6 +8,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
 import { normalizePhone } from '../common/utils/phone.util';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
+import { MediaService } from '../media/media.service';
+import { generateSubscriptionCode } from '../common/utils/order-code.util';
 
 const DAY = 86_400_000;
 const EXPIRING_DAYS = 7; // "por vencer" si vence en 7 días o menos
@@ -24,6 +26,7 @@ function addMonths(base: Date, months: number): Date {
 
 type SubRow = {
   id: string;
+  publicCode: string | null;
   planName: string;
   customerName: string;
   customerPhone: string;
@@ -31,6 +34,8 @@ type SubRow = {
   startsAt: Date | null;
   endsAt: Date | null;
   note: string | null;
+  proofUrl: string | null;
+  proofSubmittedAt: Date | null;
   createdAt: Date;
 };
 
@@ -50,6 +55,7 @@ export class SubscriptionsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly whatsapp: WhatsappService,
+    private readonly media: MediaService,
   ) {}
 
   /** Suscripción pública a un plan. Queda "pendiente" hasta que el dueño la activa. */
@@ -71,10 +77,21 @@ export class SubscriptionsService {
       if (!owned) dto.productId = undefined;
     }
 
+    let publicCode = generateSubscriptionCode();
+    for (let i = 0; i < 5; i++) {
+      const exists = await this.prisma.subscription.findUnique({
+        where: { publicCode },
+        select: { id: true },
+      });
+      if (!exists) break;
+      publicCode = generateSubscriptionCode();
+    }
+
     const sub = await this.prisma.subscription.create({
       data: {
         companyId: company.id,
         productId: dto.productId ?? null,
+        publicCode,
         planName: dto.planName,
         customerName: dto.customerName,
         customerPhone: normalizePhone(dto.customerPhone),
@@ -90,7 +107,72 @@ export class SubscriptionsService {
       customerPhone: sub.customerPhone,
     });
 
-    return { id: sub.id, status: sub.status, planName: sub.planName };
+    return this.format(sub);
+  }
+
+  /** Devuelve la URL del comprobante de una suscripción por su código corto. */
+  async getProofUrlByCode(code: string): Promise<string | null> {
+    const sub = await this.prisma.subscription.findFirst({
+      where: {
+        OR: [{ publicCode: code }, { id: code }],
+      },
+      select: { proofUrl: true },
+    });
+    return sub?.proofUrl ?? null;
+  }
+
+  /** El cliente sube su comprobante Yape para una suscripción digital. */
+  async submitProof(
+    subdomain: string,
+    id: string,
+    file: Express.Multer.File,
+  ) {
+    const company = await this.prisma.company.findFirst({
+      where: { subdomain, deletedAt: null },
+      include: { settings: true },
+    });
+    if (!company) throw new NotFoundException('Tienda no encontrada.');
+    if (company.status !== 'active') {
+      throw new ForbiddenException('Esta tienda no está disponible.');
+    }
+
+    const sub = await this.prisma.subscription.findFirst({
+      where: { id, companyId: company.id },
+    });
+    if (!sub) throw new NotFoundException('Suscripción no encontrada.');
+    if (sub.status === 'cancelled') {
+      throw new BadRequestException('Esta suscripción ya no admite comprobantes.');
+    }
+
+    const uploaded = await this.media.uploadImage(
+      file,
+      company.id,
+      'subscription-proofs',
+    );
+
+    const updated = await this.prisma.subscription.update({
+      where: { id: sub.id },
+      data: {
+        proofUrl: uploaded.url,
+        proofSubmittedAt: new Date(),
+      },
+    });
+
+    if (sub.proofUrl && sub.proofUrl !== uploaded.url) {
+      void this.media.deleteByUrl(sub.proofUrl);
+    }
+
+    const whatsappNotification =
+      await this.whatsapp.sendSubscriptionProofNotification({
+        recipient: company.settings?.whatsappNumber,
+        storeName: company.settings?.storeName || company.name,
+        planName: updated.planName,
+        customerName: updated.customerName,
+        customerPhone: updated.customerPhone,
+        proofUrl: uploaded.url,
+      });
+
+    return { ...this.format(updated), whatsappNotification };
   }
 
   /** Lista para el panel, con estado calculado. filter: all|active|expiring|expired|pending|cancelled */
@@ -180,6 +262,7 @@ export class SubscriptionsService {
     const { state, daysLeft } = computeState(s.status, s.endsAt);
     return {
       id: s.id,
+      publicCode: s.publicCode,
       planName: s.planName,
       customerName: s.customerName,
       customerPhone: s.customerPhone,
@@ -189,6 +272,8 @@ export class SubscriptionsService {
       startsAt: s.startsAt,
       endsAt: s.endsAt,
       note: s.note,
+      proofUrl: s.proofUrl,
+      proofSubmittedAt: s.proofSubmittedAt,
       createdAt: s.createdAt,
     };
   }

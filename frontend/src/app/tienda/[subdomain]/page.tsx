@@ -223,6 +223,9 @@ export default async function StorePage({
             search={search}
             searchPlaceholder={terms.search}
             emptyLabel={terms.empty}
+            yapeQrUrl={store.yapeQrUrl}
+            yapeHolderName={store.yapeHolderName}
+            yapeNumber={store.yapeNumber}
           />
         )}
       </main>

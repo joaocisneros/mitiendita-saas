@@ -108,6 +108,7 @@ export interface AdminOrderRow {
   createdAt: string;
 }
 export interface AdminOrderDetail extends AdminOrderRow {
+  businessType: string | null;
   customerPhone: string;
   address: string | null;
   reference: string | null;
@@ -376,6 +377,7 @@ export interface AdminAppointment {
 
 export interface AdminSubscription {
   id: string;
+  publicCode?: string | null;
   planName: string;
   customerName: string;
   customerPhone: string;
@@ -385,6 +387,8 @@ export interface AdminSubscription {
   startsAt: string | null;
   endsAt: string | null;
   note: string | null;
+  proofUrl: string | null;
+  proofSubmittedAt: string | null;
   createdAt: string;
 }
 

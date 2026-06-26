@@ -4,9 +4,10 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { adminApi, type AdminOrderDetail } from "@/lib/admin-api";
 import { formatPrice } from "@/lib/format";
-import { StatusBadge, orderStatusLabel } from "@/components/StatusBadge";
+import { StatusBadge, orderStatusMeta, type OrderStatusContext } from "@/components/StatusBadge";
+import { archetypeOf, resolveCategory } from "@/lib/business-categories";
 
-const NEXT: Record<string, { value: string; label: string }[]> = {
+const NEXT_PHYSICAL: Record<string, { value: string; label: string }[]> = {
   pending: [{ value: "cancelled", label: "Cancelar" }],
   confirmed: [
     { value: "preparing", label: "Preparar" },
@@ -18,6 +19,54 @@ const NEXT: Record<string, { value: string; label: string }[]> = {
   ],
   out_for_delivery: [{ value: "delivered", label: "Entregado" }],
 };
+
+function orderContext(order: AdminOrderDetail): {
+  isServiceLike: boolean;
+  isTelecom: boolean;
+  statusContext: OrderStatusContext;
+} {
+  const category = resolveCategory(order.businessType);
+  const archetype = archetypeOf(category);
+  const isServiceLike = archetype === "digital" || archetype === "servicios";
+  const isTelecom = category.id === "telecomunicaciones";
+
+  return {
+    isServiceLike,
+    isTelecom,
+    statusContext: isTelecom ? "telecom" : isServiceLike ? "service" : "physical",
+  };
+}
+
+function nextForOrder(order: AdminOrderDetail) {
+  const context = orderContext(order);
+  if (!context.isServiceLike) return NEXT_PHYSICAL[order.status] ?? [];
+
+  const doneLabel = context.isTelecom ? "Marcar activado" : "Marcar completado";
+  const map: Record<string, { value: string; label: string }[]> = {
+    pending: [{ value: "cancelled", label: "Cancelar" }],
+    confirmed: [
+      { value: "delivered", label: doneLabel },
+      { value: "cancelled", label: "Cancelar" },
+    ],
+    preparing: [{ value: "delivered", label: doneLabel }],
+    out_for_delivery: [{ value: "delivered", label: doneLabel }],
+  };
+
+  return map[order.status] ?? [];
+}
+
+function statusMeta(order: AdminOrderDetail, status = order.status) {
+  return orderStatusMeta(status, orderContext(order).statusContext);
+}
+
+function OrderStatusBadge({ order }: { order: AdminOrderDetail }) {
+  const status = statusMeta(order);
+  return (
+    <span className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold ${status.cls}`}>
+      {status.label}
+    </span>
+  );
+}
 
 export function OrderDetailModal({
   orderId,
@@ -55,10 +104,12 @@ export function OrderDetailModal({
   const canValidatePayment =
     order?.payment &&
     ["proof_submitted", "pending", "rejected"].includes(order.payment.status);
+  const context = order ? orderContext(order) : null;
+  const nextTransitions = order ? nextForOrder(order) : [];
 
   return (
     <Overlay onClose={onClose} size="medium">
-      {!order ? (
+      {!order || !context ? (
         <p className="p-8 text-center text-slate-500">{error || "Cargando..."}</p>
       ) : (
         <div className="space-y-4">
@@ -70,115 +121,152 @@ export function OrderDetailModal({
               </p>
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1">
-              <StatusBadge status={order.status} />
+              <OrderStatusBadge order={order} />
               <StatusBadge status={order.paymentStatus} type="payment" />
             </div>
           </div>
 
-          {error && (
-            <p className="rounded-lg bg-red-50 p-2 text-sm text-red-600">{error}</p>
-          )}
+          {error && <p className="rounded-lg bg-red-50 p-2 text-sm text-red-600">{error}</p>}
 
           <div className="grid gap-4 md:grid-cols-2 md:items-start">
-          <div className="space-y-4">
-          <Card title="Cliente">
-            <p className="font-semibold text-slate-900">{order.customerName}</p>
-            <p className="text-sm text-slate-600">{order.customerPhone}</p>
-            <p className="mt-1 text-sm text-slate-700">
-              {order.deliveryMethod === "delivery"
-                ? `🚚 Delivery: ${order.address ?? ""}${order.reference ? ` (${order.reference})` : ""}`
-                : "🏪 Recojo en tienda"}
-            </p>
-            {order.customerNote && (
-              <p className="mt-1 text-sm text-slate-500">Nota: {order.customerNote}</p>
-            )}
-          </Card>
+            <div className="space-y-4">
+              <Card title="Cliente">
+                <p className="font-semibold text-slate-900">{order.customerName}</p>
+                <p className="text-sm text-slate-600">{order.customerPhone}</p>
+                <p className="mt-1 text-sm text-slate-700">
+                  {context.isServiceLike
+                    ? context.isTelecom
+                      ? "Activación/instalación coordinada"
+                      : "Atención de servicio coordinada"
+                    : order.deliveryMethod === "delivery"
+                      ? `Delivery: ${order.address ?? ""}${order.reference ? ` (${order.reference})` : ""}`
+                      : "Recojo en tienda"}
+                </p>
+                {order.customerNote && (
+                  <p className="mt-1 text-sm text-slate-500">Nota: {order.customerNote}</p>
+                )}
+              </Card>
 
-          <Card title="Productos">
-            <ul className="space-y-1 text-sm text-slate-800">
-              {order.items.map((it, i) => (
-                <li key={i} className="flex justify-between">
-                  <span>{it.quantity}× {it.name}</span>
-                  <span>{formatPrice(it.lineTotal, order.currency)}</span>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-2 space-y-1 border-t border-slate-200 pt-2 text-sm text-slate-600">
-              <Row label="Subtotal" value={formatPrice(order.subtotal, order.currency)} />
-              <Row label="Delivery" value={formatPrice(order.deliveryFee, order.currency)} />
-              <div className="flex justify-between text-base font-black text-slate-950">
-                <span>Total</span>
-                <span>{formatPrice(order.total, order.currency)}</span>
-              </div>
+              <Card title={context.isTelecom ? "Plan contratado" : context.isServiceLike ? "Servicio solicitado" : "Productos"}>
+                <ul className="space-y-1 text-sm text-slate-800">
+                  {order.items.map((it, i) => (
+                    <li key={i} className="flex justify-between gap-3">
+                      <span>
+                        {it.quantity}× {it.name}
+                      </span>
+                      <span className="shrink-0">{formatPrice(it.lineTotal, order.currency)}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-2 space-y-1 border-t border-slate-200 pt-2 text-sm text-slate-600">
+                  <Row label="Subtotal" value={formatPrice(order.subtotal, order.currency)} />
+                  {!context.isServiceLike && (
+                    <Row label="Delivery" value={formatPrice(order.deliveryFee, order.currency)} />
+                  )}
+                  <div className="flex justify-between text-base font-black text-slate-950">
+                    <span>Total</span>
+                    <span>{formatPrice(order.total, order.currency)}</span>
+                  </div>
+                </div>
+              </Card>
             </div>
-          </Card>
-          </div>
 
-          <div className="space-y-4">
-          <Card title="Pago (Yape)">
-            {order.payment?.proofUrl ? (
-              <a href={order.payment.proofUrl} target="_blank" rel="noopener noreferrer" className="inline-flex flex-col">
-                <Image src={order.payment.proofUrl} alt="Comprobante" width={120} height={150} className="h-32 w-auto rounded-lg object-cover ring-1 ring-slate-200" />
-                <span className="mt-1 text-xs font-semibold text-violet-600">Ver comprobante completo →</span>
-              </a>
-            ) : (
-              <p className="text-sm text-slate-400">El cliente aún no subió comprobante.</p>
-            )}
-            {order.payment?.rejectionComment && (
-              <p className="mt-2 text-sm text-red-600">Rechazo: {order.payment.rejectionComment}</p>
-            )}
-            {canValidatePayment && (
-              <div className="mt-3 flex gap-2">
-                <button disabled={busy} onClick={() => run(() => adminApi.approvePayment(order.id))}
-                  className="flex-1 rounded-lg bg-green-600 py-2 font-semibold text-white hover:bg-green-700 disabled:opacity-60">
-                  ✅ Aprobar pago
-                </button>
-                <button disabled={busy} onClick={() => { const c = prompt("Motivo del rechazo (opcional):") ?? ""; run(() => adminApi.rejectPayment(order.id, c)); }}
-                  className="flex-1 rounded-lg bg-red-100 py-2 font-semibold text-red-700 hover:bg-red-200 disabled:opacity-60">
-                  ✗ Rechazar
-                </button>
-              </div>
-            )}
-          </Card>
+            <div className="space-y-4">
+              <Card title="Pago (Yape)">
+                {order.payment?.proofUrl ? (
+                  <a
+                    href={order.payment.proofUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex flex-col"
+                  >
+                    <Image
+                      src={order.payment.proofUrl}
+                      alt="Comprobante"
+                      width={120}
+                      height={150}
+                      className="h-32 w-auto rounded-lg object-cover ring-1 ring-slate-200"
+                    />
+                    <span className="mt-1 text-xs font-semibold text-violet-600">
+                      Ver comprobante completo →
+                    </span>
+                  </a>
+                ) : (
+                  <p className="text-sm text-slate-400">El cliente aún no subió comprobante.</p>
+                )}
+                {order.payment?.rejectionComment && (
+                  <p className="mt-2 text-sm text-red-600">Rechazo: {order.payment.rejectionComment}</p>
+                )}
+                {canValidatePayment && (
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      disabled={busy}
+                      onClick={() => run(() => adminApi.approvePayment(order.id))}
+                      className="flex-1 rounded-lg bg-green-600 py-2 font-semibold text-white hover:bg-green-700 disabled:opacity-60"
+                    >
+                      Aprobar pago
+                    </button>
+                    <button
+                      disabled={busy}
+                      onClick={() => {
+                        const comment = prompt("Motivo del rechazo (opcional):") ?? "";
+                        run(() => adminApi.rejectPayment(order.id, comment));
+                      }}
+                      className="flex-1 rounded-lg bg-red-100 py-2 font-semibold text-red-700 hover:bg-red-200 disabled:opacity-60"
+                    >
+                      Rechazar
+                    </button>
+                  </div>
+                )}
+              </Card>
 
-          {(NEXT[order.status]?.length ?? 0) > 0 && (
-            <Card title="Cambiar estado">
-              <div className="flex flex-wrap gap-2">
-                {NEXT[order.status].map((t) => (
-                  <button key={t.value} disabled={busy} onClick={() => run(() => adminApi.changeStatus(order.id, t.value))}
-                    className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60">
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            </Card>
-          )}
+              {nextTransitions.length > 0 && (
+                <Card title={context.isServiceLike ? "Gestionar servicio" : "Cambiar estado"}>
+                  <div className="flex flex-wrap gap-2">
+                    {nextTransitions.map((t) => (
+                      <button
+                        key={t.value}
+                        disabled={busy}
+                        onClick={() => run(() => adminApi.changeStatus(order.id, t.value))}
+                        className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </Card>
+              )}
 
-          <Card title="Historial">
-            <ol className="space-y-3">
-              {order.history.map((h, i) => {
-                const last = i === order.history.length - 1;
-                return (
-                  <li key={i} className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${last ? "bg-violet-600" : "bg-slate-300"}`} />
-                      {!last && <span className="mt-0.5 w-px flex-1 bg-slate-200" />}
-                    </div>
-                    <div className="-mt-0.5 pb-0.5">
-                      <p className="text-sm font-bold text-slate-900">
-                        {orderStatusLabel(h.toStatus)}
-                        {h.comment ? <span className="font-medium text-slate-500"> · {h.comment}</span> : ""}
-                      </p>
-                      <p className="text-xs text-slate-400">
-                        {new Date(h.createdAt).toLocaleString("es-PE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
-                      </p>
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
-          </Card>
-          </div>
+              <Card title="Historial">
+                <ol className="space-y-3">
+                  {order.history.map((h, i) => {
+                    const last = i === order.history.length - 1;
+                    return (
+                      <li key={i} className="flex gap-3">
+                        <div className="flex flex-col items-center">
+                          <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${last ? "bg-violet-600" : "bg-slate-300"}`} />
+                          {!last && <span className="mt-0.5 w-px flex-1 bg-slate-200" />}
+                        </div>
+                        <div className="-mt-0.5 pb-0.5">
+                          <p className="text-sm font-bold text-slate-900">
+                            {statusMeta(order, h.toStatus).label}
+                            {h.comment ? <span className="font-medium text-slate-500"> · {h.comment}</span> : ""}
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            {new Date(h.createdAt).toLocaleString("es-PE", {
+                              day: "2-digit",
+                              month: "2-digit",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </Card>
+            </div>
           </div>
         </div>
       )}
@@ -222,7 +310,7 @@ export function Overlay({
           className="absolute right-4 top-4 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-200"
           aria-label="Cerrar"
         >
-          ✕
+          ×
         </button>
         <div className={`overflow-y-auto ${size === "wide" ? "p-5 sm:p-6" : "p-5"}`}>
           {children}
@@ -240,6 +328,7 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
     </div>
   );
 }
+
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between text-slate-600">

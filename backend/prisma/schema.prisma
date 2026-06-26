@@ -487,6 +487,7 @@ model Subscription {
   id            String    @id @default(uuid())
   companyId     String    @map("company_id")
   productId     String?   @map("product_id") // plan relacionado (opcional)
+  publicCode    String?   @unique @map("public_code") // código corto para comprobantes/seguimiento
   planName      String    @map("plan_name") // copia histórica del nombre del plan
   customerName  String    @map("customer_name")
   customerPhone String    @map("customer_phone")
@@ -494,6 +495,8 @@ model Subscription {
   startsAt      DateTime? @map("starts_at") // cuándo se activó
   endsAt        DateTime? @map("ends_at") // vencimiento (para avisar/renovar)
   note          String?   @db.Text
+  proofUrl         String?   @map("proof_url") // comprobante de pago Yape (imagen)
+  proofSubmittedAt DateTime? @map("proof_submitted_at") // cuándo subió el comprobante
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 

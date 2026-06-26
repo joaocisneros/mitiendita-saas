@@ -105,8 +105,16 @@ export interface SubscriptionBody {
 }
 export interface SubscriptionView {
   id: string;
+  publicCode?: string | null;
   status: string;
   planName: string;
+  proofUrl?: string | null;
+  proofSubmittedAt?: string | null;
+  whatsappNotification?: {
+    status: "sent" | "disabled" | "skipped" | "failed";
+    messageId?: string;
+    reason?: string;
+  };
 }
 
 export interface PublicPlan {
@@ -192,6 +200,23 @@ export const storefrontApi = {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(errorMessage(data, "No se pudo crear la suscripción."));
+    return data as SubscriptionView;
+  },
+
+  async submitSubscriptionProof(
+    subdomain: string,
+    subscriptionId: string,
+    file: File,
+  ): Promise<SubscriptionView> {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await safeFetch(
+      `${API}/public/stores/${subdomain}/subscriptions/${subscriptionId}/proof`,
+      { method: "POST", body: form },
+    );
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok)
+      throw new Error(errorMessage(data, "No se pudo subir el comprobante."));
     return data as SubscriptionView;
   },
 

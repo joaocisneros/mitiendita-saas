@@ -13,6 +13,7 @@ const nextConfig: NextConfig = {
       { source: "/api/:path*", destination: `${backend}/api/:path*` },
       // Link corto del comprobante: /c/MT-XXXX → backend redirige a la foto.
       { source: "/c/:code", destination: `${backend}/api/c/:code` },
+      { source: "/s/:code", destination: `${backend}/api/s/:code` },
     ];
   },
   images: {
@@ -21,6 +22,8 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "res.cloudinary.com" },
       // Fotos de stock para la tienda vitrina de ejemplo.
       { protocol: "https", hostname: "images.unsplash.com" },
+      // QR de pago generado (también si un dueño pega una URL de QR).
+      { protocol: "https", hostname: "api.qrserver.com" },
       { protocol: "http", hostname: "localhost", port: "8300", pathname: "/api/media/local/**" },
     ],
   },

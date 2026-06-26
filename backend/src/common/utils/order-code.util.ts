@@ -10,3 +10,11 @@ export function generateOrderCode(): string {
   }
   return `MT-${code}`;
 }
+
+export function generateSubscriptionCode(): string {
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += ALPHABET[randomInt(ALPHABET.length)];
+  }
+  return `MS-${code}`;
+}

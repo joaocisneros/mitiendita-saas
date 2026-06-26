@@ -1,13 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { adminApi, type AdminOrderRow } from "@/lib/admin-api";
 import { formatPrice } from "@/lib/format";
-import { StatusBadge } from "@/components/StatusBadge";
+import { StatusBadge, type OrderStatusContext } from "@/components/StatusBadge";
 import { OrderDetailModal } from "@/components/OrderDetailModal";
 import { Skeleton } from "@/components/Skeleton";
+import { archetypeOf, resolveCategory } from "@/lib/business-categories";
 
-const FILTERS = [
+const PHYSICAL_FILTERS = [
   { value: "", label: "Todos" },
   { value: "pending", label: "Pendientes" },
   { value: "confirmed", label: "Confirmados" },
@@ -16,7 +18,18 @@ const FILTERS = [
   { value: "cancelled", label: "Cancelados" },
 ];
 
+const SERVICE_FILTERS = [
+  { value: "", label: "Todas" },
+  { value: "pending", label: "Recibidas" },
+  { value: "confirmed", label: "Aceptadas" },
+  { value: "preparing", label: "En gestión" },
+  { value: "out_for_delivery", label: "En atención" },
+  { value: "delivered", label: "Finalizadas" },
+  { value: "cancelled", label: "Canceladas" },
+];
+
 export default function OrdersListPage() {
+  const router = useRouter();
   const [rows, setRows] = useState<AdminOrderRow[]>([]);
   const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
@@ -24,6 +37,10 @@ export default function OrdersListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [statusContext, setStatusContext] = useState<OrderStatusContext>("physical");
+
+  const isServiceLike = statusContext !== "physical";
+  const filters = isServiceLike ? SERVICE_FILTERS : PHYSICAL_FILTERS;
 
   const load = useCallback(() => {
     adminApi
@@ -47,24 +64,85 @@ export default function OrdersListPage() {
     };
   }, [load]);
 
+  useEffect(() => {
+    adminApi
+      .settings()
+      .then((settings) => {
+        const category = resolveCategory(settings.businessType);
+        const archetype = archetypeOf(category);
+        const serviceLike = archetype === "digital" || archetype === "servicios";
+        if (archetype === "digital") {
+          router.replace("/panel/suscripciones");
+          return;
+        }
+        if (archetype === "servicios") {
+          router.replace("/panel/citas");
+          return;
+        }
+        setStatusContext(category.id === "telecomunicaciones" ? "telecom" : serviceLike ? "service" : "physical");
+      })
+      .catch(() => {});
+  }, [router]);
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div><p className="text-sm font-bold text-violet-700">Operaciones</p><h1 className="mt-1 text-3xl font-black text-slate-950">Pedidos</h1><p className="mt-1 text-xs font-medium text-slate-500">Los nuevos pedidos y comprobantes se actualizan automáticamente.</p></div>
-        <button onClick={() => { setLoading(true); load(); }} className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-violet-700 ring-1 ring-violet-200 hover:bg-violet-50">Actualizar ahora</button>
+        <div>
+          <p className="text-sm font-bold text-violet-700">Operaciones</p>
+          <h1 className="mt-1 text-3xl font-black text-slate-950">
+            {isServiceLike ? "Solicitudes" : "Pedidos"}
+          </h1>
+          <p className="mt-1 text-xs font-medium text-slate-500">
+            {isServiceLike
+              ? "Las nuevas solicitudes y comprobantes se actualizan automáticamente."
+              : "Los nuevos pedidos y comprobantes se actualizan automáticamente."}
+          </p>
+        </div>
+        <button
+          onClick={() => {
+            setLoading(true);
+            load();
+          }}
+          className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-violet-700 ring-1 ring-violet-200 hover:bg-violet-50"
+        >
+          Actualizar ahora
+        </button>
       </div>
 
-      <div className="flex max-w-xl gap-2"><input value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { setLoading(true); setAppliedSearch(search.trim()); } }} placeholder="Código, cliente o teléfono" className="h-11 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-500 focus:border-violet-600" /><button onClick={() => { setLoading(true); setAppliedSearch(search.trim()); }} className="rounded-xl bg-violet-600 px-5 text-sm font-bold text-white">Buscar</button></div>
+      <div className="flex max-w-xl gap-2">
+        <input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              setLoading(true);
+              setAppliedSearch(search.trim());
+            }
+          }}
+          placeholder="Código, cliente o teléfono"
+          className="h-11 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-500 focus:border-violet-600"
+        />
+        <button
+          onClick={() => {
+            setLoading(true);
+            setAppliedSearch(search.trim());
+          }}
+          className="rounded-xl bg-violet-600 px-5 text-sm font-bold text-white"
+        >
+          Buscar
+        </button>
+      </div>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
-        {FILTERS.map((f) => (
+        {filters.map((f) => (
           <button
             key={f.value}
-            onClick={() => { setLoading(true); setStatus(f.value); }}
+            onClick={() => {
+              setLoading(true);
+              setStatus(f.value);
+            }}
             className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-semibold ${
-              status === f.value
-                ? "bg-violet-600 text-white"
-                : "bg-white text-gray-700 ring-1 ring-black/10"
+              status === f.value ? "bg-violet-600 text-white" : "bg-white text-gray-700 ring-1 ring-black/10"
             }`}
           >
             {f.label}
@@ -79,13 +157,18 @@ export default function OrdersListPage() {
           <ul className="divide-y divide-black/5">
             {Array.from({ length: 5 }).map((_, i) => (
               <li key={i} className="flex items-center justify-between px-4 py-3.5">
-                <div className="space-y-2"><Skeleton className="h-4 w-40" /><Skeleton className="h-3 w-24" /></div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
                 <Skeleton className="h-6 w-24 rounded-full" />
               </li>
             ))}
           </ul>
         ) : rows.length === 0 ? (
-          <p className="p-6 text-center text-gray-400">No hay pedidos aquí.</p>
+          <p className="p-6 text-center text-gray-400">
+            {isServiceLike ? "No hay solicitudes aquí." : "No hay pedidos aquí."}
+          </p>
         ) : (
           <ul className="divide-y divide-black/5">
             {rows.map((o) => (
@@ -108,10 +191,8 @@ export default function OrdersListPage() {
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <StatusBadge status={o.paymentStatus} type="payment" />
-                    <StatusBadge status={o.status} />
-                    <span className="font-bold">
-                      {formatPrice(o.total, o.currency)}
-                    </span>
+                    <StatusBadge status={o.status} context={statusContext} />
+                    <span className="font-bold">{formatPrice(o.total, o.currency)}</span>
                   </div>
                 </button>
               </li>

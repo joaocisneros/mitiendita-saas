@@ -22,6 +22,7 @@
     "prisma:seed": "tsx prisma/seed.ts",
     "prisma:seed:demo": "tsx prisma/seed-demo.ts",
     "prisma:seed:showcase": "tsx prisma/seed-showcase.ts",
+    "prisma:seed:telecom": "tsx prisma/seed-telecom.ts",
     "prisma:studio": "prisma studio"
   },
   "dependencies": {

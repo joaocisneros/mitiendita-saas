@@ -107,15 +107,27 @@ export function ServiceReserveModal({
       <div className="relative flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
         {done ? (
           <>
-            <header className="relative bg-green-600 px-5 py-6 text-center text-white">
+            <header
+              className="relative px-5 py-6 text-center text-white"
+              style={{ background: `linear-gradient(135deg, ${accent}, #0f172a)` }}
+            >
               <button onClick={onClose} className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-white/20 hover:bg-white/30" aria-label="Cerrar">✕</button>
-              <p className="text-3xl">✅</p>
-              <h2 className="mt-1 text-lg font-black">¡Reserva registrada!</h2>
+              <p className="text-3xl">📅</p>
+              <h2 className="mt-1 text-lg font-black">Solicitud de atención registrada</h2>
+              <p className="mt-1 text-xs font-semibold text-white/80">El negocio confirmará disponibilidad</p>
             </header>
             <div className="space-y-4 p-5 text-center">
               <p className="text-sm text-gray-700">
-                Tu solicitud de <b>{serviceName}</b> para el <b>{prettyWhen}</b> quedó registrada. El negocio la verá en su panel y la confirmará.
+                Tu solicitud de <b>{serviceName}</b> para el <b>{prettyWhen}</b> quedó registrada. No es un pedido con delivery: el negocio confirmará la atención y coordinará contigo.
               </p>
+              <div className="rounded-2xl bg-slate-50 p-4 text-left ring-1 ring-slate-200">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Resumen</p>
+                <div className="mt-2 space-y-1 text-sm text-slate-700">
+                  <p>Servicio: <b>{serviceName}</b></p>
+                  <p>Cliente: <b>{name}</b></p>
+                  <p>Horario solicitado: <b>{prettyWhen}</b></p>
+                </div>
+              </div>
               {waLink && (
                 <a href={waLink} target="_blank" rel="noopener noreferrer" className="block w-full rounded-full bg-green-500 py-3 font-bold text-white hover:bg-green-600">
                   💬 Confirmar por WhatsApp con el negocio
@@ -127,10 +139,16 @@ export function ServiceReserveModal({
         ) : (
           <>
             <header className="flex items-center justify-between px-5 py-4 text-white" style={{ backgroundColor: accent }}>
-              <h2 className="text-base font-black">Reservar: {serviceName}</h2>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/70">Solicitud de atención</p>
+                <h2 className="text-base font-black">Coordinar: {serviceName}</h2>
+              </div>
               <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 hover:bg-white/30" aria-label="Cerrar">✕</button>
             </header>
             <div className="space-y-3 overflow-y-auto p-5">
+              <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600 ring-1 ring-slate-200">
+                Elige una fecha tentativa. El negocio la confirmará o ajustará por WhatsApp.
+              </div>
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-gray-700">Tu nombre *</span>
                 <input value={name} onChange={(e) => setName(e.target.value)} className="srv-input" placeholder="Ej: María Pérez" />

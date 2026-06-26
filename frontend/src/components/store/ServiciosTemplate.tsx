@@ -57,11 +57,13 @@ export function ServiciosTemplate({
           {products.map((p) => (
               <article
                 key={p.id}
-                className="flex gap-3 rounded-2xl bg-white p-4 ring-1 ring-black/5 transition hover:shadow-md"
+                className="overflow-hidden rounded-2xl bg-white ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lg"
               >
-                <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-gray-100">
+                <div className="h-1.5 w-full" style={{ backgroundColor: accent }} />
+                <div className="flex gap-3 p-4">
+                <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-gray-100">
                   {p.imageUrl ? (
-                    <Image src={p.imageUrl} alt={p.name} fill sizes="80px" className="object-cover" />
+                    <Image src={p.imageUrl} alt={p.name} fill sizes="96px" className="object-cover" />
                   ) : (
                     <div
                       className="flex h-full items-center justify-center text-2xl"
@@ -72,6 +74,9 @@ export function ServiciosTemplate({
                   )}
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col">
+                  <span className="mb-1 w-fit rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">
+                    Servicio
+                  </span>
                   <h3 className="font-bold text-slate-900">{p.name}</h3>
                   {p.description && (
                     <p className="line-clamp-2 text-xs text-slate-500">{p.description}</p>
@@ -91,6 +96,8 @@ export function ServiciosTemplate({
                     whatsappNumber={whatsappNumber}
                     actionLabel={actionLabel}
                   />
+                  <p className="mt-2 text-center text-[11px] font-semibold text-slate-400">Sin carrito · se coordina por WhatsApp</p>
+                </div>
                 </div>
               </article>
           ))}
