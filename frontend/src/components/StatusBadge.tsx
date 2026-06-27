@@ -14,10 +14,10 @@ const PHYSICAL_ORDER_STATUS: Record<string, Meta> = {
 
 const SERVICE_ORDER_STATUS: Record<string, Meta> = {
   pending: { label: "Solicitud recibida", cls: "bg-gray-100 text-gray-700" },
-  confirmed: { label: "Aceptado", cls: "bg-blue-100 text-blue-700" },
-  preparing: { label: "En gestión", cls: "bg-indigo-100 text-indigo-700" },
+  confirmed: { label: "Cita confirmada", cls: "bg-blue-100 text-blue-700" },
+  preparing: { label: "En coordinación", cls: "bg-indigo-100 text-indigo-700" },
   out_for_delivery: { label: "En atención", cls: "bg-amber-100 text-amber-700" },
-  delivered: { label: "Completado", cls: "bg-green-100 text-green-700" },
+  delivered: { label: "Finalizada", cls: "bg-green-100 text-green-700" },
   cancelled: { label: "Cancelado", cls: "bg-red-100 text-red-700" },
   expired: { label: "Vencido", cls: "bg-red-50 text-red-500" },
 };

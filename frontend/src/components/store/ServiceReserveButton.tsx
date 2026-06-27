@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { ServiceReserveModal } from "@/components/store/ServiceReserveModal";
 
 /** Botón "Reservar" de una tarjeta de servicio: abre el modal de reserva. */
@@ -12,6 +13,14 @@ export function ServiceReserveButton({
   accent,
   whatsappNumber,
   actionLabel,
+  price,
+  currency,
+  yapeQrUrl,
+  yapeHolderName,
+  yapeNumber,
+  reservationPaymentMode,
+  reservationAdvanceType,
+  reservationAdvanceValue,
 }: {
   subdomain: string;
   storeName: string;
@@ -20,6 +29,14 @@ export function ServiceReserveButton({
   accent: string;
   whatsappNumber: string | null;
   actionLabel: string;
+  price?: string | number;
+  currency?: string;
+  yapeQrUrl?: string | null;
+  yapeHolderName?: string | null;
+  yapeNumber?: string | null;
+  reservationPaymentMode?: "none" | "optional" | "required" | null;
+  reservationAdvanceType?: "fixed" | "percent" | null;
+  reservationAdvanceValue?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -32,18 +49,28 @@ export function ServiceReserveButton({
       >
         {actionLabel}
       </button>
-      {open && (
-        <ServiceReserveModal
-          subdomain={subdomain}
-          storeName={storeName}
-          serviceName={serviceName}
-          productId={productId}
-          accent={accent}
-          whatsappNumber={whatsappNumber}
-          actionLabel={actionLabel}
-          onClose={() => setOpen(false)}
-        />
-      )}
+      {open &&
+        createPortal(
+          <ServiceReserveModal
+            subdomain={subdomain}
+            storeName={storeName}
+            serviceName={serviceName}
+            productId={productId}
+            accent={accent}
+            whatsappNumber={whatsappNumber}
+            actionLabel={actionLabel}
+            price={price}
+            currency={currency}
+            yapeQrUrl={yapeQrUrl}
+            yapeHolderName={yapeHolderName}
+            yapeNumber={yapeNumber}
+            reservationPaymentMode={reservationPaymentMode}
+            reservationAdvanceType={reservationAdvanceType}
+            reservationAdvanceValue={reservationAdvanceValue}
+            onClose={() => setOpen(false)}
+          />,
+          document.body,
+        )}
     </>
   );
 }

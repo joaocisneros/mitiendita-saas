@@ -203,6 +203,9 @@ export default async function StorePage({
             catalogLabel={terms.catalog}
             whatsappNumber={store.whatsappNumber}
             storeName={store.name}
+            yapeQrUrl={store.yapeQrUrl}
+            yapeHolderName={store.yapeHolderName}
+            yapeNumber={store.yapeNumber}
             search={search}
             searchPlaceholder={terms.search}
             emptyLabel={terms.empty}

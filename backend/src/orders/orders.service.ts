@@ -59,13 +59,13 @@ export class OrdersService {
     // Validar método de entrega.
     const isDelivery = dto.deliveryMethod === 'delivery';
     if (isDelivery && settings && !settings.allowsDelivery) {
-      throw new BadRequestException('Esta tienda no ofrece delivery.');
+      throw new BadRequestException('Esta tienda no ofrece entrega a domicilio.');
     }
     if (!isDelivery && settings && !settings.allowsPickup) {
       throw new BadRequestException('Esta tienda no ofrece recojo.');
     }
     if (isDelivery && !dto.address) {
-      throw new BadRequestException('La dirección es obligatoria para delivery.');
+      throw new BadRequestException('La dirección es obligatoria para entrega a domicilio.');
     }
 
     // Releer productos reales desde la BD.
@@ -100,7 +100,7 @@ export class OrdersService {
 
     if (isDelivery && settings?.minOrder && subtotal < Number(settings.minOrder)) {
       throw new BadRequestException(
-        `El pedido mínimo para delivery es ${Number(settings.minOrder).toFixed(2)}.`,
+        `El pedido mínimo para entrega a domicilio es ${Number(settings.minOrder).toFixed(2)}.`,
       );
     }
 

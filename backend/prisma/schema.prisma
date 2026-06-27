@@ -63,6 +63,7 @@ enum SubscriptionStatus {
 enum AppointmentStatus {
   pending // solicitada, sin confirmar
   confirmed // confirmada por el negocio
+  in_progress // cliente en atención
   completed // atendida
   cancelled // cancelada
 }
@@ -287,6 +288,9 @@ model Product {
   reserved    Int       @default(0) // unidades comprometidas por pedidos pendientes
   sku         String?
   imageUrl    String?   @map("image_url")
+  reservationPaymentMode String  @default("optional") @map("reservation_payment_mode") @db.VarChar(20) // none | optional | required
+  reservationAdvanceType String  @default("percent") @map("reservation_advance_type") @db.VarChar(20) // fixed | percent
+  reservationAdvanceValue Decimal @default(30.00) @map("reservation_advance_value") @db.Decimal(10, 2)
   isFeatured  Boolean   @default(false) @map("is_featured")
   isActive    Boolean   @default(true) @map("is_active")
   createdAt   DateTime  @default(now()) @map("created_at")
@@ -459,7 +463,7 @@ model StockMovement {
 }
 
 /// Cita/reserva de un servicio (rubros de Servicios: belleza, salud, etc.).
-/// No mueve stock ni pagos; el negocio confirma y coordina la atención.
+/// Puede reservarse sin pago o con adelanto por Yape; el negocio confirma y coordina la atención.
 model Appointment {
   id            String            @id @default(uuid())
   companyId     String            @map("company_id")
@@ -470,6 +474,11 @@ model Appointment {
   preferredAt   DateTime          @map("preferred_at") // día/hora deseado por el cliente
   note          String?           @db.Text
   status        AppointmentStatus @default(pending)
+  paymentMode   String?           @map("payment_mode") @db.VarChar(20) // none | advance
+  advanceAmount Decimal?          @map("advance_amount") @db.Decimal(12, 2)
+  paymentStatus PaymentStatus     @default(pending) @map("payment_status")
+  proofUrl      String?           @map("proof_url")
+  proofSubmittedAt DateTime?      @map("proof_submitted_at")
   createdAt     DateTime          @default(now()) @map("created_at")
   updatedAt     DateTime          @updatedAt @map("updated_at")
 

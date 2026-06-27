@@ -89,12 +89,19 @@ export interface AppointmentBody {
   productId?: string;
   preferredAt: string; // ISO
   note?: string;
+  paymentMode?: "none" | "advance";
+  advanceAmount?: number;
 }
 export interface AppointmentView {
   id: string;
   status: string;
   serviceName: string;
   preferredAt: string;
+  paymentMode?: string | null;
+  advanceAmount?: string | null;
+  paymentStatus?: string;
+  proofUrl?: string | null;
+  proofSubmittedAt?: string | null;
 }
 export interface SubscriptionBody {
   customerName: string;
@@ -186,6 +193,23 @@ export const storefrontApi = {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(errorMessage(data, "No se pudo crear la reserva."));
+    return data as AppointmentView;
+  },
+
+  async submitAppointmentProof(
+    subdomain: string,
+    appointmentId: string,
+    file: File,
+  ): Promise<AppointmentView> {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await safeFetch(
+      `${API}/public/stores/${subdomain}/appointments/${appointmentId}/proof`,
+      { method: "POST", body: form },
+    );
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok)
+      throw new Error(errorMessage(data, "No se pudo subir el comprobante."));
     return data as AppointmentView;
   },
 

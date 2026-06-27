@@ -1,5 +1,6 @@
 import {
   IsBoolean,
+  IsIn,
   IsInt,
   IsNumber,
   IsOptional,
@@ -42,6 +43,19 @@ export class CreateProductDto {
   @IsString()
   @MaxLength(500)
   imageUrl?: string;
+
+  @IsOptional()
+  @IsIn(['none', 'optional', 'required'])
+  reservationPaymentMode?: 'none' | 'optional' | 'required';
+
+  @IsOptional()
+  @IsIn(['fixed', 'percent'])
+  reservationAdvanceType?: 'fixed' | 'percent';
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 }, { message: 'El adelanto admite máximo 2 decimales.' })
+  @Min(0, { message: 'El adelanto no puede ser negativo.' })
+  reservationAdvanceValue?: number;
 
   @IsOptional()
   @IsBoolean()

@@ -372,6 +372,11 @@ export interface AdminAppointment {
   preferredAt: string;
   note: string | null;
   status: string;
+  paymentMode: string | null;
+  advanceAmount: string | null;
+  paymentStatus: string;
+  proofUrl: string | null;
+  proofSubmittedAt: string | null;
   createdAt: string;
 }
 
@@ -430,6 +435,9 @@ export interface AdminProduct {
   reserved: number;
   sku: string | null;
   imageUrl: string | null;
+  reservationPaymentMode?: "none" | "optional" | "required";
+  reservationAdvanceType?: "fixed" | "percent";
+  reservationAdvanceValue?: string;
   isFeatured: boolean;
   isActive: boolean;
   categoryId: string | null;
@@ -442,6 +450,9 @@ export interface ProductInput {
   sku?: string;
   categoryId?: string | null;
   imageUrl?: string;
+  reservationPaymentMode?: "none" | "optional" | "required";
+  reservationAdvanceType?: "fixed" | "percent";
+  reservationAdvanceValue?: number;
   isFeatured?: boolean;
   isActive?: boolean;
 }

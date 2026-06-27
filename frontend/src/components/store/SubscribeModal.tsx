@@ -169,7 +169,7 @@ export function SubscribeModal({
             </header>
             <div className="space-y-3 overflow-y-auto p-4 text-center sm:p-5">
               <p className="text-sm text-gray-700">
-                Tu solicitud del plan <b>{planName}</b> quedó registrada. Este flujo no es un pedido de delivery: el negocio validará el pago y coordinará la activación contigo.
+                Tu solicitud del plan <b>{planName}</b> quedó registrada. Este flujo no es un pedido con entrega a domicilio: el negocio validará el pago y coordinará la activación contigo.
               </p>
 
               <div className="rounded-2xl bg-slate-950 p-3 text-left text-white">
@@ -292,7 +292,7 @@ export function SubscribeModal({
             </header>
             <div className="space-y-3 overflow-y-auto p-5">
               <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600 ring-1 ring-slate-200">
-                Este flujo es para contratar o activar un plan. No usa carrito, recojo ni delivery.
+                Este flujo es para contratar o activar un plan. No usa carrito, recojo ni entrega a domicilio.
               </div>
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-gray-700">Tu nombre *</span>

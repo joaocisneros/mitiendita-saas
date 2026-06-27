@@ -80,6 +80,7 @@ export function OrderDetailModal({
   const [order, setOrder] = useState<AdminOrderDetail | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [proofPreview, setProofPreview] = useState<string | null>(null);
 
   useEffect(() => {
     adminApi
@@ -174,11 +175,10 @@ export function OrderDetailModal({
             <div className="space-y-4">
               <Card title="Pago (Yape)">
                 {order.payment?.proofUrl ? (
-                  <a
-                    href={order.payment.proofUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex flex-col"
+                  <button
+                    type="button"
+                    onClick={() => setProofPreview(order.payment?.proofUrl ?? null)}
+                    className="inline-flex flex-col text-left"
                   >
                     <Image
                       src={order.payment.proofUrl}
@@ -190,7 +190,7 @@ export function OrderDetailModal({
                     <span className="mt-1 text-xs font-semibold text-violet-600">
                       Ver comprobante completo →
                     </span>
-                  </a>
+                  </button>
                 ) : (
                   <p className="text-sm text-slate-400">El cliente aún no subió comprobante.</p>
                 )}
@@ -268,6 +268,46 @@ export function OrderDetailModal({
               </Card>
             </div>
           </div>
+
+          {proofPreview && (
+            <div
+              className="fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/75 p-4"
+              onClick={() => setProofPreview(null)}
+            >
+              <div
+                className="relative w-full max-w-3xl rounded-3xl bg-white p-4 shadow-2xl"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <button
+                  onClick={() => setProofPreview(null)}
+                  className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-xl font-black text-slate-600 shadow ring-1 ring-slate-200 hover:bg-slate-100"
+                  aria-label="Cerrar comprobante"
+                >
+                  ×
+                </button>
+                <div className="mb-3 pr-12">
+                  <p className="text-sm font-bold text-violet-700">Pago Yape</p>
+                  <h3 className="text-xl font-black text-slate-950">
+                    Comprobante de pago
+                  </h3>
+                </div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={proofPreview}
+                  alt="Comprobante de pago"
+                  className="max-h-[72dvh] w-full rounded-2xl bg-slate-100 object-contain ring-1 ring-slate-200"
+                />
+                <a
+                  href={proofPreview}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 block rounded-xl bg-violet-600 px-4 py-3 text-center text-sm font-bold text-white hover:bg-violet-700"
+                >
+                  Abrir imagen completa
+                </a>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </Overlay>

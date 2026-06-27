@@ -3,9 +3,10 @@ import { AppointmentsService } from './appointments.service';
 import { AppointmentsController } from './appointments.controller';
 import { AdminAppointmentsController } from './admin-appointments.controller';
 import { WhatsappModule } from '../whatsapp/whatsapp.module';
+import { MediaModule } from '../media/media.module';
 
 @Module({
-  imports: [WhatsappModule],
+  imports: [WhatsappModule, MediaModule],
   controllers: [AppointmentsController, AdminAppointmentsController],
   providers: [AppointmentsService],
   exports: [AppointmentsService],

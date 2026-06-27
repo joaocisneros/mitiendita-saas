@@ -1,11 +1,15 @@
 import {
   IsDateString,
+  IsIn,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
   MaxLength,
+  Min,
   MinLength,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 /** Reserva pública de un servicio (sin login). */
 export class CreateAppointmentDto {
@@ -36,4 +40,14 @@ export class CreateAppointmentDto {
   @IsString()
   @MaxLength(500)
   note?: string;
+
+  @IsOptional()
+  @IsIn(['none', 'advance'])
+  paymentMode?: 'none' | 'advance';
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  advanceAmount?: number;
 }

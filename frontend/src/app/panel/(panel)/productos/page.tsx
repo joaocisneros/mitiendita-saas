@@ -21,6 +21,9 @@ const EMPTY = {
   benefits: "",
   description: "",
   imageUrl: "",
+  reservationPaymentMode: "optional" as "none" | "optional" | "required",
+  reservationAdvanceType: "percent" as "fixed" | "percent",
+  reservationAdvanceValue: "30",
   isFeatured: false,
   isActive: true,
 };
@@ -103,6 +106,9 @@ export default function ProductosPage() {
       benefits: parsed.benefits,
       description: parsed.description,
       imageUrl: product.imageUrl ?? "",
+      reservationPaymentMode: product.reservationPaymentMode ?? "optional",
+      reservationAdvanceType: product.reservationAdvanceType ?? "percent",
+      reservationAdvanceValue: String(product.reservationAdvanceValue ?? "30"),
       isFeatured: product.isFeatured,
       isActive: product.isActive,
     });
@@ -116,6 +122,10 @@ export default function ProductosPage() {
       setError(`Nombre, precio y ${isDigital || isService ? "stock interno" : "stock"} son obligatorios.`);
       return;
     }
+    if (isService && form.reservationPaymentMode !== "none" && Number(form.reservationAdvanceValue) <= 0) {
+      setError("El adelanto debe ser mayor a cero o cambia el modo a reservar sin pago.");
+      return;
+    }
     setSaving(true);
     try {
       const description = isDigital || isService ? descriptionPreview : form.description.trim();
@@ -127,6 +137,13 @@ export default function ProductosPage() {
         categoryId: form.categoryId || null,
         description: description || undefined,
         imageUrl: form.imageUrl || undefined,
+        ...(isService
+          ? {
+              reservationPaymentMode: form.reservationPaymentMode,
+              reservationAdvanceType: form.reservationAdvanceType,
+              reservationAdvanceValue: Number(form.reservationAdvanceValue || 0),
+            }
+          : {}),
         isFeatured: form.isFeatured,
         isActive: form.isActive,
       };
@@ -199,6 +216,15 @@ export default function ProductosPage() {
               <p className="text-xs text-gray-400">
                 {isDigital || isService ? "Activo para venta" : `Stock: ${product.stock - product.reserved}`} {!product.isActive && "· inactivo"}
               </p>
+              {isService && (
+                <p className="mt-0.5 text-[11px] font-semibold text-slate-500">
+                  {product.reservationPaymentMode === "required"
+                    ? "Adelanto obligatorio"
+                    : product.reservationPaymentMode === "none"
+                      ? "Sin adelanto"
+                      : "Adelanto opcional"}
+                </p>
+              )}
               <div className="mt-1 flex gap-2 text-xs">
                 <button onClick={() => openEdit(product)} className="text-violet-600">
                   Editar
@@ -328,6 +354,60 @@ export default function ProductosPage() {
               {(isDigital || isService) && (
                 <div className="rounded-xl bg-white px-3 py-2 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
                   El stock interno puede quedar en <b>999</b> para planes/servicios sin inventario físico.
+                </div>
+              )}
+
+              {isService && (
+                <div className="space-y-2 rounded-xl bg-white p-3 ring-1 ring-slate-200">
+                  <p className="text-sm font-black text-slate-800">Reserva y adelanto</p>
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-bold text-slate-500">Modo de reserva</span>
+                    <select
+                      value={form.reservationPaymentMode}
+                      onChange={(event) =>
+                        setForm({
+                          ...form,
+                          reservationPaymentMode: event.target.value as "none" | "optional" | "required",
+                        })
+                      }
+                      className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-violet-500"
+                    >
+                      <option value="none">Reservar sin pago</option>
+                      <option value="optional">Adelanto opcional</option>
+                      <option value="required">Adelanto obligatorio</option>
+                    </select>
+                  </label>
+
+                  {form.reservationPaymentMode !== "none" && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="block">
+                        <span className="mb-1 block text-xs font-bold text-slate-500">Tipo</span>
+                        <select
+                          value={form.reservationAdvanceType}
+                          onChange={(event) =>
+                            setForm({
+                              ...form,
+                              reservationAdvanceType: event.target.value as "fixed" | "percent",
+                            })
+                          }
+                          className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-violet-500"
+                        >
+                          <option value="percent">Porcentaje</option>
+                          <option value="fixed">Monto fijo</option>
+                        </select>
+                      </label>
+                      <Input
+                        label={form.reservationAdvanceType === "percent" ? "% adelanto" : "S/ adelanto"}
+                        type="number"
+                        value={form.reservationAdvanceValue}
+                        onChange={(value) => setForm({ ...form, reservationAdvanceValue: value })}
+                      />
+                    </div>
+                  )}
+
+                  <p className="text-[11px] font-medium text-slate-500">
+                    Opcional muestra dos botones al cliente. Obligatorio solo permite reservar subiendo comprobante.
+                  </p>
                 </div>
               )}
 

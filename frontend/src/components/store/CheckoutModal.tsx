@@ -71,11 +71,11 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
       return;
     }
     if (method === "delivery" && !address.trim()) {
-      setError("La dirección es obligatoria para delivery.");
+      setError("La dirección es obligatoria para entrega a domicilio.");
       return;
     }
     if (method === "delivery" && store?.minOrder && subtotal < Number(store.minOrder)) {
-      setError(`El pedido mínimo para delivery es ${formatPrice(store.minOrder, currency)}.`);
+      setError(`El pedido mínimo para entrega a domicilio es ${formatPrice(store.minOrder, currency)}.`);
       return;
     }
     setSaving(true);

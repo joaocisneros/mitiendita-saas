@@ -21,6 +21,9 @@ export function ServiciosTemplate({
   catalogLabel,
   whatsappNumber,
   storeName,
+  yapeQrUrl,
+  yapeHolderName,
+  yapeNumber,
   search,
   searchPlaceholder,
   emptyLabel,
@@ -35,6 +38,9 @@ export function ServiciosTemplate({
   catalogLabel: string;
   whatsappNumber: string | null;
   storeName: string;
+  yapeQrUrl?: string | null;
+  yapeHolderName?: string | null;
+  yapeNumber?: string | null;
   search?: string;
   searchPlaceholder: string;
   emptyLabel: string;
@@ -95,6 +101,14 @@ export function ServiciosTemplate({
                     accent={accent}
                     whatsappNumber={whatsappNumber}
                     actionLabel={actionLabel}
+                    price={p.price}
+                    currency={currency}
+                    yapeQrUrl={yapeQrUrl}
+                    yapeHolderName={yapeHolderName}
+                    yapeNumber={yapeNumber}
+                    reservationPaymentMode={p.reservationPaymentMode}
+                    reservationAdvanceType={p.reservationAdvanceType}
+                    reservationAdvanceValue={p.reservationAdvanceValue}
                   />
                   <p className="mt-2 text-center text-[11px] font-semibold text-slate-400">Sin carrito · se coordina por WhatsApp</p>
                 </div>

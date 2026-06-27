@@ -45,6 +45,10 @@ export default function SubscriptionsPage() {
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [editing, setEditing] = useState<AdminSubscription | null>(null);
+  const [proofPreview, setProofPreview] = useState<{
+    url: string;
+    title: string;
+  } | null>(null);
   const [monthsById, setMonthsById] = useState<Record<string, number>>({});
   const monthsFor = (id: string) => monthsById[id] ?? 1;
 
@@ -196,9 +200,18 @@ export default function SubscriptionsPage() {
                     {sub.proofUrl ? (
                       <p className="mt-1 text-xs font-semibold text-emerald-700">
                         Comprobante recibido{sub.proofSubmittedAt ? ` · ${fmtDate(sub.proofSubmittedAt)}` : ""} ·{" "}
-                        <a href={sub.proofUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-emerald-900">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setProofPreview({
+                              url: sub.proofUrl!,
+                              title: `${sub.planName} · ${sub.customerName}`,
+                            })
+                          }
+                          className="underline hover:text-emerald-900"
+                        >
                           ver imagen
-                        </a>
+                        </button>
                       </p>
                     ) : (
                       sub.state === "pending" && (
@@ -279,6 +292,49 @@ export default function SubscriptionsPage() {
             load();
           }}
         />
+      )}
+
+      {proofPreview && (
+        <div
+          className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/75 p-4"
+          onClick={() => setProofPreview(null)}
+        >
+          <div
+            className="relative w-full max-w-3xl rounded-3xl bg-white p-4 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              onClick={() => setProofPreview(null)}
+              className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-xl font-black text-slate-600 shadow ring-1 ring-slate-200 hover:bg-slate-100"
+              aria-label="Cerrar comprobante"
+            >
+              ×
+            </button>
+            <div className="mb-3 pr-12">
+              <p className="text-sm font-bold text-violet-700">Pago Yape</p>
+              <h3 className="text-xl font-black text-slate-950">
+                Comprobante de plan
+              </h3>
+              <p className="mt-1 text-sm font-medium text-slate-500">
+                {proofPreview.title}
+              </p>
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={proofPreview.url}
+              alt="Comprobante de pago"
+              className="max-h-[72dvh] w-full rounded-2xl bg-slate-100 object-contain ring-1 ring-slate-200"
+            />
+            <a
+              href={proofPreview.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 block rounded-xl bg-violet-600 px-4 py-3 text-center text-sm font-bold text-white hover:bg-violet-700"
+            >
+              Abrir imagen completa
+            </a>
+          </div>
+        </div>
       )}
     </div>
   );

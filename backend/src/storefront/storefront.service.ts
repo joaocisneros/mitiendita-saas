@@ -91,6 +91,9 @@ export class StorefrontService {
           stock: true,
           reserved: true,
           imageUrl: true,
+          reservationPaymentMode: true,
+          reservationAdvanceType: true,
+          reservationAdvanceValue: true,
           isFeatured: true,
           category: { select: { name: true, slug: true } },
         },
@@ -126,6 +129,9 @@ export class StorefrontService {
         stock: true,
         reserved: true,
         imageUrl: true,
+        reservationPaymentMode: true,
+        reservationAdvanceType: true,
+        reservationAdvanceValue: true,
         isFeatured: true,
         category: { select: { name: true, slug: true } },
       },
@@ -150,13 +156,22 @@ export class StorefrontService {
 
   /** Expone "disponibilidad" sin revelar el stock interno exacto. */
   private toPublicProduct<
-    T extends { stock: number; reserved: number; price: unknown },
+    T extends {
+      stock: number;
+      reserved: number;
+      price: unknown;
+      reservationAdvanceValue?: unknown;
+    },
   >(p: T) {
     const available = Math.max(0, p.stock - p.reserved);
     const { stock: _s, reserved: _r, ...rest } = p;
     return {
       ...rest,
       price: String(p.price),
+      reservationAdvanceValue:
+        p.reservationAdvanceValue != null
+          ? String(p.reservationAdvanceValue)
+          : undefined,
       available,
       inStock: available > 0,
     };
