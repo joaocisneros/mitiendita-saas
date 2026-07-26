@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { StoreCategory } from "@/lib/types";
+import { categoryEmoji } from "@/lib/category-emoji";
 
 /** Chips para filtrar por categoría (Todos + cada categoría). Compartido por todas las plantillas. */
 export function CategoryChips({
@@ -21,7 +22,7 @@ export function CategoryChips({
         <Chip href={`/tienda/${subdomain}`} active={!category} accent={accent}>🛍️ Todos</Chip>
         {categories.map((c) => (
           <Chip key={c.id} href={`/tienda/${subdomain}?category=${c.slug}`} active={category === c.slug} accent={accent}>
-            {c.name}
+            <span className="mr-1">{categoryEmoji(c.name)}</span>{c.name}
           </Chip>
         ))}
       </div>
