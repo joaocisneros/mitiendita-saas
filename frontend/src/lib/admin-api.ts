@@ -513,6 +513,10 @@ export interface StoreSettings {
   plinQrUrl: string | null;
   plinHolderName: string | null;
   plinNumber: string | null;
+  hours: string | null;
+  instagramUrl: string | null;
+  facebookUrl: string | null;
+  tiktokUrl: string | null;
   whatsappMessage: string | null;
   allowsPickup: boolean;
   allowsDelivery: boolean;

@@ -75,6 +75,11 @@ export function ProductCard({
           <p className="mt-1 text-lg font-black tracking-tight" style={{ color: accent }}>
             {formatPrice(product.price, currency)}
           </p>
+          {product.inStock && product.available <= 5 && (
+            <span className="mt-1 w-fit rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-black text-red-600 ring-1 ring-red-200">
+              🔥 {product.available === 1 ? "¡Última unidad!" : `¡Últimas ${product.available}!`}
+            </span>
+          )}
           <OptionPreview sizes={product.sizes} colors={product.colors} />
           <div className="mt-auto pt-2">
             <AddToCart product={product} accent={accent} label={actionLabel} />

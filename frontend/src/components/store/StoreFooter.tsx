@@ -22,11 +22,19 @@ export function StoreFooter({ store }: { store: StoreBrand }) {
             {store.description && (
               <p className="mt-2 text-sm leading-6 text-slate-500">{store.description}</p>
             )}
+            {(store.instagramUrl || store.facebookUrl || store.tiktokUrl) && (
+              <div className="mt-3 flex gap-2">
+                {store.instagramUrl && <Social href={store.instagramUrl} label="Instagram">📸</Social>}
+                {store.facebookUrl && <Social href={store.facebookUrl} label="Facebook">👍</Social>}
+                {store.tiktokUrl && <Social href={store.tiktokUrl} label="TikTok">🎵</Social>}
+              </div>
+            )}
           </div>
 
           <div className="space-y-1.5 text-sm text-slate-600">
             <p className="font-bold text-slate-800">Contacto</p>
             {store.storeAddress && <p>📍 {store.storeAddress}</p>}
+            {store.hours && <p>🕐 {store.hours}</p>}
             {phone && (
               <a
                 href={`https://wa.me/${phone}`}
@@ -57,11 +65,32 @@ export function StoreFooter({ store }: { store: StoreBrand }) {
           </div>
         </div>
 
+        {store.hours && (
+          <p className="mt-6 rounded-xl bg-slate-50 px-4 py-2.5 text-center text-sm font-semibold text-slate-600 ring-1 ring-slate-200">
+            🕐 Horario de atención: {store.hours}
+          </p>
+        )}
+
         <div className="mt-7 flex flex-col items-center justify-between gap-2 border-t border-slate-100 pt-5 text-xs text-slate-400 sm:flex-row">
           <p>© {new Date().getFullYear()} {store.name}. Todos los derechos reservados.</p>
           <p>Hecho con <span className="font-bold text-violet-600">MiTiendita</span> 🛍️</p>
         </div>
       </div>
     </footer>
+  );
+}
+
+function Social({ href, label, children }: { href: string; label: string; children: React.ReactNode }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={label}
+      title={label}
+      className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-base ring-1 ring-slate-200 transition hover:bg-slate-200"
+    >
+      {children}
+    </a>
   );
 }

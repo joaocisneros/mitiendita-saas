@@ -70,4 +70,16 @@ export class UpdateSettingsDto {
 
   @IsOptional() @IsString() @MaxLength(500)
   deliveryNotes?: string;
+
+  @IsOptional() @IsString() @MaxLength(300)
+  hours?: string;
+
+  @IsOptional() @IsString() @MaxLength(300)
+  instagramUrl?: string;
+
+  @IsOptional() @IsString() @MaxLength(300)
+  facebookUrl?: string;
+
+  @IsOptional() @IsString() @MaxLength(300)
+  tiktokUrl?: string;
 }

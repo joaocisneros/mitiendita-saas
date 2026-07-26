@@ -65,6 +65,10 @@ export default function ConfigPage() {
         deliveryFee: Number(s.deliveryFee),
         minOrder: s.minOrder ? Number(s.minOrder) : undefined,
         storeAddress: s.storeAddress ?? undefined,
+        hours: s.hours ?? undefined,
+        instagramUrl: s.instagramUrl ?? undefined,
+        facebookUrl: s.facebookUrl ?? undefined,
+        tiktokUrl: s.tiktokUrl ?? undefined,
       });
       setOk(true);
     } catch (e) {
@@ -133,6 +137,17 @@ export default function ConfigPage() {
                   <Color label="Principal" value={s.primaryColor} onChange={(v) => set("primaryColor", v)} />
                   <Color label="Secundario" value={s.secondaryColor} onChange={(v) => set("secondaryColor", v)} />
                 </div>
+              </div>
+
+              <div className="border-t border-slate-200 pt-4">
+                <p className="mb-3 text-sm font-black text-slate-700">Presencia (opcional)</p>
+                <Input label="Horario de atención" value={s.hours ?? ""} onChange={(v) => set("hours", v)} placeholder="Ej: Lun-Sáb 9am-8pm · Dom 10am-6pm" />
+                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                  <Input label="Instagram (link)" value={s.instagramUrl ?? ""} onChange={(v) => set("instagramUrl", v)} placeholder="https://instagram.com/tu-tienda" />
+                  <Input label="Facebook (link)" value={s.facebookUrl ?? ""} onChange={(v) => set("facebookUrl", v)} placeholder="https://facebook.com/tu-tienda" />
+                  <Input label="TikTok (link)" value={s.tiktokUrl ?? ""} onChange={(v) => set("tiktokUrl", v)} placeholder="https://tiktok.com/@tu-tienda" />
+                </div>
+                <p className="mt-2 text-xs text-slate-400">El horario y las redes aparecerán en el pie de tu tienda.</p>
               </div>
             </div>
           </div>

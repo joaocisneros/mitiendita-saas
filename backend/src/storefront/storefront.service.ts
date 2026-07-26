@@ -47,6 +47,11 @@ export class StorefrontService {
         plinQrUrl: s?.plinQrUrl ?? null,
         plinHolderName: s?.plinHolderName ?? null,
         plinNumber: s?.plinNumber ?? null,
+        // Presencia / confianza.
+        hours: s?.hours ?? null,
+        instagramUrl: s?.instagramUrl ?? null,
+        facebookUrl: s?.facebookUrl ?? null,
+        tiktokUrl: s?.tiktokUrl ?? null,
       },
       categories,
     };

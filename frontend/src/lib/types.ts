@@ -18,6 +18,10 @@ export interface StoreBrand {
   plinQrUrl: string | null;
   plinHolderName: string | null;
   plinNumber: string | null;
+  hours: string | null;
+  instagramUrl: string | null;
+  facebookUrl: string | null;
+  tiktokUrl: string | null;
 }
 
 export interface StoreCategory {

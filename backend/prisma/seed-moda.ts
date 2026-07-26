@@ -41,6 +41,10 @@ const STORE = {
     'https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=' +
     encodeURIComponent('Plin Urban Style 955444333'),
   storeAddress: 'C.C. Real Plaza, Tienda 214, Lima',
+  hours: 'Lun-Sáb 10am-9pm · Dom 11am-7pm',
+  instagramUrl: 'https://instagram.com/urbanstyle',
+  facebookUrl: 'https://facebook.com/urbanstyle',
+  tiktokUrl: 'https://tiktok.com/@urbanstyle',
 };
 
 const CONTENT: Array<{
@@ -179,6 +183,10 @@ async function main() {
       plinHolderName: STORE.plinHolderName,
       plinQrUrl: STORE.plinQrUrl,
       storeAddress: STORE.storeAddress,
+      hours: STORE.hours,
+      instagramUrl: STORE.instagramUrl,
+      facebookUrl: STORE.facebookUrl,
+      tiktokUrl: STORE.tiktokUrl,
       allowsPickup: true,
       allowsDelivery: true,
     },
@@ -198,6 +206,10 @@ async function main() {
       plinHolderName: STORE.plinHolderName,
       plinQrUrl: STORE.plinQrUrl,
       storeAddress: STORE.storeAddress,
+      hours: STORE.hours,
+      instagramUrl: STORE.instagramUrl,
+      facebookUrl: STORE.facebookUrl,
+      tiktokUrl: STORE.tiktokUrl,
     },
   });
 

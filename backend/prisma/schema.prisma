@@ -245,6 +245,12 @@ model CompanySettings {
   storeAddress   String?  @map("store_address")
   deliveryNotes  String?  @map("delivery_notes") @db.Text
 
+  // Presencia / confianza
+  hours        String?  @db.Text // horario de atención (texto libre, ej. "Lun-Sáb 9am-8pm")
+  instagramUrl String?  @map("instagram_url")
+  facebookUrl  String?  @map("facebook_url")
+  tiktokUrl    String?  @map("tiktok_url")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
