@@ -182,7 +182,7 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
               </Field>
 
               <div className="sm:col-span-2">
-                <p className="mb-1 text-sm font-medium text-gray-700">¿Cómo quieres recibirlo?</p>
+                <p className="mb-1 text-xs font-bold text-gray-600">¿Cómo quieres recibirlo?</p>
                 <div className="grid grid-cols-2 gap-2">
                   {store?.allowsPickup && (
                     <MethodBtn active={method === "pickup"} onClick={() => setMethod("pickup")} title="🏪 Recojo" sub="En la tienda" accent={accent} />
@@ -210,14 +210,14 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
                 </>
               )}
 
-              <Field label="Nota para el negocio (opcional)" className="sm:col-span-2">
-                <textarea value={note} onChange={(e) => setNote(e.target.value)} className="cm-input" rows={2} />
+              <Field label="Nota (opcional)" className="sm:col-span-2">
+                <textarea value={note} onChange={(e) => setNote(e.target.value)} className="cm-input" rows={1} style={{ minHeight: "2.6rem", height: "2.6rem" }} placeholder="Algún detalle para el negocio" />
               </Field>
 
               {items.some((i) => parseOptions(i.sizes).length > 0 || parseOptions(i.colors).length > 0) && (
                 <div className="sm:col-span-2 rounded-2xl border border-violet-200 bg-violet-50/60 p-2.5">
                   <p className="mb-1.5 text-sm font-black text-violet-800">Elige tus opciones</p>
-                  <div className="max-h-56 space-y-1.5 overflow-y-auto pr-0.5">
+                  <div className="max-h-44 space-y-1.5 overflow-y-auto pr-0.5">
                     {items.filter((i) => parseOptions(i.sizes).length > 0 || parseOptions(i.colors).length > 0).map((i) => (
                       <div key={i.productId} className="rounded-xl bg-white p-2 ring-1 ring-slate-200">
                         <p className="text-xs font-black text-slate-800">{i.name}</p>
@@ -447,10 +447,10 @@ function MethodBtn({
     <button
       onClick={onClick}
       style={active ? { borderColor: accent, boxShadow: `inset 0 0 0 1px ${accent}`, backgroundColor: `${accent}14` } : undefined}
-      className={`rounded-xl border p-3 text-left transition ${active ? "" : "border-gray-200 bg-white"}`}
+      className={`rounded-xl border px-3 py-2 text-left transition ${active ? "" : "border-gray-200 bg-white"}`}
     >
-      <p className="font-semibold">{title}</p>
-      <p className="text-xs text-gray-500">{sub}</p>
+      <p className="text-sm font-bold leading-tight">{title}</p>
+      <p className="text-[11px] text-gray-500">{sub}</p>
     </button>
   );
 }
