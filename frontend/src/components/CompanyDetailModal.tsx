@@ -83,6 +83,8 @@ export function CompanyDetailModal({
     try {
       const { accessToken } = await superApi.impersonate(companyId);
       localStorage.setItem("mt_access", accessToken);
+      // Marca "modo soporte" para mostrar el aviso y el botón de volver en el panel.
+      localStorage.setItem("mt_impersonating", "1");
       if (tab && !tab.closed) tab.location.href = "/panel";
       else window.location.assign("/panel"); // fallback si el popup fue bloqueado
     } catch (cause) {

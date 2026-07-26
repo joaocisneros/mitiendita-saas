@@ -31,6 +31,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const [subdomain, setSubdomain] = useState<string | null>(null);
   const [usesAppointments, setUsesAppointments] = useState(false);
   const [usesSubscriptions, setUsesSubscriptions] = useState(false);
+  const [supportMode, setSupportMode] = useState(false);
 
   const baseNav = NAV.map((item) =>
     item.href === "/panel/citas"
@@ -57,7 +58,15 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (!getAccess()) router.replace("/panel/login");
     else queueMicrotask(() => setReady(true));
+    setSupportMode(localStorage.getItem("mt_impersonating") === "1");
   }, [router]);
+
+  function exitSupport() {
+    // Sale del modo soporte: limpia el token del dueño y vuelve al superadmin.
+    localStorage.removeItem("mt_access");
+    localStorage.removeItem("mt_impersonating");
+    window.location.assign("/superadmin");
+  }
 
   useEffect(() => {
     if (!getAccess()) return;
@@ -73,6 +82,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   }, []);
 
   async function logout() {
+    localStorage.removeItem("mt_impersonating");
     await adminApi.logout();
     router.replace("/panel/login");
   }
@@ -142,6 +152,17 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       </aside>
 
       <div className="flex h-dvh min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        {supportMode && (
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-amber-500 px-4 py-2 text-sm font-bold text-amber-950 md:px-7">
+            <span>🛟 Estás en modo soporte (viendo esta tienda como superadmin).</span>
+            <button
+              onClick={exitSupport}
+              className="rounded-lg bg-amber-950 px-3 py-1.5 text-xs font-bold text-amber-50 hover:bg-black"
+            >
+              ← Volver al superadmin
+            </button>
+          </div>
+        )}
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur md:px-7">
           <div className="flex items-center gap-3 md:hidden">
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-600 text-white">
