@@ -7,18 +7,17 @@ import { formatPrice } from "@/lib/format";
 import { StatusBadge, orderStatusMeta, type OrderStatusContext } from "@/components/StatusBadge";
 import { archetypeOf, resolveCategory } from "@/lib/business-categories";
 
-/** Flujo físico según el método: recojo salta "En camino"; domicilio lo incluye. */
+/** Flujo físico corto: recojo = confirmar→recogido; domicilio = confirmar→en camino→entregado. */
 function nextPhysical(status: string, isPickup: boolean): { value: string; label: string }[] {
-  const doneLabel = isPickup ? "Marcar recogido" : "Entregado";
   const map: Record<string, { value: string; label: string }[]> = {
     pending: [{ value: "cancelled", label: "Cancelar" }],
-    confirmed: [
-      { value: "preparing", label: "Preparar" },
-      { value: "cancelled", label: "Cancelar" },
-    ],
+    confirmed: isPickup
+      ? [{ value: "delivered", label: "Marcar recogido" }, { value: "cancelled", label: "Cancelar" }]
+      : [{ value: "out_for_delivery", label: "En camino 🚚" }, { value: "cancelled", label: "Cancelar" }],
+    // "Preparando" ya no se usa, pero se soporta por pedidos antiguos.
     preparing: isPickup
-      ? [{ value: "delivered", label: doneLabel }]
-      : [{ value: "out_for_delivery", label: "Enviar" }, { value: "delivered", label: "Entregado" }],
+      ? [{ value: "delivered", label: "Marcar recogido" }]
+      : [{ value: "out_for_delivery", label: "En camino 🚚" }, { value: "delivered", label: "Entregado" }],
     out_for_delivery: [{ value: "delivered", label: "Entregado" }],
   };
   return map[status] ?? [];
@@ -242,8 +241,11 @@ export function OrderDetailModal({
                 </Card>
               )}
 
-              <Card title="Historial">
-                <ol className="space-y-3">
+              <details className="rounded-2xl bg-white p-4 ring-1 ring-black/5">
+                <summary className="cursor-pointer select-none text-sm font-black text-slate-700 hover:text-slate-900">
+                  Ver historial ({order.history.length})
+                </summary>
+                <ol className="mt-3 space-y-2.5">
                   {order.history.map((h, i) => {
                     const last = i === order.history.length - 1;
                     return (
@@ -258,19 +260,14 @@ export function OrderDetailModal({
                             {h.comment ? <span className="font-medium text-slate-500"> · {h.comment}</span> : ""}
                           </p>
                           <p className="text-xs text-slate-400">
-                            {new Date(h.createdAt).toLocaleString("es-PE", {
-                              day: "2-digit",
-                              month: "2-digit",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
+                            {new Date(h.createdAt).toLocaleString("es-PE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
                           </p>
                         </div>
                       </li>
                     );
                   })}
                 </ol>
-              </Card>
+              </details>
             </div>
           </div>
 

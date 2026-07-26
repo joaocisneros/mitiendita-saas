@@ -231,12 +231,29 @@ export class AdminOrdersService {
   ) {
     const order = await this.get(companyId, id);
     const allowed = [...(TRANSITIONS[order.status] ?? [])];
+    // Servicios/planes: confirmado → completado directo.
     if (
       order.status === 'confirmed' &&
       newStatus === 'delivered' &&
       isServiceLikeBusiness(order.businessType)
     ) {
       allowed.push('delivered');
+    }
+    // Recojo en tienda: confirmado → recogido directo (flujo corto).
+    if (
+      order.status === 'confirmed' &&
+      newStatus === 'delivered' &&
+      order.deliveryMethod === 'pickup'
+    ) {
+      allowed.push('delivered');
+    }
+    // Entrega a domicilio: confirmado → en camino directo (salta "preparando").
+    if (
+      order.status === 'confirmed' &&
+      newStatus === 'out_for_delivery' &&
+      order.deliveryMethod === 'delivery'
+    ) {
+      allowed.push('out_for_delivery');
     }
     if (!allowed.includes(newStatus)) {
       throw new BadRequestException(
