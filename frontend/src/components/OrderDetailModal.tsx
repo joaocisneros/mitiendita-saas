@@ -7,18 +7,22 @@ import { formatPrice } from "@/lib/format";
 import { StatusBadge, orderStatusMeta, type OrderStatusContext } from "@/components/StatusBadge";
 import { archetypeOf, resolveCategory } from "@/lib/business-categories";
 
-const NEXT_PHYSICAL: Record<string, { value: string; label: string }[]> = {
-  pending: [{ value: "cancelled", label: "Cancelar" }],
-  confirmed: [
-    { value: "preparing", label: "Preparar" },
-    { value: "cancelled", label: "Cancelar" },
-  ],
-  preparing: [
-    { value: "out_for_delivery", label: "Enviar" },
-    { value: "delivered", label: "Entregado" },
-  ],
-  out_for_delivery: [{ value: "delivered", label: "Entregado" }],
-};
+/** Flujo físico según el método: recojo salta "En camino"; domicilio lo incluye. */
+function nextPhysical(status: string, isPickup: boolean): { value: string; label: string }[] {
+  const doneLabel = isPickup ? "Marcar recogido" : "Entregado";
+  const map: Record<string, { value: string; label: string }[]> = {
+    pending: [{ value: "cancelled", label: "Cancelar" }],
+    confirmed: [
+      { value: "preparing", label: "Preparar" },
+      { value: "cancelled", label: "Cancelar" },
+    ],
+    preparing: isPickup
+      ? [{ value: "delivered", label: doneLabel }]
+      : [{ value: "out_for_delivery", label: "Enviar" }, { value: "delivered", label: "Entregado" }],
+    out_for_delivery: [{ value: "delivered", label: "Entregado" }],
+  };
+  return map[status] ?? [];
+}
 
 function orderContext(order: AdminOrderDetail): {
   isServiceLike: boolean;
@@ -39,7 +43,7 @@ function orderContext(order: AdminOrderDetail): {
 
 function nextForOrder(order: AdminOrderDetail) {
   const context = orderContext(order);
-  if (!context.isServiceLike) return NEXT_PHYSICAL[order.status] ?? [];
+  if (!context.isServiceLike) return nextPhysical(order.status, order.deliveryMethod === "pickup");
 
   const doneLabel = context.isTelecom ? "Marcar activado" : "Marcar completado";
   const map: Record<string, { value: string; label: string }[]> = {
