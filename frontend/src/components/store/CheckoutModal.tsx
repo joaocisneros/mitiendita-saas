@@ -151,7 +151,7 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
       onClick={onClose}
     >
       <div
-        className="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl"
+        className="relative flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Encabezado: cambia entre "Finalizar" y "Pedido creado" */}
@@ -217,7 +217,7 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
               {items.some((i) => parseOptions(i.sizes).length > 0 || parseOptions(i.colors).length > 0) && (
                 <div className="sm:col-span-2 rounded-2xl border border-violet-200 bg-violet-50/60 p-2.5">
                   <p className="mb-1.5 text-sm font-black text-violet-800">Elige tus opciones</p>
-                  <div className="max-h-44 space-y-1.5 overflow-y-auto pr-0.5">
+                  <div className="grid max-h-44 grid-cols-1 gap-1.5 overflow-y-auto pr-0.5 sm:grid-cols-2">
                     {items.filter((i) => parseOptions(i.sizes).length > 0 || parseOptions(i.colors).length > 0).map((i) => (
                       <div key={i.productId} className="rounded-xl bg-white p-2 ring-1 ring-slate-200">
                         <p className="text-xs font-black text-slate-800">{i.name}</p>
