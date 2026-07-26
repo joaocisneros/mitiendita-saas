@@ -13,6 +13,7 @@ import { ServiciosTemplate } from "@/components/store/ServiciosTemplate";
 import { DigitalTemplate } from "@/components/store/DigitalTemplate";
 import { HeaderCartIcon } from "@/components/store/HeaderCartIcon";
 import { StoreFooter } from "@/components/store/StoreFooter";
+import { StoreBenefits } from "@/components/store/StoreBenefits";
 
 const DEFAULT_PRIMARY = "#2563eb";
 
@@ -245,6 +246,8 @@ export default async function StorePage({
             category={category}
           />
         )}
+
+        <StoreBenefits archetype={archetype} />
       </main>
 
       <StoreFooter store={store} />
