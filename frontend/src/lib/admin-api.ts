@@ -153,7 +153,17 @@ export const adminApi = {
     return data;
   },
 
-  me: () => authFetch("/auth/me").then((r) => jsonOrThrow(r, "No autorizado")),
+  me: () =>
+    authFetch("/auth/me").then((r) =>
+      jsonOrThrow<{ userId: string; email: string; companyId: string; role: string }>(r, "No autorizado"),
+    ),
+
+  updateProfile: (body: { name?: string; currentPassword?: string; newPassword?: string }) =>
+    authFetch("/auth/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => jsonOrThrow<{ id: string; name: string; email: string }>(r, "No se pudo actualizar el perfil.")),
 
   async logout() {
     const refreshToken = typeof window === "undefined" ? null : localStorage.getItem(REFRESH_KEY);

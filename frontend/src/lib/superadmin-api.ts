@@ -5,6 +5,7 @@ const API =
     ? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8300/api"
     : "/api";
 const KEY = "mt_super";
+const ADMIN_KEY = "mt_super_admin";
 
 export function getSuperToken(): string | null {
   return typeof window === "undefined" ? null : localStorage.getItem(KEY);
@@ -14,6 +15,25 @@ export function setSuperToken(token: string) {
 }
 export function clearSuperToken() {
   localStorage.removeItem(KEY);
+  localStorage.removeItem(ADMIN_KEY);
+}
+
+export interface SuperAdminInfo {
+  id?: string;
+  name: string;
+  email: string;
+}
+export function setSuperAdmin(admin: SuperAdminInfo) {
+  localStorage.setItem(ADMIN_KEY, JSON.stringify(admin));
+}
+export function getSuperAdmin(): SuperAdminInfo | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(ADMIN_KEY);
+    return raw ? (JSON.parse(raw) as SuperAdminInfo) : null;
+  } catch {
+    return null;
+  }
 }
 
 async function sfetch<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -191,8 +211,15 @@ export const superApi = {
         (data as { message?: string }).message ?? "Credenciales incorrectas.",
       );
     setSuperToken(data.accessToken);
+    if (data.admin) setSuperAdmin(data.admin);
     return data;
   },
+  updateProfile: (body: { name?: string; currentPassword?: string; newPassword?: string }) =>
+    sfetch<{ id: string; name: string; email: string }>("/superadmin/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
   stats: (days = 30) =>
     sfetch<GlobalStats>(`/superadmin/stats?days=${days}`),
   companies: (

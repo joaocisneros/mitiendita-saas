@@ -1,7 +1,12 @@
-import { Body, Controller, HttpCode, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, Patch, Post, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '../../common/decorators/public.decorator';
-import { SuperAdminLoginDto } from '../dto/auth.dto';
+import { SuperAdminGuard } from '../../common/guards/super-admin.guard';
+import {
+  CurrentUser,
+  type AuthUser,
+} from '../../common/decorators/current-user.decorator';
+import { SuperAdminLoginDto, UpdateProfileDto } from '../dto/auth.dto';
 import { SaAuthService } from '../services/sa-auth.service';
 
 @Controller('superadmin')
@@ -15,5 +20,13 @@ export class SaAuthController {
   @Post('login')
   login(@Body() dto: SuperAdminLoginDto) {
     return this.auth.login(dto.email, dto.password);
+  }
+
+  /** Edita el propio perfil del superadmin (nombre y/o contraseña). */
+  @UseGuards(SuperAdminGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Patch('profile')
+  updateProfile(@CurrentUser() user: AuthUser, @Body() dto: UpdateProfileDto) {
+    return this.auth.updateProfile(user.userId, dto);
   }
 }

@@ -211,6 +211,36 @@ export class AuthService {
     return { ok: true };
   }
 
+  /**
+   * Edita el perfil del propio usuario: nombre y/o contraseña.
+   * El correo no se cambia aquí. Para cambiar la clave, valida la actual.
+   */
+  async updateProfile(
+    userId: string,
+    dto: { name?: string; currentPassword?: string; newPassword?: string },
+  ) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('Usuario no encontrado.');
+
+    const data: { name?: string; passwordHash?: string } = {};
+    if (dto.name && dto.name.trim() !== user.name) {
+      data.name = dto.name.trim();
+    }
+    if (dto.newPassword) {
+      if (!dto.currentPassword) {
+        throw new BadRequestException('Ingresa tu contraseña actual para cambiarla.');
+      }
+      const ok = await bcrypt.compare(dto.currentPassword, user.passwordHash);
+      if (!ok) throw new BadRequestException('La contraseña actual no es correcta.');
+      data.passwordHash = await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS);
+    }
+    if (Object.keys(data).length === 0) {
+      return { id: user.id, name: user.name, email: user.email };
+    }
+    const updated = await this.prisma.user.update({ where: { id: userId }, data });
+    return { id: updated.id, name: updated.name, email: updated.email };
+  }
+
   // ───────────────────── HELPERS ─────────────────────
 
   /** Emite access token (JWT) + refresh token (aleatorio, guardado como hash). */

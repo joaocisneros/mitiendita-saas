@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { adminApi, getAccess } from "@/lib/admin-api";
 import { archetypeOf, resolveCategory } from "@/lib/business-categories";
 import { DashboardIcon } from "@/components/DashboardIcon";
+import { ProfileModal } from "@/components/ProfileModal";
 
 const NAV = [
   { href: "/panel", label: "Resumen", icon: "dashboard" as const },
@@ -32,6 +33,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const [usesAppointments, setUsesAppointments] = useState(false);
   const [usesSubscriptions, setUsesSubscriptions] = useState(false);
   const [supportMode, setSupportMode] = useState(false);
+  const [email, setEmail] = useState("");
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const baseNav = NAV.map((item) =>
     item.href === "/panel/citas"
@@ -79,6 +82,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         setUsesSubscriptions(archetype === "digital");
       })
       .catch(() => {});
+    adminApi.me().then((u) => setEmail(u.email)).catch(() => {});
   }, []);
 
   async function logout() {
@@ -192,6 +196,14 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             >
               Salir
             </button>
+            <button
+              onClick={() => setProfileOpen(true)}
+              className="flex items-center gap-2 rounded-full border border-slate-200 py-1 pl-1 pr-3 transition hover:bg-slate-50"
+              title="Mi perfil"
+            >
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-600 text-sm font-black text-white">{(email || "T").trim().charAt(0).toUpperCase()}</span>
+              <span className="hidden text-sm font-bold text-slate-800 sm:block">Mi perfil</span>
+            </button>
           </div>
         </header>
 
@@ -217,6 +229,17 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           })}
         </nav>
       </div>
+
+      {profileOpen && (
+        <ProfileModal
+          email={email}
+          onClose={() => setProfileOpen(false)}
+          onLogout={logout}
+          onSave={async (draft) => {
+            await adminApi.updateProfile(draft);
+          }}
+        />
+      )}
     </div>
   );
 }

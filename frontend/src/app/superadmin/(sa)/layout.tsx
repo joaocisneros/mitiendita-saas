@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { clearSuperToken, getSuperToken } from "@/lib/superadmin-api";
+import { clearSuperToken, getSuperToken, getSuperAdmin, setSuperAdmin, superApi } from "@/lib/superadmin-api";
 import { DashboardIcon } from "@/components/DashboardIcon";
+import { ProfileModal } from "@/components/ProfileModal";
 
 const NAV = [
   { href: "/superadmin", label: "Panel general", icon: "dashboard" as const },
@@ -42,11 +43,15 @@ export default function SaLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [ready, setReady] = useState(false);
+  const [admin, setAdmin] = useState<{ name: string; email: string } | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
   const current = NAV.find((item) => isActive(item.href, pathname));
+  const initial = (admin?.name || admin?.email || "A").trim().charAt(0).toUpperCase();
 
   useEffect(() => {
     if (!getSuperToken()) router.replace("/superadmin/login");
     else queueMicrotask(() => setReady(true));
+    setAdmin(getSuperAdmin());
   }, [router]);
 
   function logout() {
@@ -118,12 +123,22 @@ export default function SaLayout({ children }: { children: React.ReactNode }) {
               Administración de plataforma
             </p>
           </div>
-          <button
-            onClick={logout}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 md:hidden"
-          >
-            Salir
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={logout}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 md:hidden"
+            >
+              Salir
+            </button>
+            <button
+              onClick={() => setProfileOpen(true)}
+              className="flex items-center gap-2 rounded-full border border-slate-200 py-1 pl-1 pr-3 transition hover:bg-slate-50"
+              title="Mi perfil"
+            >
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-600 text-sm font-black text-white">{initial}</span>
+              <span className="hidden text-sm font-bold text-slate-800 sm:block">{admin?.name ?? "Mi perfil"}</span>
+            </button>
+          </div>
         </header>
         <main className="min-h-0 flex-1 overflow-y-auto p-4 pb-20 text-slate-950 md:p-7 md:pb-7">{children}</main>
         <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-slate-200 bg-white p-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] md:hidden">
@@ -141,6 +156,20 @@ export default function SaLayout({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
       </div>
+
+      {profileOpen && (
+        <ProfileModal
+          name={admin?.name}
+          email={admin?.email ?? ""}
+          onClose={() => setProfileOpen(false)}
+          onLogout={logout}
+          onSave={async (draft) => {
+            const updated = await superApi.updateProfile(draft);
+            setSuperAdmin({ id: updated.id, name: updated.name, email: updated.email });
+            setAdmin({ name: updated.name, email: updated.email });
+          }}
+        />
+      )}
     </div>
   );
 }

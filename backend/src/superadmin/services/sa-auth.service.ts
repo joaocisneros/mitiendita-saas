@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -32,5 +32,35 @@ export class SaAuthService {
       accessToken,
       admin: { id: admin.id, name: admin.name, email: admin.email },
     };
+  }
+
+  /**
+   * Edita el propio perfil del superadmin: nombre y/o contraseña.
+   * El correo no se cambia aquí. Para cambiar la clave, valida la actual.
+   */
+  async updateProfile(
+    adminId: string,
+    dto: { name?: string; currentPassword?: string; newPassword?: string },
+  ) {
+    const admin = await this.prisma.superAdmin.findUnique({ where: { id: adminId } });
+    if (!admin) throw new UnauthorizedException('Administrador no encontrado.');
+
+    const data: { name?: string; passwordHash?: string } = {};
+    if (dto.name && dto.name.trim() !== admin.name) {
+      data.name = dto.name.trim();
+    }
+    if (dto.newPassword) {
+      if (!dto.currentPassword) {
+        throw new BadRequestException('Ingresa tu contraseña actual para cambiarla.');
+      }
+      const ok = await bcrypt.compare(dto.currentPassword, admin.passwordHash);
+      if (!ok) throw new BadRequestException('La contraseña actual no es correcta.');
+      data.passwordHash = await bcrypt.hash(dto.newPassword, 12);
+    }
+    if (Object.keys(data).length === 0) {
+      return { id: admin.id, name: admin.name, email: admin.email };
+    }
+    const updated = await this.prisma.superAdmin.update({ where: { id: adminId }, data });
+    return { id: updated.id, name: updated.name, email: updated.email };
   }
 }
