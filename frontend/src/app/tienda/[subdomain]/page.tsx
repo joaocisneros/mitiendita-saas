@@ -129,14 +129,13 @@ export default async function StorePage({
             )}
           </div>
 
-          {/* Sellos de confianza (entrega/recojo/Yape solo en negocios físicos) */}
+          {/* Sellos de confianza (se adaptan al tipo de negocio) */}
           <div className="mt-5 flex flex-wrap gap-2 text-xs font-semibold">
             {store.whatsappNumber && (
               <span className="rounded-full bg-white/15 px-3 py-1.5 ring-1 ring-white/20">💬 Atención por WhatsApp</span>
             )}
-            {usesCart && (
-              <span className="rounded-full bg-white/15 px-3 py-1.5 ring-1 ring-white/20">🔒 Pago seguro con Yape</span>
-            )}
+            <span className="rounded-full bg-white/15 px-3 py-1.5 ring-1 ring-white/20">🔒 Pago seguro</span>
+            <span className="rounded-full bg-white/15 px-3 py-1.5 ring-1 ring-white/20">✅ Confirmación por WhatsApp</span>
             {usesCart && store.allowsDelivery && (
               <span className="rounded-full bg-white/15 px-3 py-1.5 ring-1 ring-white/20">🚚 Entrega a domicilio</span>
             )}
@@ -144,7 +143,10 @@ export default async function StorePage({
               <span className="rounded-full bg-white/15 px-3 py-1.5 ring-1 ring-white/20">🏪 Recojo en tienda</span>
             )}
             {archetype === "servicios" && (
-              <span className="rounded-full bg-white/15 px-3 py-1.5 ring-1 ring-white/20">📅 Reserva fácil</span>
+              <>
+                <span className="rounded-full bg-white/15 px-3 py-1.5 ring-1 ring-white/20">📅 Reserva fácil</span>
+                <span className="rounded-full bg-white/15 px-3 py-1.5 ring-1 ring-white/20">📞 Sin llamadas</span>
+              </>
             )}
             {archetype === "digital" && (
               <span className="rounded-full bg-white/15 px-3 py-1.5 ring-1 ring-white/20">⚡ Activación rápida</span>
@@ -158,7 +160,7 @@ export default async function StorePage({
         </div>
       </header>
 
-      <main className="mx-auto -mt-6 max-w-[1440px] rounded-t-[2rem] px-4 pb-32 pt-6 sm:px-6 lg:px-8" style={{ backgroundColor: surface }}>
+      <main className="mx-auto -mt-6 max-w-[1440px] rounded-t-[2rem] px-4 pb-32 pt-8 sm:px-6 lg:px-8" style={{ backgroundColor: surface }}>
         {archetype === "catalogo" && (
           <CatalogTemplate
             subdomain={subdomain}
@@ -189,6 +191,8 @@ export default async function StorePage({
             searchPlaceholder={terms.search}
             catalogLabel={terms.catalog}
             emptyLabel={terms.empty}
+            categories={categories}
+            category={category}
           />
         )}
         {archetype === "servicios" && (
@@ -212,6 +216,8 @@ export default async function StorePage({
             search={search}
             searchPlaceholder={terms.search}
             emptyLabel={terms.empty}
+            categories={categories}
+            category={category}
           />
         )}
         {archetype === "digital" && (
@@ -235,6 +241,8 @@ export default async function StorePage({
             plinQrUrl={store.plinQrUrl}
             plinHolderName={store.plinHolderName}
             plinNumber={store.plinNumber}
+            categories={categories}
+            category={category}
           />
         )}
       </main>

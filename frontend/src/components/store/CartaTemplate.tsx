@@ -2,7 +2,8 @@ import { ProductCard } from "@/components/ProductCard";
 import { StoreSearch } from "@/components/store/StoreSearch";
 import { StoreEmpty } from "@/components/store/StoreEmpty";
 import { StoreToolbar } from "@/components/store/StoreToolbar";
-import type { PublicProduct } from "@/lib/types";
+import { CategoryChips } from "@/components/store/CategoryChips";
+import type { PublicProduct, StoreCategory } from "@/lib/types";
 
 /** Plantilla Carta: platos en tarjetas con foto grande, agrupados por sección. (Alimentos) */
 export function CartaTemplate({
@@ -17,6 +18,8 @@ export function CartaTemplate({
   searchPlaceholder,
   catalogLabel,
   emptyLabel,
+  categories,
+  category,
 }: {
   subdomain: string;
   accent: string;
@@ -29,6 +32,8 @@ export function CartaTemplate({
   searchPlaceholder: string;
   catalogLabel: string;
   emptyLabel: string;
+  categories?: StoreCategory[];
+  category?: string;
 }) {
   const featured = products.filter((p) => p.isFeatured);
   const groups = new Map<string, PublicProduct[]>();
@@ -51,6 +56,8 @@ export function CartaTemplate({
         placeholder={searchPlaceholder}
         defaultValue={search}
       />
+
+      <CategoryChips subdomain={subdomain} categories={categories ?? []} category={category} accent={accent} />
 
       {products.length === 0 ? (
         <StoreEmpty accent={accent} message={emptyLabel} icon="🍽️" />

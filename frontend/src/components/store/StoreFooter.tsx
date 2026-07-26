@@ -3,10 +3,12 @@ import type { StoreBrand } from "@/lib/types";
 /** Pie de página profesional: contacto, confianza y atribución. */
 export function StoreFooter({ store }: { store: StoreBrand }) {
   const phone = store.whatsappNumber?.replace(/\D/g, "");
+  const hasYape = Boolean(store.yapeNumber || store.yapeQrUrl);
+  const hasPlin = Boolean(store.plinNumber || store.plinQrUrl);
   return (
     <footer className="mt-4 border-t border-slate-200 bg-white">
       <div className="mx-auto max-w-[1440px] px-4 py-8 sm:px-6 lg:px-8">
-        <div className="grid gap-6 sm:grid-cols-3">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <p className="text-base font-black text-slate-900">{store.name}</p>
             {store.description && (
@@ -28,6 +30,16 @@ export function StoreFooter({ store }: { store: StoreBrand }) {
               </a>
             )}
           </div>
+
+          {(hasYape || hasPlin) && (
+            <div className="space-y-2 text-sm text-slate-600">
+              <p className="font-bold text-slate-800">Métodos de pago</p>
+              <div className="flex flex-wrap gap-2">
+                {hasYape && <span className="rounded-lg bg-violet-100 px-3 py-1.5 text-xs font-black text-violet-700 ring-1 ring-violet-200">Yape</span>}
+                {hasPlin && <span className="rounded-lg bg-teal-100 px-3 py-1.5 text-xs font-black text-teal-700 ring-1 ring-teal-200">Plin</span>}
+              </div>
+            </div>
+          )}
 
           <div className="space-y-1.5 text-sm text-slate-600">
             <p className="font-bold text-slate-800">Tu compra está protegida</p>

@@ -3,8 +3,9 @@ import { StoreSearch } from "@/components/store/StoreSearch";
 import { StoreEmpty } from "@/components/store/StoreEmpty";
 import { StoreToolbar } from "@/components/store/StoreToolbar";
 import { SubscribeButton } from "@/components/store/SubscribeButton";
+import { CategoryChips } from "@/components/store/CategoryChips";
 import { formatPrice } from "@/lib/format";
-import type { PublicProduct } from "@/lib/types";
+import type { PublicProduct, StoreCategory } from "@/lib/types";
 
 function splitPlanDescription(description?: string | null) {
   const raw = description ?? "";
@@ -45,6 +46,8 @@ export function DigitalTemplate({
   search,
   searchPlaceholder,
   emptyLabel,
+  categories,
+  category,
   yapeQrUrl,
   yapeHolderName,
   yapeNumber,
@@ -65,6 +68,8 @@ export function DigitalTemplate({
   search?: string;
   searchPlaceholder: string;
   emptyLabel: string;
+  categories?: StoreCategory[];
+  category?: string;
   yapeQrUrl?: string | null;
   yapeHolderName?: string | null;
   yapeNumber?: string | null;
@@ -80,6 +85,8 @@ export function DigitalTemplate({
         placeholder={searchPlaceholder}
         defaultValue={search}
       />
+
+      <CategoryChips subdomain={subdomain} categories={categories ?? []} category={category} accent={accent} />
 
       {products.length === 0 ? (
         <StoreEmpty accent={accent} message={emptyLabel} icon="🎬" />

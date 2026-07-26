@@ -3,8 +3,9 @@ import { StoreSearch } from "@/components/store/StoreSearch";
 import { StoreEmpty } from "@/components/store/StoreEmpty";
 import { StoreToolbar } from "@/components/store/StoreToolbar";
 import { ServiceReserveButton } from "@/components/store/ServiceReserveButton";
+import { CategoryChips } from "@/components/store/CategoryChips";
 import { formatPrice } from "@/lib/format";
-import type { PublicProduct } from "@/lib/types";
+import type { PublicProduct, StoreCategory } from "@/lib/types";
 
 /**
  * Plantilla Servicios: tarjetas de servicio con acción de consulta/reserva por
@@ -30,6 +31,8 @@ export function ServiciosTemplate({
   search,
   searchPlaceholder,
   emptyLabel,
+  categories,
+  category,
 }: {
   subdomain: string;
   accent: string;
@@ -50,6 +53,8 @@ export function ServiciosTemplate({
   search?: string;
   searchPlaceholder: string;
   emptyLabel: string;
+  categories?: StoreCategory[];
+  category?: string;
 }) {
   return (
     <>
@@ -59,6 +64,8 @@ export function ServiciosTemplate({
         placeholder={searchPlaceholder}
         defaultValue={search}
       />
+
+      <CategoryChips subdomain={subdomain} categories={categories ?? []} category={category} accent={accent} />
 
       {products.length === 0 ? (
         <StoreEmpty accent={accent} message={emptyLabel} icon="✦" />
