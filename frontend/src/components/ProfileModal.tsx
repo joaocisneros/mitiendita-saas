@@ -26,7 +26,7 @@ export function ProfileModal({
   onLogout?: () => void;
 }) {
   const [displayName, setDisplayName] = useState(name ?? "");
-  const [changePass, setChangePass] = useState(false);
+  const [tab, setTab] = useState<"perfil" | "password">("perfil");
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -50,7 +50,8 @@ export function ProfileModal({
       }
       draft.name = displayName.trim();
     }
-    if (changePass) {
+    const wantsPassword = Boolean(current || next || confirm);
+    if (wantsPassword) {
       if (!current) {
         setError("Ingresa tu contraseña actual.");
         return;
@@ -77,7 +78,6 @@ export function ProfileModal({
       setCurrent("");
       setNext("");
       setConfirm("");
-      setChangePass(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar.");
     } finally {
@@ -104,38 +104,43 @@ export function ProfileModal({
           </div>
         </div>
 
-        <label className="block">
-          <span className="mb-1 block text-sm font-bold text-slate-800">Nombre</span>
-          <input value={displayName} onChange={(e) => { setDisplayName(e.target.value); setOk(false); }} className="pm-input" placeholder="Tu nombre" autoComplete="off" name="mt-profile-name" />
-        </label>
-
-        {/* Sección: seguridad (separada) */}
-        <div className="mt-4 border-t border-slate-200 pt-4">
-          <div className="flex items-center justify-between">
-            <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">Seguridad</p>
-            {!changePass && (
-              <button onClick={() => { setChangePass(true); setOk(false); }} className="text-sm font-bold text-violet-700 hover:underline">
-                Cambiar contraseña
-              </button>
-            )}
-          </div>
-          {changePass && (
-            <div className="mt-3 space-y-2 rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200">
-              <label className="block">
-                <span className="mb-1 block text-xs font-bold text-slate-700">Contraseña actual</span>
-                <input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} className="pm-input" placeholder="Tu contraseña actual" autoComplete="current-password" />
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-xs font-bold text-slate-700">Nueva contraseña</span>
-                <input type="password" value={next} onChange={(e) => setNext(e.target.value)} className="pm-input" placeholder="Mínimo 8 caracteres" autoComplete="new-password" />
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-xs font-bold text-slate-700">Repite la nueva contraseña</span>
-                <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className="pm-input" placeholder="Vuelve a escribirla" autoComplete="new-password" />
-              </label>
-            </div>
-          )}
+        {/* Pestañas: Perfil / Contraseña */}
+        <div className="mb-4 grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1">
+          <button
+            onClick={() => { setTab("perfil"); setError(""); }}
+            className={`rounded-lg py-2 text-sm font-black transition ${tab === "perfil" ? "bg-white text-violet-700 shadow-sm" : "text-slate-500"}`}
+          >
+            Perfil
+          </button>
+          <button
+            onClick={() => { setTab("password"); setError(""); }}
+            className={`rounded-lg py-2 text-sm font-black transition ${tab === "password" ? "bg-white text-violet-700 shadow-sm" : "text-slate-500"}`}
+          >
+            Contraseña
+          </button>
         </div>
+
+        {tab === "perfil" ? (
+          <label className="block">
+            <span className="mb-1 block text-sm font-bold text-slate-800">Nombre</span>
+            <input value={displayName} onChange={(e) => { setDisplayName(e.target.value); setOk(false); }} className="pm-input" placeholder="Tu nombre" autoComplete="off" name="mt-profile-name" />
+          </label>
+        ) : (
+          <div className="space-y-2">
+            <label className="block">
+              <span className="mb-1 block text-xs font-bold text-slate-700">Contraseña actual</span>
+              <input type="password" value={current} onChange={(e) => { setCurrent(e.target.value); setOk(false); }} className="pm-input" placeholder="Tu contraseña actual" autoComplete="current-password" />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-bold text-slate-700">Nueva contraseña</span>
+              <input type="password" value={next} onChange={(e) => { setNext(e.target.value); setOk(false); }} className="pm-input" placeholder="Mínimo 8 caracteres" autoComplete="new-password" />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-bold text-slate-700">Repite la nueva contraseña</span>
+              <input type="password" value={confirm} onChange={(e) => { setConfirm(e.target.value); setOk(false); }} className="pm-input" placeholder="Vuelve a escribirla" autoComplete="new-password" />
+            </label>
+          </div>
+        )}
 
         {error && <p className="mt-3 rounded-lg bg-red-50 p-2.5 text-sm font-semibold text-red-700">{error}</p>}
         {ok && <p className="mt-3 rounded-lg bg-emerald-50 p-2.5 text-sm font-semibold text-emerald-700">✅ Cambios guardados.</p>}
