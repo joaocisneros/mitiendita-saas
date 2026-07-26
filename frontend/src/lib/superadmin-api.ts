@@ -30,10 +30,21 @@ export function getSuperAdmin(): SuperAdminInfo | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(ADMIN_KEY);
-    return raw ? (JSON.parse(raw) as SuperAdminInfo) : null;
+    if (raw) return JSON.parse(raw) as SuperAdminInfo;
   } catch {
-    return null;
+    /* ignora json inválido */
   }
+  // Respaldo: saca el correo del propio token (sesiones iniciadas antes).
+  const token = getSuperToken();
+  if (token) {
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1] ?? "")) as { email?: string };
+      if (payload?.email) return { name: "", email: payload.email };
+    } catch {
+      /* token no decodificable */
+    }
+  }
+  return null;
 }
 
 async function sfetch<T>(path: string, init: RequestInit = {}): Promise<T> {

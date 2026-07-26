@@ -7,6 +7,7 @@ import { adminApi, getAccess } from "@/lib/admin-api";
 import { archetypeOf, resolveCategory } from "@/lib/business-categories";
 import { DashboardIcon } from "@/components/DashboardIcon";
 import { ProfileModal } from "@/components/ProfileModal";
+import { AccountMenu } from "@/components/AccountMenu";
 
 const NAV = [
   { href: "/panel", label: "Resumen", icon: "dashboard" as const },
@@ -190,20 +191,11 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                 <span className="hidden sm:inline">Ver mi tienda</span> ↗
               </a>
             )}
-            <button
-              onClick={logout}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 md:hidden"
-            >
-              Salir
-            </button>
-            <button
-              onClick={() => setProfileOpen(true)}
-              className="flex items-center gap-2 rounded-full border border-slate-200 py-1 pl-1 pr-3 transition hover:bg-slate-50"
-              title="Mi perfil"
-            >
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-600 text-sm font-black text-white">{(email || "T").trim().charAt(0).toUpperCase()}</span>
-              <span className="hidden text-sm font-bold text-slate-800 sm:block">Mi perfil</span>
-            </button>
+            <AccountMenu
+              email={email}
+              onEditProfile={() => setProfileOpen(true)}
+              onLogout={logout}
+            />
           </div>
         </header>
 
@@ -234,7 +226,6 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         <ProfileModal
           email={email}
           onClose={() => setProfileOpen(false)}
-          onLogout={logout}
           onSave={async (draft) => {
             await adminApi.updateProfile(draft);
           }}

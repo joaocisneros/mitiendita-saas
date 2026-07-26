@@ -93,20 +93,24 @@ export function ProfileModal({
           <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200" aria-label="Cerrar">✕</button>
         </div>
 
-        {/* Sección: datos de la cuenta */}
-        <p className="mb-2 text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">Tus datos</p>
+        {/* Identidad compacta: avatar + correo (no editable) */}
+        <div className="mb-4 flex items-center gap-3 rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-violet-600 text-lg font-black text-white">
+            {(displayName || email || "U").trim().charAt(0).toUpperCase()}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-black text-slate-900">{displayName || "Tu cuenta"}</p>
+            <p className="truncate text-xs font-medium text-slate-500">🔒 {email || "—"}</p>
+          </div>
+        </div>
+
         <label className="block">
           <span className="mb-1 block text-sm font-bold text-slate-800">Nombre</span>
-          <input value={displayName} onChange={(e) => { setDisplayName(e.target.value); setOk(false); }} className="pm-input" placeholder="Tu nombre" />
-        </label>
-        <label className="mt-3 block">
-          <span className="mb-1 block text-sm font-bold text-slate-800">Correo electrónico</span>
-          <input value={email} disabled className="pm-input cursor-not-allowed bg-slate-100 text-slate-500" />
-          <span className="mt-1 block text-xs font-medium text-slate-400">🔒 El correo no se puede cambiar.</span>
+          <input value={displayName} onChange={(e) => { setDisplayName(e.target.value); setOk(false); }} className="pm-input" placeholder="Tu nombre" autoComplete="off" name="mt-profile-name" />
         </label>
 
         {/* Sección: seguridad (separada) */}
-        <div className="mt-5 border-t border-slate-200 pt-4">
+        <div className="mt-4 border-t border-slate-200 pt-4">
           <div className="flex items-center justify-between">
             <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">Seguridad</p>
             {!changePass && (
