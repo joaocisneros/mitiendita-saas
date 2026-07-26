@@ -24,6 +24,9 @@ export function ServiciosTemplate({
   yapeQrUrl,
   yapeHolderName,
   yapeNumber,
+  plinQrUrl,
+  plinHolderName,
+  plinNumber,
   search,
   searchPlaceholder,
   emptyLabel,
@@ -41,6 +44,9 @@ export function ServiciosTemplate({
   yapeQrUrl?: string | null;
   yapeHolderName?: string | null;
   yapeNumber?: string | null;
+  plinQrUrl?: string | null;
+  plinHolderName?: string | null;
+  plinNumber?: string | null;
   search?: string;
   searchPlaceholder: string;
   emptyLabel: string;
@@ -106,6 +112,9 @@ export function ServiciosTemplate({
                     yapeQrUrl={yapeQrUrl}
                     yapeHolderName={yapeHolderName}
                     yapeNumber={yapeNumber}
+                    plinQrUrl={plinQrUrl}
+                    plinHolderName={plinHolderName}
+                    plinNumber={plinNumber}
                     reservationPaymentMode={p.reservationPaymentMode}
                     reservationAdvanceType={p.reservationAdvanceType}
                     reservationAdvanceValue={p.reservationAdvanceValue}

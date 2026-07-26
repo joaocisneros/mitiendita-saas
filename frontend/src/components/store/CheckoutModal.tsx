@@ -134,11 +134,9 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
       >
         {/* Encabezado: cambia entre "Finalizar" y "Pedido creado" */}
         {order ? (
-          <header className="relative bg-green-600 px-5 py-4 text-center text-white">
+          <header className="relative px-5 py-2.5 text-center text-white" style={{ background: `linear-gradient(135deg, ${accent}, #0f172a)` }}>
             <button onClick={onClose} className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-white/20 hover:bg-white/30" aria-label="Cerrar">✕</button>
-            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-white/25 text-xl font-black">✓</div>
-            <h2 className="mt-1 text-lg font-black">¡Pedido creado!</h2>
-            <p className="text-xs font-semibold text-white/90">Código: {order.code}</p>
+            <h2 className="text-base font-black">✓ ¡Pedido creado! <span className="font-semibold text-white/80">· {order.code}</span></h2>
           </header>
         ) : (
           <header className="flex items-center justify-between px-5 py-4 text-white" style={{ backgroundColor: accent }}>
@@ -147,7 +145,7 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
           </header>
         )}
 
-        <div className="space-y-4 overflow-y-auto p-5">
+        <div className="space-y-3 overflow-y-auto p-4">
           {!order ? (
             // ─────────── Vista 1: formulario (2 columnas, sin scroll) ───────────
             <div className="grid gap-4 sm:grid-cols-2">
@@ -216,15 +214,19 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
             </div>
           ) : (
             // ─────────── Vista 2: confirmación + Yape (2 columnas) ───────────
-            <div className="grid gap-4 sm:grid-cols-2 sm:items-start">
-              {/* Columna izquierda: estado + resumen */}
-              <div className="space-y-4">
-                <div className="rounded-2xl bg-gray-50 p-4 ring-1 ring-black/5">
-                  <p className="text-sm text-gray-500">Estado del pago</p>
-                  <p className="text-lg font-bold text-gray-800">{PAYMENT_LABEL[order.paymentStatus] ?? order.paymentStatus}</p>
-                </div>
-
-                <div className="rounded-2xl bg-gray-50 p-4 ring-1 ring-black/5">
+            <>
+            <div className="mb-4 rounded-2xl bg-slate-950 p-2.5 text-left text-white">
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/50">Resumen</p>
+              <div className="mt-1.5 grid gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
+                <div className="flex justify-between gap-3"><span className="text-white/60">Pedido</span><b className="text-right">{order.code}</b></div>
+                <div className="flex justify-between gap-3"><span className="text-white/60">Estado</span><b className="text-right">{PAYMENT_LABEL[order.paymentStatus] ?? order.paymentStatus}</b></div>
+                <div className="flex justify-between gap-3"><span className="text-white/60">Total</span><b className="text-right">{formatPrice(order.total, order.currency)}</b></div>
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 sm:items-start">
+              {/* Columna izquierda: detalle del pedido */}
+              <div className="space-y-3">
+                <div className="rounded-2xl bg-gray-50 p-3 ring-1 ring-black/5">
                   <h3 className="mb-2 font-bold">Tu pedido</h3>
                   <ul className="space-y-1 text-sm">
                     {order.items.map((it, i) => (
@@ -279,13 +281,10 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
                       ) : (
                         <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-700">El negocio aún no cargó su QR de pago. Coordina el pago por WhatsApp.</p>
                       )}
-                      <div className="mt-3 text-center text-sm">
-                        <p className="text-base">Monto exacto: <b className="text-violet-700">{formatPrice(order.total, order.currency)}</b></p>
-                      </div>
-                      <div className="mt-3 border-t pt-3">
-                        <label className="flex cursor-pointer flex-col items-center rounded-xl border-2 border-dashed border-violet-300 bg-violet-50 p-3 text-center">
-                          <span className="text-sm font-semibold text-violet-700">{uploading ? "Subiendo..." : "📸 Subir captura del pago Yape"}</span>
-                          <span className="mt-1 text-xs text-gray-500">JPG o PNG, máx. 5MB</span>
+                      <div className="mt-2 border-t pt-2">
+                        <label className="flex cursor-pointer flex-col items-center rounded-xl border-2 border-dashed border-violet-300 bg-violet-50 p-2.5 text-center">
+                          <span className="text-sm font-semibold text-violet-700">{uploading ? "Subiendo..." : "📸 Subir captura del pago"}</span>
+                          <span className="text-xs text-gray-500">JPG o PNG, máx. 5MB</span>
                           <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={uploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); }} />
                         </label>
                       </div>
@@ -314,19 +313,14 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
                       </p>
                     )}
                   </>
-                ) : (
-                  order.paymentStatus !== "approved" && (
-                    <p className="rounded-xl bg-amber-50 px-3 py-2.5 text-center text-xs font-semibold text-amber-700 ring-1 ring-amber-200">
-                      📸 Primero <b>sube tu comprobante</b> arriba; luego aparecerá el botón para avisar al negocio por WhatsApp.
-                    </p>
-                  )
-                )}
+                ) : null}
 
                 <button onClick={onClose} className="block w-full py-1 text-center text-sm font-semibold text-gray-500 hover:text-gray-700">
                   Seguir comprando
                 </button>
               </div>
             </div>
+            </>
           )}
         </div>
 

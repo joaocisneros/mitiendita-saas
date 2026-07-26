@@ -177,12 +177,6 @@ export function SubscribeModal({
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 text-[11px] font-bold">
-                <div className="rounded-lg bg-emerald-50 px-2 py-1.5 text-center text-emerald-700">1. Solicitud</div>
-                <div className="rounded-lg bg-violet-50 px-2 py-1.5 text-center text-violet-700">2. Pago</div>
-                <div className="rounded-lg bg-sky-50 px-2 py-1.5 text-center text-sky-700">3. Activación</div>
-              </div>
-
               <div className={`grid gap-3 md:items-start ${subscription?.proofUrl ? "md:grid-cols-1" : "md:grid-cols-2"}`}>
                 {hasYape && !subscription?.proofUrl && (
                   <div className="rounded-2xl bg-violet-50 p-3 text-left ring-1 ring-violet-100">

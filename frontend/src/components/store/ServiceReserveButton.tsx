@@ -18,6 +18,9 @@ export function ServiceReserveButton({
   yapeQrUrl,
   yapeHolderName,
   yapeNumber,
+  plinQrUrl,
+  plinHolderName,
+  plinNumber,
   reservationPaymentMode,
   reservationAdvanceType,
   reservationAdvanceValue,
@@ -34,6 +37,9 @@ export function ServiceReserveButton({
   yapeQrUrl?: string | null;
   yapeHolderName?: string | null;
   yapeNumber?: string | null;
+  plinQrUrl?: string | null;
+  plinHolderName?: string | null;
+  plinNumber?: string | null;
   reservationPaymentMode?: "none" | "optional" | "required" | null;
   reservationAdvanceType?: "fixed" | "percent" | null;
   reservationAdvanceValue?: string | null;
@@ -64,6 +70,9 @@ export function ServiceReserveButton({
             yapeQrUrl={yapeQrUrl}
             yapeHolderName={yapeHolderName}
             yapeNumber={yapeNumber}
+            plinQrUrl={plinQrUrl}
+            plinHolderName={plinHolderName}
+            plinNumber={plinNumber}
             reservationPaymentMode={reservationPaymentMode}
             reservationAdvanceType={reservationAdvanceType}
             reservationAdvanceValue={reservationAdvanceValue}

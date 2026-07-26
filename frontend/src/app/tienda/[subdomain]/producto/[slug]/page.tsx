@@ -181,6 +181,9 @@ export default async function ProductDetailPage({
                 yapeQrUrl={store.store.yapeQrUrl}
                 yapeHolderName={store.store.yapeHolderName}
                 yapeNumber={store.store.yapeNumber}
+                plinQrUrl={store.store.plinQrUrl}
+                plinHolderName={store.store.plinHolderName}
+                plinNumber={store.store.plinNumber}
                 reservationPaymentMode={product.reservationPaymentMode}
                 reservationAdvanceType={product.reservationAdvanceType}
                 reservationAdvanceValue={product.reservationAdvanceValue}
