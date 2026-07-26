@@ -31,6 +31,10 @@ export default function ConfigPage() {
     const { url } = await adminApi.uploadImage(file, "general");
     set("yapeQrUrl", url);
   }
+  async function uploadPlinQr(file: File) {
+    const { url } = await adminApi.uploadImage(file, "general");
+    set("plinQrUrl", url);
+  }
   async function uploadLogo(file: File) {
     const { url } = await adminApi.uploadImage(file, "general");
     set("logoUrl", url);
@@ -53,6 +57,9 @@ export default function ConfigPage() {
         yapeQrUrl: s.yapeQrUrl ?? undefined,
         yapeHolderName: s.yapeHolderName ?? undefined,
         yapeNumber: s.yapeNumber ?? undefined,
+        plinQrUrl: s.plinQrUrl ?? undefined,
+        plinHolderName: s.plinHolderName ?? undefined,
+        plinNumber: s.plinNumber ?? undefined,
         allowsPickup: s.allowsPickup,
         allowsDelivery: s.allowsDelivery,
         deliveryFee: Number(s.deliveryFee),
@@ -150,6 +157,27 @@ export default function ConfigPage() {
                 </label>
               </div>
               <p className="mt-2 text-xs text-slate-500">Si subes tu QR, el cliente paga escaneándolo directo en su pedido.</p>
+            </div>
+
+            <div className="border-t border-slate-200 pt-4">
+              <p className="mb-3 text-sm font-black text-teal-700">Plin (opcional)</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Input label="Titular de Plin" value={s.plinHolderName ?? ""} onChange={(v) => set("plinHolderName", v)} />
+                <Input label="Número de Plin" value={s.plinNumber ?? ""} onChange={(v) => set("plinNumber", v)} />
+              </div>
+              <div className="mt-4">
+                <span className="mb-1.5 block text-sm font-bold text-slate-800">QR de Plin</span>
+                <div className="flex items-center gap-3">
+                  <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-200">
+                    {s.plinQrUrl ? <Image src={s.plinQrUrl} alt="QR Plin" fill sizes="96px" className="object-contain" /> : <div className="flex h-full items-center justify-center text-xs font-bold text-slate-300">QR</div>}
+                  </div>
+                  <label className="cursor-pointer rounded-lg bg-teal-50 px-3 py-2 text-sm font-bold text-teal-700 hover:bg-teal-100">
+                    Subir QR de Plin
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadPlinQr(f); }} />
+                  </label>
+                </div>
+                <p className="mt-2 text-xs text-slate-500">Plin es opcional. Si lo llenas, el cliente podrá elegir entre Yape y Plin.</p>
+              </div>
             </div>
           </div>
         )}

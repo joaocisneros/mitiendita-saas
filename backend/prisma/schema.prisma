@@ -230,6 +230,9 @@ model CompanySettings {
   yapeQrUrl       String?  @map("yape_qr_url")
   yapeHolderName  String?  @map("yape_holder_name")
   yapeNumber      String?  @map("yape_number")
+  plinQrUrl       String?  @map("plin_qr_url")
+  plinHolderName  String?  @map("plin_holder_name")
+  plinNumber      String?  @map("plin_number")
   currency        String   @default("PEN")
   timezone        String   @default("America/Lima")
   whatsappMessage String?  @map("whatsapp_message") @db.Text

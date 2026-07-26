@@ -6,6 +6,7 @@ import { useCart } from "@/lib/cart-context";
 import { storefrontApi, type OrderView } from "@/lib/api";
 import { storeAccent } from "@/lib/business-categories";
 import { formatPrice } from "@/lib/format";
+import { PayOptions } from "@/components/store/PayOptions";
 import type { StoreBrand } from "@/lib/types";
 
 const PAYMENT_LABEL: Record<string, string> = {
@@ -133,11 +134,11 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
       >
         {/* Encabezado: cambia entre "Finalizar" y "Pedido creado" */}
         {order ? (
-          <header className="relative bg-green-600 px-5 py-5 text-center text-white">
-            <button onClick={onClose} className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-white/20 hover:bg-white/30" aria-label="Cerrar">✕</button>
-            <p className="text-3xl">✅</p>
+          <header className="relative bg-green-600 px-5 py-4 text-center text-white">
+            <button onClick={onClose} className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-white/20 hover:bg-white/30" aria-label="Cerrar">✕</button>
+            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-white/25 text-xl font-black">✓</div>
             <h2 className="mt-1 text-lg font-black">¡Pedido creado!</h2>
-            <p className="text-sm text-white/90">Código: {order.code}</p>
+            <p className="text-xs font-semibold text-white/90">Código: {order.code}</p>
           </header>
         ) : (
           <header className="flex items-center justify-between px-5 py-4 text-white" style={{ backgroundColor: accent }}>
@@ -265,17 +266,20 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
                   ) : (
                     // Aún no paga: instrucciones de Yape + subir comprobante
                     <div className="rounded-2xl bg-gray-50 p-4 ring-1 ring-black/5">
-                      <h3 className="mb-2 font-bold text-violet-700">💜 Paga con Yape</h3>
-                      {store?.yapeQrUrl ? (
-                        <div className="relative mx-auto h-40 w-40">
-                          <Image src={store.yapeQrUrl} alt="QR Yape" fill sizes="160px" className="object-contain" />
-                        </div>
+                      <h3 className="mb-2 font-bold text-violet-700">💳 Elige cómo pagar</h3>
+                      {store?.yapeQrUrl || store?.yapeNumber || store?.plinQrUrl || store?.plinNumber ? (
+                        <PayOptions
+                          yapeQrUrl={store?.yapeQrUrl}
+                          yapeHolderName={store?.yapeHolderName}
+                          yapeNumber={store?.yapeNumber}
+                          plinQrUrl={store?.plinQrUrl}
+                          plinHolderName={store?.plinHolderName}
+                          plinNumber={store?.plinNumber}
+                        />
                       ) : (
-                        <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-700">El negocio aún no cargó su QR de Yape. Coordina el pago por WhatsApp.</p>
+                        <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-700">El negocio aún no cargó su QR de pago. Coordina el pago por WhatsApp.</p>
                       )}
-                      <div className="mt-3 space-y-1 text-center text-sm">
-                        {store?.yapeHolderName && <p>Titular: <b>{store.yapeHolderName}</b></p>}
-                        {store?.yapeNumber && <p>Número Yape: <b>{store.yapeNumber}</b></p>}
+                      <div className="mt-3 text-center text-sm">
                         <p className="text-base">Monto exacto: <b className="text-violet-700">{formatPrice(order.total, order.currency)}</b></p>
                       </div>
                       <div className="mt-3 border-t pt-3">
@@ -294,7 +298,7 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
                 {/* El WhatsApp va directo al chat del dueño (wa.me con su número),
                     con el pedido y el enlace de la foto. SOLO se muestra después de
                     subir la foto (o si el negocio no tiene Yape) para no enviarlo antes. */}
-                {waLink && (order.proofUrl || !store?.yapeQrUrl) ? (
+                {waLink && (order.proofUrl || (!store?.yapeQrUrl && !store?.plinQrUrl)) ? (
                   <>
                     <a
                       href={waLink}

@@ -36,6 +36,11 @@ const STORE = {
   yapeQrUrl:
     'https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=' +
     encodeURIComponent('Yape Conecta Hogar 921676408'),
+  plinHolderName: 'Conecta Hogar',
+  plinNumber: '921676408',
+  plinQrUrl:
+    'https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=' +
+    encodeURIComponent('Plin Conecta Hogar 921676408'),
   storeAddress: 'Av. Principal 456, Lima',
 };
 
@@ -156,6 +161,9 @@ async function main() {
       yapeNumber: STORE.yapeNumber,
       yapeHolderName: STORE.yapeHolderName,
       yapeQrUrl: STORE.yapeQrUrl,
+      plinNumber: STORE.plinNumber,
+      plinHolderName: STORE.plinHolderName,
+      plinQrUrl: STORE.plinQrUrl,
       storeAddress: STORE.storeAddress,
       allowsPickup: false,
       allowsDelivery: false,
@@ -171,6 +179,9 @@ async function main() {
       yapeNumber: STORE.yapeNumber,
       yapeHolderName: STORE.yapeHolderName,
       yapeQrUrl: STORE.yapeQrUrl,
+      plinNumber: STORE.plinNumber,
+      plinHolderName: STORE.plinHolderName,
+      plinQrUrl: STORE.plinQrUrl,
       storeAddress: STORE.storeAddress,
     },
   });

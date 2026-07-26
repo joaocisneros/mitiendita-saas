@@ -42,6 +42,15 @@ export class UpdateSettingsDto {
   yapeNumber?: string;
 
   @IsOptional() @IsString() @MaxLength(500)
+  plinQrUrl?: string;
+
+  @IsOptional() @IsString() @MaxLength(120)
+  plinHolderName?: string;
+
+  @IsOptional() @IsString() @MaxLength(20)
+  plinNumber?: string;
+
+  @IsOptional() @IsString() @MaxLength(500)
   whatsappMessage?: string;
 
   @IsOptional() @IsBoolean()

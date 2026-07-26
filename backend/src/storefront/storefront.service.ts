@@ -43,6 +43,10 @@ export class StorefrontService {
         yapeQrUrl: s?.yapeQrUrl ?? null,
         yapeHolderName: s?.yapeHolderName ?? null,
         yapeNumber: s?.yapeNumber ?? null,
+        // Datos de pago Plin (medio de pago alternativo).
+        plinQrUrl: s?.plinQrUrl ?? null,
+        plinHolderName: s?.plinHolderName ?? null,
+        plinNumber: s?.plinNumber ?? null,
       },
       categories,
     };

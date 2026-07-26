@@ -26,7 +26,7 @@ export class StoreSettingsService {
     // Imágenes actuales, para borrar las que se reemplacen.
     const current = await this.prisma.companySettings.findUnique({
       where: { companyId },
-      select: { logoUrl: true, yapeQrUrl: true },
+      select: { logoUrl: true, yapeQrUrl: true, plinQrUrl: true },
     });
 
     await this.prisma.companySettings.update({
@@ -40,6 +40,9 @@ export class StoreSettingsService {
     }
     if (dto.yapeQrUrl !== undefined && current?.yapeQrUrl && current.yapeQrUrl !== dto.yapeQrUrl) {
       void this.media.deleteByUrl(current.yapeQrUrl);
+    }
+    if (dto.plinQrUrl !== undefined && current?.plinQrUrl && current.plinQrUrl !== dto.plinQrUrl) {
+      void this.media.deleteByUrl(current.plinQrUrl);
     }
     return this.get(companyId);
   }

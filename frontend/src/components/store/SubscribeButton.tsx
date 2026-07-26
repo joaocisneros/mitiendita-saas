@@ -17,6 +17,9 @@ export function SubscribeButton({
   yapeQrUrl,
   yapeHolderName,
   yapeNumber,
+  plinQrUrl,
+  plinHolderName,
+  plinNumber,
 }: {
   subdomain: string;
   storeName: string;
@@ -30,6 +33,9 @@ export function SubscribeButton({
   yapeQrUrl?: string | null;
   yapeHolderName?: string | null;
   yapeNumber?: string | null;
+  plinQrUrl?: string | null;
+  plinHolderName?: string | null;
+  plinNumber?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const phoneDigits = whatsappNumber?.replace(/\D/g, "");
@@ -75,6 +81,9 @@ export function SubscribeButton({
           yapeQrUrl={yapeQrUrl}
           yapeHolderName={yapeHolderName}
           yapeNumber={yapeNumber}
+          plinQrUrl={plinQrUrl}
+          plinHolderName={plinHolderName}
+          plinNumber={plinNumber}
           onClose={() => setOpen(false)}
         />
       )}

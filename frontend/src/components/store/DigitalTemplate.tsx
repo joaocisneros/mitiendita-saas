@@ -48,6 +48,9 @@ export function DigitalTemplate({
   yapeQrUrl,
   yapeHolderName,
   yapeNumber,
+  plinQrUrl,
+  plinHolderName,
+  plinNumber,
 }: {
   subdomain: string;
   accent: string;
@@ -65,6 +68,9 @@ export function DigitalTemplate({
   yapeQrUrl?: string | null;
   yapeHolderName?: string | null;
   yapeNumber?: string | null;
+  plinQrUrl?: string | null;
+  plinHolderName?: string | null;
+  plinNumber?: string | null;
 }) {
   return (
     <>
@@ -152,6 +158,9 @@ export function DigitalTemplate({
                       yapeQrUrl={yapeQrUrl}
                       yapeHolderName={yapeHolderName}
                       yapeNumber={yapeNumber}
+                      plinQrUrl={plinQrUrl}
+                      plinHolderName={plinHolderName}
+                      plinNumber={plinNumber}
                     />
                     <p className="mt-2 text-center text-[11px] font-semibold text-slate-400">
                       Solicitud · validación · activación

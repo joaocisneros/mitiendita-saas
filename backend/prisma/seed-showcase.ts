@@ -33,6 +33,14 @@ const STORE = {
   whatsappNumber: '51999888777',
   yapeNumber: '999888777',
   yapeHolderName: 'Pizzería Bella Nápoli',
+  yapeQrUrl:
+    'https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=' +
+    encodeURIComponent('Yape Bella Napoli 999888777'),
+  plinNumber: '999888777',
+  plinHolderName: 'Pizzería Bella Nápoli',
+  plinQrUrl:
+    'https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=' +
+    encodeURIComponent('Plin Bella Napoli 999888777'),
   storeAddress: 'Av. Italia 123, Miraflores, Lima',
   deliveryNotes: 'Delivery gratis en pedidos mayores a S/ 40.',
 };
@@ -119,6 +127,10 @@ async function main() {
       whatsappNumber: STORE.whatsappNumber,
       yapeNumber: STORE.yapeNumber,
       yapeHolderName: STORE.yapeHolderName,
+      yapeQrUrl: STORE.yapeQrUrl,
+      plinNumber: STORE.plinNumber,
+      plinHolderName: STORE.plinHolderName,
+      plinQrUrl: STORE.plinQrUrl,
       storeAddress: STORE.storeAddress,
       deliveryNotes: STORE.deliveryNotes,
       allowsPickup: true,
@@ -135,6 +147,10 @@ async function main() {
       whatsappNumber: STORE.whatsappNumber,
       yapeNumber: STORE.yapeNumber,
       yapeHolderName: STORE.yapeHolderName,
+      yapeQrUrl: STORE.yapeQrUrl,
+      plinNumber: STORE.plinNumber,
+      plinHolderName: STORE.plinHolderName,
+      plinQrUrl: STORE.plinQrUrl,
       storeAddress: STORE.storeAddress,
       deliveryNotes: STORE.deliveryNotes,
     },

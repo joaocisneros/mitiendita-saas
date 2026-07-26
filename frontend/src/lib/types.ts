@@ -15,6 +15,9 @@ export interface StoreBrand {
   yapeQrUrl: string | null;
   yapeHolderName: string | null;
   yapeNumber: string | null;
+  plinQrUrl: string | null;
+  plinHolderName: string | null;
+  plinNumber: string | null;
 }
 
 export interface StoreCategory {

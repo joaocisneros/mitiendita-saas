@@ -7,6 +7,7 @@ import { useParams } from "next/navigation";
 import { storefrontApi, type OrderView } from "@/lib/api";
 import { formatPrice } from "@/lib/format";
 import type { StoreBrand } from "@/lib/types";
+import { PayOptions } from "@/components/store/PayOptions";
 
 const PAYMENT_LABEL: Record<string, string> = {
   pending: "Pendiente de pago",
@@ -106,41 +107,27 @@ export default function OrderPage() {
         {/* Pago con Yape */}
         {order.paymentStatus !== "approved" && (
           <div className="rounded-2xl bg-white p-4 ring-1 ring-black/5">
-            <h2 className="mb-2 font-bold text-violet-700">💜 Paga con Yape</h2>
-            {store.yapeQrUrl ? (
-              <div className="relative mx-auto h-52 w-52">
-                <Image
-                  src={store.yapeQrUrl}
-                  alt="QR Yape"
-                  fill
-                  sizes="208px"
-                  className="object-contain"
+            <h2 className="mb-2 font-bold text-violet-700">💳 Realiza tu pago</h2>
+            {store.yapeQrUrl || store.yapeNumber || store.plinQrUrl || store.plinNumber ? (
+              <>
+                <PayOptions
+                  yapeQrUrl={store.yapeQrUrl}
+                  yapeHolderName={store.yapeHolderName}
+                  yapeNumber={store.yapeNumber}
+                  plinQrUrl={store.plinQrUrl}
+                  plinHolderName={store.plinHolderName}
+                  plinNumber={store.plinNumber}
                 />
-              </div>
+                <p className="mt-3 text-center text-lg">
+                  Monto exacto:{" "}
+                  <b className="text-violet-700">{formatPrice(order.total, currency)}</b>
+                </p>
+              </>
             ) : (
               <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-700">
-                El negocio aún no cargó su QR de Yape. Coordina el pago por
-                WhatsApp.
+                El negocio aún no cargó su QR de pago. Coordina el pago por WhatsApp.
               </p>
             )}
-            <div className="mt-3 space-y-1 text-center text-sm">
-              {store.yapeHolderName && (
-                <p>
-                  Titular: <b>{store.yapeHolderName}</b>
-                </p>
-              )}
-              {store.yapeNumber && (
-                <p>
-                  Número Yape: <b>{store.yapeNumber}</b>
-                </p>
-              )}
-              <p className="text-lg">
-                Monto exacto:{" "}
-                <b className="text-violet-700">
-                  {formatPrice(order.total, currency)}
-                </b>
-              </p>
-            </div>
 
             {/* Subir comprobante */}
             <div className="mt-4 border-t pt-4">

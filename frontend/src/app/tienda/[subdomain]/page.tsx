@@ -229,6 +229,9 @@ export default async function StorePage({
             yapeQrUrl={store.yapeQrUrl}
             yapeHolderName={store.yapeHolderName}
             yapeNumber={store.yapeNumber}
+            plinQrUrl={store.plinQrUrl}
+            plinHolderName={store.plinHolderName}
+            plinNumber={store.plinNumber}
           />
         )}
       </main>

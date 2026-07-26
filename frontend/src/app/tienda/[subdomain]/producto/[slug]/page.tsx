@@ -158,6 +158,14 @@ export default async function ProductDetailPage({
                 accent={accent}
                 whatsappNumber={store.store.whatsappNumber}
                 actionLabel={action}
+                price={product.price}
+                currency={store.store.currency}
+                yapeQrUrl={store.store.yapeQrUrl}
+                yapeHolderName={store.store.yapeHolderName}
+                yapeNumber={store.store.yapeNumber}
+                plinQrUrl={store.store.plinQrUrl}
+                plinHolderName={store.store.plinHolderName}
+                plinNumber={store.store.plinNumber}
               />
             ) : archetype === "servicios" ? (
               <ServiceReserveButton

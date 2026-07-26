@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { storefrontApi, type SubscriptionView } from "@/lib/api";
 import { formatPrice } from "@/lib/format";
+import { PayOptions } from "@/components/store/PayOptions";
 
 /**
  * Suscripción a un plan digital: guarda la solicitud, permite pagar por Yape,
@@ -22,6 +23,9 @@ export function SubscribeModal({
   yapeQrUrl,
   yapeHolderName,
   yapeNumber,
+  plinQrUrl,
+  plinHolderName,
+  plinNumber,
   onClose,
 }: {
   subdomain: string;
@@ -36,6 +40,9 @@ export function SubscribeModal({
   yapeQrUrl?: string | null;
   yapeHolderName?: string | null;
   yapeNumber?: string | null;
+  plinQrUrl?: string | null;
+  plinHolderName?: string | null;
+  plinNumber?: string | null;
   onClose: () => void;
 }) {
   const [name, setName] = useState("");
@@ -45,7 +52,6 @@ export function SubscribeModal({
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const [subscription, setSubscription] = useState<SubscriptionView | null>(null);
-  const [proofFile, setProofFile] = useState<File | null>(null);
   const [uploadingProof, setUploadingProof] = useState(false);
   const [proofError, setProofError] = useState("");
 
@@ -113,21 +119,17 @@ export function SubscribeModal({
     }
   }
 
-  async function uploadProof() {
+  async function uploadProof(file: File) {
     setProofError("");
     if (!subscription) {
       setProofError("Primero registra la solicitud.");
       return;
     }
-    if (!proofFile) {
-      setProofError("Selecciona una foto del comprobante.");
-      return;
-    }
-    if (!proofFile.type.startsWith("image/")) {
+    if (!file.type.startsWith("image/")) {
       setProofError("El comprobante debe ser una imagen.");
       return;
     }
-    if (proofFile.size > 5 * 1024 * 1024) {
+    if (file.size > 5 * 1024 * 1024) {
       setProofError("La imagen no debe pesar más de 5 MB.");
       return;
     }
@@ -137,13 +139,12 @@ export function SubscribeModal({
       const updated = await storefrontApi.submitSubscriptionProof(
         subdomain,
         subscription.id,
-        proofFile,
+        file,
       );
       if (!updated.proofUrl) {
         throw new Error("El comprobante se recibió, pero no llegó el enlace de la imagen. Actualiza la página e inténtalo otra vez.");
       }
       setSubscription(updated);
-      setProofFile(null);
     } catch (e) {
       setProofError(e instanceof Error ? e.message : "No se pudo subir el comprobante.");
     } finally {
@@ -151,132 +152,81 @@ export function SubscribeModal({
     }
   }
 
-  const hasYape = Boolean(yapeQrUrl || yapeNumber);
+  const hasYape = Boolean(yapeQrUrl || yapeNumber || plinQrUrl || plinNumber);
 
   return (
     <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/60 p-0 sm:items-center sm:p-4" onClick={onClose}>
       <div className={`relative flex max-h-[96dvh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl ${done ? "max-w-2xl" : "max-w-md"}`} onClick={(e) => e.stopPropagation()}>
         {done ? (
           <>
-            <header
-              className="relative px-5 py-4 text-center text-white"
-              style={{ background: `linear-gradient(135deg, ${accent}, #0f172a)` }}
-            >
-              <button onClick={onClose} className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-white/20 hover:bg-white/30" aria-label="Cerrar">✕</button>
-              <p className="text-2xl">📡</p>
-              <h2 className="mt-1 text-lg font-black">Solicitud de plan registrada</h2>
-              <p className="mt-1 text-xs font-semibold text-white/80">Activación coordinada por el negocio</p>
+            <header className="relative px-5 py-3 text-center text-white" style={{ background: `linear-gradient(135deg, ${accent}, #0f172a)` }}>
+              <button onClick={onClose} className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-white/20 hover:bg-white/30" aria-label="Cerrar">✕</button>
+              <h2 className="text-base font-black">📡 ¡Solicitud registrada!</h2>
+              <p className="mt-0.5 text-xs font-semibold text-white/80">El negocio validará el pago y coordinará la activación</p>
             </header>
-            <div className="space-y-3 overflow-y-auto p-4 text-center sm:p-5">
-              <p className="text-sm text-gray-700">
-                Tu solicitud del plan <b>{planName}</b> quedó registrada. Este flujo no es un pedido con entrega a domicilio: el negocio validará el pago y coordinará la activación contigo.
-              </p>
-
-              <div className="rounded-2xl bg-slate-950 p-3 text-left text-white">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/50">Resumen de activación</p>
-                <div className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
-                  <div className="flex justify-between gap-3">
-                    <span className="text-white/60">Plan</span>
-                    <b className="text-right">{planName}</b>
-                  </div>
-                  <div className="flex justify-between gap-3">
-                    <span className="text-white/60">Cliente</span>
-                    <b className="text-right">{name || "—"}</b>
-                  </div>
-                  <div className="flex justify-between gap-3">
-                    <span className="text-white/60">WhatsApp</span>
-                    <b className="text-right">{phone || "—"}</b>
-                  </div>
+            <div className="space-y-2.5 overflow-y-auto p-4">
+              <div className="rounded-2xl bg-slate-950 p-2.5 text-left text-white">
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/50">Resumen</p>
+                <div className="mt-1.5 grid gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
+                  <div className="flex justify-between gap-3"><span className="text-white/60">Plan</span><b className="text-right">{planName}</b></div>
+                  <div className="flex justify-between gap-3"><span className="text-white/60">Cliente</span><b className="text-right">{name || "—"}</b></div>
+                  <div className="flex justify-between gap-3"><span className="text-white/60">WhatsApp</span><b className="text-right">{phone || "—"}</b></div>
                   {price != null && Number(price) > 0 && (
-                    <div className="flex justify-between gap-3 border-t border-white/10 pt-2">
-                      <span className="text-white/60">Monto</span>
-                      <b className="text-right text-lg">{formatPrice(price, currency)}</b>
-                    </div>
+                    <div className="flex justify-between gap-3"><span className="text-white/60">Monto</span><b className="text-right">{formatPrice(price, currency)}</b></div>
                   )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 text-[11px] font-bold sm:text-xs">
-                <div className="rounded-xl bg-emerald-50 px-2 py-2 text-emerald-700">1. Solicitud</div>
-                <div className="rounded-xl bg-violet-50 px-2 py-2 text-violet-700">2. Pago</div>
-                <div className="rounded-xl bg-sky-50 px-2 py-2 text-sky-700">3. Activación</div>
+              <div className="grid grid-cols-3 gap-2 text-[11px] font-bold">
+                <div className="rounded-lg bg-emerald-50 px-2 py-1.5 text-center text-emerald-700">1. Solicitud</div>
+                <div className="rounded-lg bg-violet-50 px-2 py-1.5 text-center text-violet-700">2. Pago</div>
+                <div className="rounded-lg bg-sky-50 px-2 py-1.5 text-center text-sky-700">3. Activación</div>
               </div>
 
               <div className={`grid gap-3 md:items-start ${subscription?.proofUrl ? "md:grid-cols-1" : "md:grid-cols-2"}`}>
-              {hasYape && !subscription?.proofUrl && (
-                <div className="rounded-2xl bg-violet-50 p-3 text-left ring-1 ring-violet-100">
-                  <p className="text-center text-sm font-black text-violet-700">💜 Pagar con Yape</p>
-                  {yapeQrUrl && (
-                    <div className="relative mx-auto mt-2 h-32 w-32 sm:h-36 sm:w-36">
-                      <Image src={yapeQrUrl} alt="QR Yape" fill sizes="144px" className="object-contain" />
-                    </div>
-                  )}
-                  <div className="mt-2 space-y-1 text-center text-sm text-gray-700">
-                    {yapeHolderName && <p>Titular: <b>{yapeHolderName}</b></p>}
-                    {yapeNumber && <p>Número Yape: <b>{yapeNumber}</b></p>}
+                {hasYape && !subscription?.proofUrl && (
+                  <div className="rounded-2xl bg-violet-50 p-3 text-left ring-1 ring-violet-100">
+                    <p className="mb-2 text-center text-sm font-black text-violet-700">💳 Elige cómo pagar</p>
+                    <PayOptions
+                      yapeQrUrl={yapeQrUrl}
+                      yapeHolderName={yapeHolderName}
+                      yapeNumber={yapeNumber}
+                      plinQrUrl={plinQrUrl}
+                      plinHolderName={plinHolderName}
+                      plinNumber={plinNumber}
+                    />
                     {price != null && Number(price) > 0 && (
-                      <p className="text-base">Monto: <b className="text-violet-700">{formatPrice(price, currency)}</b></p>
+                      <p className="mt-2 text-center text-sm text-gray-700">Monto: <b className="text-violet-700">{formatPrice(price, currency)}</b></p>
                     )}
                   </div>
-                </div>
-              )}
+                )}
 
-              {subscription?.proofUrl ? (
-                <div className="rounded-2xl bg-emerald-50 p-3 text-center ring-1 ring-emerald-200">
-                  <a href={subscription.proofUrl} target="_blank" rel="noopener noreferrer" className="mx-auto mb-3 block w-fit">
-                    <Image src={subscription.proofUrl} alt="Comprobante enviado" width={96} height={128} className="mx-auto h-28 w-auto rounded-xl object-cover ring-1 ring-emerald-300" />
-                  </a>
-                  <p className="text-sm font-black text-emerald-700">
-                    ✅ Comprobante recibido por {storeName}
-                  </p>
-                  <p className="mt-2 text-xs font-medium text-emerald-700">
-                    Ya aparece en el panel del negocio para validar tu pago.
-                  </p>
-                </div>
-              ) : (
-                <div className="rounded-2xl bg-slate-50 p-3 text-left ring-1 ring-slate-200">
-                  <p className="text-sm font-black text-slate-800">📎 Subir comprobante</p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    Después de pagar por Yape, sube una foto o captura para que el negocio valide el pago.
-                  </p>
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    onChange={(e) => {
-                      setProofError("");
-                      setProofFile(e.target.files?.[0] ?? null);
-                    }}
-                    className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-                  />
-                  {proofFile && (
-                    <p className="mt-2 rounded-xl bg-violet-50 px-3 py-2 text-xs font-bold text-violet-700">
-                      Archivo listo: {proofFile.name}. Ahora presiona “Subir comprobante”.
-                    </p>
-                  )}
-                  {proofError && <p className="mt-2 rounded-lg bg-red-50 p-2 text-xs font-semibold text-red-600">{proofError}</p>}
-                  <button
-                    onClick={uploadProof}
-                    disabled={uploadingProof || !proofFile}
-                    className="mt-3 w-full rounded-full bg-slate-900 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 disabled:opacity-50"
-                  >
-                    {uploadingProof ? "Subiendo comprobante..." : "Subir comprobante"}
-                  </button>
-                  <p className="mt-2 text-center text-[11px] font-semibold text-slate-400">
-                    Después de subirlo aparecerá el botón para enviarlo por WhatsApp.
-                  </p>
-                </div>
-              )}
+                {subscription?.proofUrl ? (
+                  <div className="rounded-2xl bg-emerald-50 p-3 text-center ring-1 ring-emerald-200">
+                    <a href={subscription.proofUrl} target="_blank" rel="noopener noreferrer" className="mx-auto mb-2 block w-fit">
+                      <Image src={subscription.proofUrl} alt="Comprobante enviado" width={96} height={128} className="mx-auto h-24 w-auto rounded-xl object-cover ring-1 ring-emerald-300" />
+                    </a>
+                    <p className="text-sm font-black text-emerald-700">✅ Comprobante recibido</p>
+                    <p className="mt-1 text-xs font-medium text-emerald-700">Ya aparece en el panel del negocio para validar tu pago.</p>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl bg-slate-50 p-3 text-left ring-1 ring-slate-200">
+                    <p className="text-sm font-black text-slate-800">📎 Subir comprobante</p>
+                    <p className="mt-1 text-xs text-slate-500">Después de pagar, sube una foto o captura para que el negocio valide el pago.</p>
+                    <label className="mt-2 flex cursor-pointer flex-col items-center rounded-xl border-2 border-dashed border-violet-300 bg-violet-50 p-3 text-center">
+                      <span className="text-sm font-semibold text-violet-700">{uploadingProof ? "Subiendo..." : "📸 Subir captura del pago"}</span>
+                      <span className="mt-1 text-xs text-gray-500">JPG o PNG, máx. 5MB</span>
+                      <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={uploadingProof} onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadProof(f); }} />
+                    </label>
+                    {proofError && <p className="mt-2 rounded-lg bg-red-50 p-2 text-xs font-semibold text-red-600">{proofError}</p>}
+                  </div>
+                )}
               </div>
 
               {waLink && (subscription?.proofUrl || !hasYape) && (
-                <a href={waLink} target="_blank" rel="noopener noreferrer" className="block w-full rounded-full bg-green-500 py-3 font-bold text-white hover:bg-green-600">
+                <a href={waLink} target="_blank" rel="noopener noreferrer" className="block w-full rounded-full bg-green-500 py-2.5 text-center font-bold text-white hover:bg-green-600">
                   💬 {subscription?.proofUrl ? "Enviar comprobante al negocio" : "Coordinar por WhatsApp"}
                 </a>
-              )}
-              {subscription?.proofUrl && (
-                <p className="mx-auto max-w-sm text-center text-xs font-semibold text-slate-500">
-                  Se abre el chat del negocio con tu solicitud y el enlace de la foto. La foto también quedó guardada en su panel.
-                </p>
               )}
               <button onClick={onClose} className="block w-full py-1 text-sm font-semibold text-gray-500 hover:text-gray-700">Cerrar</button>
             </div>
