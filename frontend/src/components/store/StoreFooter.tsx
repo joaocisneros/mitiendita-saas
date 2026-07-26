@@ -10,9 +10,17 @@ export function StoreFooter({ store }: { store: StoreBrand }) {
       <div className="mx-auto max-w-[1440px] px-4 py-8 sm:px-6 lg:px-8">
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <p className="text-base font-black text-slate-900">{store.name}</p>
+            <div className="flex items-center gap-2.5">
+              {store.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={store.logoUrl} alt={store.name} className="h-10 w-10 shrink-0 rounded-xl object-cover ring-1 ring-slate-200" />
+              ) : (
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-lg font-black text-white">{store.name.charAt(0).toUpperCase()}</span>
+              )}
+              <p className="text-base font-black text-slate-900">{store.name}</p>
+            </div>
             {store.description && (
-              <p className="mt-1 text-sm text-slate-500">{store.description}</p>
+              <p className="mt-2 text-sm leading-6 text-slate-500">{store.description}</p>
             )}
           </div>
 

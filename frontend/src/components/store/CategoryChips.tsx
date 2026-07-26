@@ -15,13 +15,16 @@ export function CategoryChips({
 }) {
   if (!categories || categories.length === 0) return null;
   return (
-    <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
-      <Chip href={`/tienda/${subdomain}`} active={!category} accent={accent}>Todos</Chip>
-      {categories.map((c) => (
-        <Chip key={c.id} href={`/tienda/${subdomain}?category=${c.slug}`} active={category === c.slug} accent={accent}>
-          {c.name}
-        </Chip>
-      ))}
+    <div className="mb-6">
+      <p className="mb-2 text-xs font-black uppercase tracking-[0.14em] text-slate-400">Explora por categoría</p>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        <Chip href={`/tienda/${subdomain}`} active={!category} accent={accent}>🛍️ Todos</Chip>
+        {categories.map((c) => (
+          <Chip key={c.id} href={`/tienda/${subdomain}?category=${c.slug}`} active={category === c.slug} accent={accent}>
+            {c.name}
+          </Chip>
+        ))}
+      </div>
     </div>
   );
 }
@@ -41,8 +44,12 @@ function Chip({
     <Link
       href={href}
       scroll={false}
-      style={active ? { backgroundColor: accent, borderColor: accent, color: "#fff" } : { borderColor: "#e2e8f0", color: "#334155" }}
-      className="shrink-0 whitespace-nowrap rounded-full border-2 bg-white px-4 py-1.5 text-sm font-bold transition hover:bg-slate-50"
+      style={
+        active
+          ? { backgroundColor: accent, borderColor: accent, color: "#fff", boxShadow: `0 6px 16px -6px ${accent}` }
+          : { borderColor: "#e2e8f0", color: "#334155" }
+      }
+      className="shrink-0 whitespace-nowrap rounded-full border bg-white px-4 py-2 text-sm font-bold shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
     >
       {children}
     </Link>
