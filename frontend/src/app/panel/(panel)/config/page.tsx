@@ -83,16 +83,15 @@ export default function ConfigPage() {
 
   return (
     <div className="mx-auto max-w-3xl pb-28">
-      <div className="mb-5">
-        <p className="text-sm font-bold text-violet-700">Ajustes</p>
-        <h1 className="mt-1 text-3xl font-black text-slate-950">Configuración</h1>
-        <p className="mt-1 text-sm font-medium text-slate-600">
-          Tu tienda: <b className="text-slate-900">{s.subdomain}.mitiendita.com</b>
+      <div className="mb-4">
+        <h1 className="text-2xl font-black text-slate-950">Configuración</h1>
+        <p className="mt-0.5 text-sm font-medium text-slate-600">
+          Tu tienda: <b className="text-slate-900">mitiendita-saas.vercel.app/tienda/{s.subdomain}</b>
         </p>
       </div>
 
       {/* Pestañas */}
-      <div className="mb-5 flex gap-1 rounded-2xl bg-slate-100 p-1">
+      <div className="mb-4 flex gap-1 rounded-2xl bg-slate-100 p-1">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -110,20 +109,20 @@ export default function ConfigPage() {
         ))}
       </div>
 
-      <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
+      <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-5">
         {tab === "marca" && (
-          <div className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <Input label="Nombre de la tienda" value={s.storeName} onChange={(v) => set("storeName", v)} />
               <Input label="Rubro" value={s.businessType ?? ""} onChange={(v) => set("businessType", v)} />
             </div>
             <Textarea label="Descripción" value={s.description ?? ""} onChange={(v) => set("description", v)} />
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid items-start gap-3 sm:grid-cols-2">
               <div>
                 <span className="mb-1.5 block text-sm font-bold text-slate-800">Logo</span>
                 <div className="flex items-center gap-3">
-                  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-200">
-                    {s.logoUrl ? <Image src={s.logoUrl} alt="logo" fill sizes="64px" className="object-cover" /> : <div className="flex h-full items-center justify-center text-2xl text-slate-300">🏪</div>}
+                  <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-200">
+                    {s.logoUrl ? <Image src={s.logoUrl} alt="logo" fill sizes="56px" className="object-cover" /> : <div className="flex h-full items-center justify-center text-2xl text-slate-300">🏪</div>}
                   </div>
                   <label className="cursor-pointer rounded-lg bg-violet-50 px-3 py-2 text-sm font-bold text-violet-700 hover:bg-violet-100">
                     Subir logo
@@ -138,72 +137,69 @@ export default function ConfigPage() {
                   <Color label="Secundario" value={s.secondaryColor} onChange={(v) => set("secondaryColor", v)} />
                 </div>
               </div>
+            </div>
 
-              <div className="border-t border-slate-200 pt-4">
-                <p className="mb-3 text-sm font-black text-slate-700">Presencia (opcional)</p>
-                <Input label="Horario de atención" value={s.hours ?? ""} onChange={(v) => set("hours", v)} placeholder="Ej: Lun-Sáb 9am-8pm · Dom 10am-6pm" />
-                <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                  <Input label="Instagram (link)" value={s.instagramUrl ?? ""} onChange={(v) => set("instagramUrl", v)} placeholder="https://instagram.com/tu-tienda" />
-                  <Input label="Facebook (link)" value={s.facebookUrl ?? ""} onChange={(v) => set("facebookUrl", v)} placeholder="https://facebook.com/tu-tienda" />
-                  <Input label="TikTok (link)" value={s.tiktokUrl ?? ""} onChange={(v) => set("tiktokUrl", v)} placeholder="https://tiktok.com/@tu-tienda" />
-                </div>
-                <p className="mt-2 text-xs text-slate-400">El horario y las redes aparecerán en el pie de tu tienda.</p>
+            <div className="border-t border-slate-200 pt-3">
+              <p className="mb-2 text-xs font-black uppercase tracking-[0.12em] text-slate-400">Presencia (opcional)</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input label="Horario de atención" value={s.hours ?? ""} onChange={(v) => set("hours", v)} placeholder="Ej: Lun-Sáb 9am-8pm" />
+                <Input label="Instagram" value={s.instagramUrl ?? ""} onChange={(v) => set("instagramUrl", v)} placeholder="https://instagram.com/tu-tienda" />
+                <Input label="Facebook" value={s.facebookUrl ?? ""} onChange={(v) => set("facebookUrl", v)} placeholder="https://facebook.com/tu-tienda" />
+                <Input label="TikTok" value={s.tiktokUrl ?? ""} onChange={(v) => set("tiktokUrl", v)} placeholder="https://tiktok.com/@tu-tienda" />
               </div>
+              <p className="mt-2 text-xs text-slate-400">El horario y las redes aparecen en el pie de tu tienda.</p>
             </div>
           </div>
         )}
 
         {tab === "pago" && (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <Input label="WhatsApp (con código país)" value={s.whatsappNumber ?? ""} onChange={(v) => set("whatsappNumber", v)} placeholder="Ej: 51987654321" />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Input label="Titular de Yape" value={s.yapeHolderName ?? ""} onChange={(v) => set("yapeHolderName", v)} />
-              <Input label="Número de Yape" value={s.yapeNumber ?? ""} onChange={(v) => set("yapeNumber", v)} />
-            </div>
-            <div>
-              <span className="mb-1.5 block text-sm font-bold text-slate-800">QR de Yape</span>
-              <div className="flex items-center gap-3">
-                <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-200">
-                  {s.yapeQrUrl ? <Image src={s.yapeQrUrl} alt="QR" fill sizes="96px" className="object-contain" /> : <div className="flex h-full items-center justify-center text-xs font-bold text-slate-300">QR</div>}
+
+            <div className="rounded-xl bg-violet-50/60 p-3 ring-1 ring-violet-100">
+              <p className="mb-2 text-xs font-black uppercase tracking-[0.12em] text-violet-700">💜 Yape</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input label="Titular" value={s.yapeHolderName ?? ""} onChange={(v) => set("yapeHolderName", v)} />
+                <Input label="Número" value={s.yapeNumber ?? ""} onChange={(v) => set("yapeNumber", v)} />
+              </div>
+              <div className="mt-2 flex items-center gap-3">
+                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white ring-1 ring-slate-200">
+                  {s.yapeQrUrl ? <Image src={s.yapeQrUrl} alt="QR" fill sizes="64px" className="object-contain" /> : <div className="flex h-full items-center justify-center text-xs font-bold text-slate-300">QR</div>}
                 </div>
-                <label className="cursor-pointer rounded-lg bg-violet-50 px-3 py-2 text-sm font-bold text-violet-700 hover:bg-violet-100">
+                <label className="cursor-pointer rounded-lg bg-violet-100 px-3 py-2 text-sm font-bold text-violet-700 hover:bg-violet-200">
                   Subir QR de Yape
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadQr(f); }} />
                 </label>
               </div>
-              <p className="mt-2 text-xs text-slate-500">Si subes tu QR, el cliente paga escaneándolo directo en su pedido.</p>
             </div>
 
-            <div className="border-t border-slate-200 pt-4">
-              <p className="mb-3 text-sm font-black text-teal-700">Plin (opcional)</p>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Input label="Titular de Plin" value={s.plinHolderName ?? ""} onChange={(v) => set("plinHolderName", v)} />
-                <Input label="Número de Plin" value={s.plinNumber ?? ""} onChange={(v) => set("plinNumber", v)} />
+            <div className="rounded-xl bg-teal-50/60 p-3 ring-1 ring-teal-100">
+              <p className="mb-2 text-xs font-black uppercase tracking-[0.12em] text-teal-700">🩵 Plin (opcional)</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input label="Titular" value={s.plinHolderName ?? ""} onChange={(v) => set("plinHolderName", v)} />
+                <Input label="Número" value={s.plinNumber ?? ""} onChange={(v) => set("plinNumber", v)} />
               </div>
-              <div className="mt-4">
-                <span className="mb-1.5 block text-sm font-bold text-slate-800">QR de Plin</span>
-                <div className="flex items-center gap-3">
-                  <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-200">
-                    {s.plinQrUrl ? <Image src={s.plinQrUrl} alt="QR Plin" fill sizes="96px" className="object-contain" /> : <div className="flex h-full items-center justify-center text-xs font-bold text-slate-300">QR</div>}
-                  </div>
-                  <label className="cursor-pointer rounded-lg bg-teal-50 px-3 py-2 text-sm font-bold text-teal-700 hover:bg-teal-100">
-                    Subir QR de Plin
-                    <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadPlinQr(f); }} />
-                  </label>
+              <div className="mt-2 flex items-center gap-3">
+                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white ring-1 ring-slate-200">
+                  {s.plinQrUrl ? <Image src={s.plinQrUrl} alt="QR Plin" fill sizes="64px" className="object-contain" /> : <div className="flex h-full items-center justify-center text-xs font-bold text-slate-300">QR</div>}
                 </div>
-                <p className="mt-2 text-xs text-slate-500">Plin es opcional. Si lo llenas, el cliente podrá elegir entre Yape y Plin.</p>
+                <label className="cursor-pointer rounded-lg bg-teal-100 px-3 py-2 text-sm font-bold text-teal-700 hover:bg-teal-200">
+                  Subir QR de Plin
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadPlinQr(f); }} />
+                </label>
               </div>
             </div>
+            <p className="text-xs text-slate-400">Si llenas Yape y Plin, el cliente elige cuál usar al pagar.</p>
           </div>
         )}
 
         {tab === "entrega" && (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2">
               <Check label="Permite recojo en tienda" checked={s.allowsPickup} onChange={(v) => set("allowsPickup", v)} />
               <Check label="Permite entrega a domicilio" checked={s.allowsDelivery} onChange={(v) => set("allowsDelivery", v)} />
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2">
               <Input label="Costo de entrega" type="number" value={String(s.deliveryFee)} onChange={(v) => set("deliveryFee", v)} />
               <Input label="Pedido mínimo" type="number" value={s.minOrder ?? ""} onChange={(v) => set("minOrder", v)} />
             </div>
