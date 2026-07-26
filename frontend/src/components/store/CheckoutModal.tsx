@@ -6,6 +6,7 @@ import { useCart } from "@/lib/cart-context";
 import { storefrontApi, type OrderView } from "@/lib/api";
 import { storeAccent } from "@/lib/business-categories";
 import { formatPrice } from "@/lib/format";
+import { parseOptions } from "@/lib/product-options";
 import { PayOptions } from "@/components/store/PayOptions";
 import type { StoreBrand } from "@/lib/types";
 
@@ -31,6 +32,15 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [variants, setVariants] = useState<Record<string, { size?: string; color?: string }>>({});
+
+  function setVariant(productId: string, patch: { size?: string; color?: string }) {
+    setVariants((prev) => ({ ...prev, [productId]: { ...prev[productId], ...patch } }));
+  }
+  function variantLabel(productId: string) {
+    const v = variants[productId];
+    return [v?.size ? `Talla ${v.size}` : "", v?.color ?? ""].filter(Boolean).join(" · ");
+  }
   const idemKey = useRef<string | null>(null);
 
   useEffect(() => {
@@ -79,6 +89,18 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
       setError(`El pedido mínimo para entrega a domicilio es ${formatPrice(store.minOrder, currency)}.`);
       return;
     }
+    // Si un producto tiene tallas/colores, el cliente debe elegir.
+    for (const i of items) {
+      const v = variants[i.productId];
+      if (parseOptions(i.sizes).length > 0 && !v?.size) {
+        setError(`Elige la talla de "${i.name}".`);
+        return;
+      }
+      if (parseOptions(i.colors).length > 0 && !v?.color) {
+        setError(`Elige el color de "${i.name}".`);
+        return;
+      }
+    }
     setSaving(true);
     try {
       idemKey.current ??= genIdempotencyKey();
@@ -91,7 +113,7 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
           address: method === "delivery" ? address : undefined,
           reference: reference || undefined,
           customerNote: note || undefined,
-          items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+          items: items.map((i) => ({ productId: i.productId, quantity: i.quantity, variant: variantLabel(i.productId) || undefined })),
         },
         idemKey.current,
       );
@@ -192,6 +214,39 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
                 <textarea value={note} onChange={(e) => setNote(e.target.value)} className="cm-input" rows={2} />
               </Field>
 
+              {items.some((i) => parseOptions(i.sizes).length > 0 || parseOptions(i.colors).length > 0) && (
+                <div className="sm:col-span-2 space-y-2 rounded-2xl border border-violet-200 bg-violet-50/60 p-3">
+                  <p className="text-sm font-black text-violet-800">Elige tus opciones</p>
+                  {items.filter((i) => parseOptions(i.sizes).length > 0 || parseOptions(i.colors).length > 0).map((i) => (
+                    <div key={i.productId} className="rounded-xl bg-white p-2.5 ring-1 ring-slate-200">
+                      <p className="text-sm font-bold text-slate-800">{i.name}</p>
+                      {parseOptions(i.sizes).length > 0 && (
+                        <div className="mt-1.5">
+                          <p className="text-xs font-bold text-slate-500">Talla</p>
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            {parseOptions(i.sizes).map((s) => {
+                              const on = variants[i.productId]?.size === s;
+                              return <button key={s} type="button" onClick={() => setVariant(i.productId, { size: s })} style={on ? { backgroundColor: accent, borderColor: accent, color: "#fff" } : undefined} className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-black text-slate-700 transition">{s}</button>;
+                            })}
+                          </div>
+                        </div>
+                      )}
+                      {parseOptions(i.colors).length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-xs font-bold text-slate-500">Color</p>
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            {parseOptions(i.colors).map((c) => {
+                              const on = variants[i.productId]?.color === c;
+                              return <button key={c} type="button" onClick={() => setVariant(i.productId, { color: c })} style={on ? { backgroundColor: accent, borderColor: accent, color: "#fff" } : undefined} className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-black text-slate-700 transition">{c}</button>;
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="rounded-2xl bg-gray-50 p-4 ring-1 ring-black/5 sm:col-span-2">
                 <Row label="Subtotal" value={formatPrice(subtotal, currency)} />
                 <Row label="Costo de entrega" value={formatPrice(deliveryFee, currency)} />
@@ -231,7 +286,7 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
                   <ul className="space-y-1 text-sm">
                     {order.items.map((it, i) => (
                       <li key={i} className="flex justify-between">
-                        <span>{it.quantity}× {it.name}</span>
+                        <span>{it.quantity}× {it.name}{it.variant ? ` · ${it.variant}` : ""}</span>
                         <span>{formatPrice(it.lineTotal, order.currency)}</span>
                       </li>
                     ))}
@@ -353,7 +408,7 @@ function buildWaMessage(order: OrderView, storeName: string): string {
     lines.push(`Dirección: ${order.address}${order.reference ? ` (${order.reference})` : ""}`);
   }
   lines.push("--------------------");
-  for (const it of order.items) lines.push(`• ${it.quantity}x ${it.name} — ${order.currency} ${it.lineTotal}`);
+  for (const it of order.items) lines.push(`• ${it.quantity}x ${it.name}${it.variant ? ` (${it.variant})` : ""} — ${order.currency} ${it.lineTotal}`);
   lines.push("--------------------");
   lines.push(`Subtotal: ${order.currency} ${order.subtotal}`);
   lines.push(`Costo de entrega: ${order.currency} ${order.deliveryFee}`);

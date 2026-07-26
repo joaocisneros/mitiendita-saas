@@ -38,6 +38,7 @@ function errorMessage(body: unknown, fallback: string): string {
 export interface CheckoutItem {
   productId: string;
   quantity: number;
+  variant?: string;
 }
 export interface CheckoutBody {
   customerName: string;
@@ -51,6 +52,7 @@ export interface CheckoutBody {
 
 export interface OrderItemView {
   name: string;
+  variant?: string | null;
   sku: string | null;
   unitPrice: string;
   quantity: number;

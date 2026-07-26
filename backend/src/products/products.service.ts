@@ -49,6 +49,8 @@ export class ProductsService {
         stock: dto.stock,
         sku: dto.sku ?? null,
         imageUrl: dto.imageUrl ?? null,
+        sizes: dto.sizes ?? null,
+        colors: dto.colors ?? null,
         reservationPaymentMode: dto.reservationPaymentMode ?? 'optional',
         reservationAdvanceType: dto.reservationAdvanceType ?? 'percent',
         reservationAdvanceValue: dto.reservationAdvanceValue ?? 30,

@@ -115,7 +115,7 @@ export interface AdminOrderDetail extends AdminOrderRow {
   customerNote: string | null;
   subtotal: string;
   deliveryFee: string;
-  items: { name: string; sku: string | null; unitPrice: string; quantity: number; lineTotal: string }[];
+  items: { name: string; variant?: string | null; sku: string | null; unitPrice: string; quantity: number; lineTotal: string }[];
   payment: { status: string; expectedAmount: string; proofUrl: string | null; rejectionComment: string | null } | null;
   history: { fromStatus: string | null; toStatus: string; comment: string | null; createdAt: string }[];
 }
@@ -445,6 +445,8 @@ export interface AdminProduct {
   reserved: number;
   sku: string | null;
   imageUrl: string | null;
+  sizes: string | null;
+  colors: string | null;
   reservationPaymentMode?: "none" | "optional" | "required";
   reservationAdvanceType?: "fixed" | "percent";
   reservationAdvanceValue?: string;
@@ -460,6 +462,8 @@ export interface ProductInput {
   sku?: string;
   categoryId?: string | null;
   imageUrl?: string;
+  sizes?: string;
+  colors?: string;
   reservationPaymentMode?: "none" | "optional" | "required";
   reservationAdvanceType?: "fixed" | "percent";
   reservationAdvanceValue?: number;

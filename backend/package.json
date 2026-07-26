@@ -24,6 +24,7 @@
     "prisma:seed:showcase": "tsx prisma/seed-showcase.ts",
     "prisma:seed:telecom": "tsx prisma/seed-telecom.ts",
     "prisma:seed:servicios": "tsx prisma/seed-servicios.ts",
+    "prisma:seed:moda": "tsx prisma/seed-moda.ts",
     "prisma:studio": "prisma studio"
   },
   "dependencies": {

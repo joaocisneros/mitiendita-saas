@@ -15,6 +15,8 @@ export interface CartItem {
   imageUrl: string | null;
   available?: number;
   quantity: number;
+  sizes?: string | null;
+  colors?: string | null;
 }
 
 interface CartContextValue {

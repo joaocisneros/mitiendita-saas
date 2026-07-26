@@ -5,6 +5,7 @@ import { useState } from "react";
 import { AddToCart } from "@/components/AddToCart";
 import { ProductDetailModal } from "@/components/store/ProductDetailModal";
 import { formatPrice } from "@/lib/format";
+import { parseOptions } from "@/lib/product-options";
 import type { PublicProduct } from "@/lib/types";
 
 export function ProductCard({
@@ -74,6 +75,7 @@ export function ProductCard({
           <p className="mt-1 text-lg font-black tracking-tight" style={{ color: accent }}>
             {formatPrice(product.price, currency)}
           </p>
+          <OptionPreview sizes={product.sizes} colors={product.colors} />
           <div className="mt-auto pt-2">
             <AddToCart product={product} accent={accent} label={actionLabel} />
           </div>
@@ -92,5 +94,22 @@ export function ProductCard({
         />
       )}
     </>
+  );
+}
+
+/** Vista compacta de tallas/colores en la tarjeta (solo muestra, no selecciona). */
+function OptionPreview({ sizes, colors }: { sizes?: string | null; colors?: string | null }) {
+  const s = parseOptions(sizes);
+  const c = parseOptions(colors);
+  if (s.length === 0 && c.length === 0) return null;
+  return (
+    <div className="mt-1.5 flex flex-wrap gap-1">
+      {s.map((v) => (
+        <span key={`s-${v}`} className="rounded border border-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">{v}</span>
+      ))}
+      {c.slice(0, 4).map((v) => (
+        <span key={`c-${v}`} className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">{v}</span>
+      ))}
+    </div>
   );
 }

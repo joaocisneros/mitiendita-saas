@@ -23,6 +23,11 @@ export class CheckoutItemDto {
   @Min(1)
   @Max(999)
   quantity!: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  variant?: string;
 }
 
 export class CheckoutDto {

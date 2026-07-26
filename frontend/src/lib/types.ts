@@ -46,6 +46,8 @@ export interface PublicProduct {
   inStock: boolean;
   description?: string | null;
   category?: { name: string; slug: string } | null;
+  sizes?: string | null;
+  colors?: string | null;
 }
 
 export interface ProductListResponse {

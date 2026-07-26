@@ -88,6 +88,7 @@ export class OrdersService {
       return {
         productId: p.id,
         name: p.name,
+        variant: item.variant?.trim() || null,
         sku: p.sku,
         unitPrice,
         quantity: item.quantity,
@@ -183,6 +184,7 @@ export class OrdersService {
             create: lines.map((l) => ({
               productId: l.productId,
               name: l.name,
+              variant: l.variant,
               sku: l.sku,
               unitPrice: l.unitPrice,
               quantity: l.quantity,
@@ -329,6 +331,7 @@ export class OrdersService {
       createdAt: Date;
       items: Array<{
         name: string;
+        variant: string | null;
         sku: string | null;
         unitPrice: unknown;
         quantity: number;
@@ -362,6 +365,7 @@ export class OrdersService {
       createdAt: order.createdAt,
       items: order.items.map((i) => ({
         name: i.name,
+        variant: i.variant,
         sku: i.sku,
         unitPrice: String(i.unitPrice),
         quantity: i.quantity,

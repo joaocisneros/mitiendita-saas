@@ -45,6 +45,16 @@ export class CreateProductDto {
   imageUrl?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  sizes?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  colors?: string;
+
+  @IsOptional()
   @IsIn(['none', 'optional', 'required'])
   reservationPaymentMode?: 'none' | 'optional' | 'required';
 

@@ -154,6 +154,7 @@ export function OrderDetailModal({
                     <li key={i} className="flex justify-between gap-3">
                       <span>
                         {it.quantity}× {it.name}
+                        {it.variant && <span className="ml-1 rounded bg-violet-100 px-1.5 py-0.5 text-[11px] font-bold text-violet-700">{it.variant}</span>}
                       </span>
                       <span className="shrink-0">{formatPrice(it.lineTotal, order.currency)}</span>
                     </li>

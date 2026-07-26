@@ -21,6 +21,8 @@ const EMPTY = {
   benefits: "",
   description: "",
   imageUrl: "",
+  sizes: "",
+  colors: "",
   reservationPaymentMode: "optional" as "none" | "optional" | "required",
   reservationAdvanceType: "percent" as "fixed" | "percent",
   reservationAdvanceValue: "30",
@@ -106,6 +108,8 @@ export default function ProductosPage() {
       benefits: parsed.benefits,
       description: parsed.description,
       imageUrl: product.imageUrl ?? "",
+      sizes: product.sizes ?? "",
+      colors: product.colors ?? "",
       reservationPaymentMode: product.reservationPaymentMode ?? "optional",
       reservationAdvanceType: product.reservationAdvanceType ?? "percent",
       reservationAdvanceValue: String(product.reservationAdvanceValue ?? "30"),
@@ -137,6 +141,9 @@ export default function ProductosPage() {
         categoryId: form.categoryId || null,
         description: description || undefined,
         imageUrl: form.imageUrl || undefined,
+        ...(!isDigital && !isService
+          ? { sizes: form.sizes.trim() || undefined, colors: form.colors.trim() || undefined }
+          : {}),
         ...(isService
           ? {
               reservationPaymentMode: form.reservationPaymentMode,
@@ -286,6 +293,19 @@ export default function ProductosPage() {
                   </select>
                 </label>
               </div>
+
+              {!isDigital && !isService && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <Input label="Tallas (opcional)" value={form.sizes} onChange={(value) => setForm({ ...form, sizes: value })} />
+                    <p className="mt-1 text-xs text-gray-400">Sepáralas con coma. Ej: S, M, L, XL</p>
+                  </div>
+                  <div>
+                    <Input label="Colores (opcional)" value={form.colors} onChange={(value) => setForm({ ...form, colors: value })} />
+                    <p className="mt-1 text-xs text-gray-400">Sepáralos con coma. Ej: Negro, Blanco, Azul</p>
+                  </div>
+                </div>
+              )}
 
               {isDigital || isService ? (
                 <>

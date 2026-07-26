@@ -64,6 +64,8 @@ export function AddToCart({
           price: product.price,
           imageUrl: product.imageUrl,
           available: product.available,
+          sizes: product.sizes,
+          colors: product.colors,
         })
       }
       style={{ backgroundColor: accent }}
