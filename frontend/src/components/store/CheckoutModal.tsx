@@ -161,16 +161,16 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
             <h2 className="text-base font-black">✓ ¡Pedido creado! <span className="font-semibold text-white/80">· {order.code}</span></h2>
           </header>
         ) : (
-          <header className="flex items-center justify-between px-5 py-4 text-white" style={{ backgroundColor: accent }}>
-            <h2 className="text-lg font-black">Finalizar pedido</h2>
-            <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 hover:bg-white/30" aria-label="Cerrar">✕</button>
+          <header className="flex items-center justify-between px-5 py-3 text-white" style={{ backgroundColor: accent }}>
+            <h2 className="text-base font-black">Finalizar pedido</h2>
+            <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 hover:bg-white/30" aria-label="Cerrar">✕</button>
           </header>
         )}
 
         <div className="space-y-3 overflow-y-auto p-4">
           {!order ? (
             // ─────────── Vista 1: formulario (2 columnas, sin scroll) ───────────
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Nombre completo *">
                 <input value={name} onChange={(e) => setName(e.target.value)} className="cm-input" placeholder="Ej: María Pérez" />
               </Field>
@@ -215,54 +215,52 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
               </Field>
 
               {items.some((i) => parseOptions(i.sizes).length > 0 || parseOptions(i.colors).length > 0) && (
-                <div className="sm:col-span-2 space-y-2 rounded-2xl border border-violet-200 bg-violet-50/60 p-3">
-                  <p className="text-sm font-black text-violet-800">Elige tus opciones</p>
-                  {items.filter((i) => parseOptions(i.sizes).length > 0 || parseOptions(i.colors).length > 0).map((i) => (
-                    <div key={i.productId} className="rounded-xl bg-white p-2.5 ring-1 ring-slate-200">
-                      <p className="text-sm font-bold text-slate-800">{i.name}</p>
-                      {parseOptions(i.sizes).length > 0 && (
-                        <div className="mt-1.5">
-                          <p className="text-xs font-bold text-slate-500">Talla</p>
-                          <div className="mt-1 flex flex-wrap gap-1.5">
+                <div className="sm:col-span-2 rounded-2xl border border-violet-200 bg-violet-50/60 p-2.5">
+                  <p className="mb-1.5 text-sm font-black text-violet-800">Elige tus opciones</p>
+                  <div className="max-h-56 space-y-1.5 overflow-y-auto pr-0.5">
+                    {items.filter((i) => parseOptions(i.sizes).length > 0 || parseOptions(i.colors).length > 0).map((i) => (
+                      <div key={i.productId} className="rounded-xl bg-white p-2 ring-1 ring-slate-200">
+                        <p className="text-xs font-black text-slate-800">{i.name}</p>
+                        {parseOptions(i.sizes).length > 0 && (
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                            <span className="text-[11px] font-bold text-slate-400">Talla:</span>
                             {parseOptions(i.sizes).map((s) => {
                               const on = variants[i.productId]?.size === s;
-                              return <button key={s} type="button" onClick={() => setVariant(i.productId, { size: s })} style={on ? { backgroundColor: accent, borderColor: accent, color: "#fff" } : undefined} className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-black text-slate-700 transition">{s}</button>;
+                              return <button key={s} type="button" onClick={() => setVariant(i.productId, { size: s })} style={on ? { backgroundColor: accent, borderColor: accent, color: "#fff" } : undefined} className="rounded-md border border-slate-300 px-2 py-0.5 text-xs font-black text-slate-700 transition">{s}</button>;
                             })}
                           </div>
-                        </div>
-                      )}
-                      {parseOptions(i.colors).length > 0 && (
-                        <div className="mt-2">
-                          <p className="text-xs font-bold text-slate-500">Color</p>
-                          <div className="mt-1 flex flex-wrap gap-1.5">
+                        )}
+                        {parseOptions(i.colors).length > 0 && (
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                            <span className="text-[11px] font-bold text-slate-400">Color:</span>
                             {parseOptions(i.colors).map((c) => {
                               const on = variants[i.productId]?.color === c;
-                              return <button key={c} type="button" onClick={() => setVariant(i.productId, { color: c })} style={on ? { backgroundColor: accent, borderColor: accent, color: "#fff" } : undefined} className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-black text-slate-700 transition">{c}</button>;
+                              return <button key={c} type="button" onClick={() => setVariant(i.productId, { color: c })} style={on ? { backgroundColor: accent, borderColor: accent, color: "#fff" } : undefined} className="rounded-md border border-slate-300 px-2 py-0.5 text-xs font-black text-slate-700 transition">{c}</button>;
                             })}
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
-              <div className="rounded-2xl bg-gray-50 p-4 ring-1 ring-black/5 sm:col-span-2">
+              <div className="rounded-2xl bg-gray-50 p-3 ring-1 ring-black/5 sm:col-span-2">
                 <Row label="Subtotal" value={formatPrice(subtotal, currency)} />
                 <Row label="Costo de entrega" value={formatPrice(deliveryFee, currency)} />
-                <div className="mt-2 flex justify-between border-t pt-2 text-lg font-extrabold">
+                <div className="mt-1.5 flex justify-between border-t pt-1.5 text-lg font-extrabold">
                   <span>Total</span>
                   <span>{formatPrice(total, currency)}</span>
                 </div>
               </div>
 
-              {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-600 sm:col-span-2">{error}</p>}
+              {error && <p className="rounded-lg bg-red-50 p-2.5 text-sm text-red-600 sm:col-span-2">{error}</p>}
 
               <button
                 onClick={submit}
                 disabled={saving}
                 style={{ backgroundColor: accent }}
-                className="w-full rounded-full py-3 font-semibold text-white transition hover:opacity-90 disabled:opacity-60 sm:col-span-2"
+                className="w-full rounded-full py-2.5 font-bold text-white transition hover:opacity-90 disabled:opacity-60 sm:col-span-2"
               >
                 {saving ? "Creando pedido..." : "Confirmar pedido →"}
               </button>
