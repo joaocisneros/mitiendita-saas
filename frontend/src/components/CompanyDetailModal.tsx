@@ -75,11 +75,18 @@ export function CompanyDetailModal({
   }
 
   async function impersonate() {
+    setError("");
+    // Abrimos la pestaña YA, durante el clic. Si la abriéramos después del
+    // await, el navegador la bloquea como popup (pierde el gesto del usuario)
+    // y "no entra" nada. Luego solo le cambiamos la dirección al /panel.
+    const tab = window.open("about:blank", "_blank");
     try {
       const { accessToken } = await superApi.impersonate(companyId);
       localStorage.setItem("mt_access", accessToken);
-      window.open("/panel", "_blank");
+      if (tab && !tab.closed) tab.location.href = "/panel";
+      else window.location.assign("/panel"); // fallback si el popup fue bloqueado
     } catch (cause) {
+      if (tab && !tab.closed) tab.close();
       setError(cause instanceof Error ? cause.message : "Error");
     }
   }
