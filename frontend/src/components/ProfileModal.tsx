@@ -78,6 +78,8 @@ export function ProfileModal({
       setCurrent("");
       setNext("");
       setConfirm("");
+      // Muestra el mensaje de éxito un instante y cierra el modal.
+      setTimeout(() => onClose(), 1100);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar.");
     } finally {
@@ -87,15 +89,15 @@ export function ProfileModal({
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/60 p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-black text-slate-950">Mi perfil</h2>
-          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200" aria-label="Cerrar">✕</button>
+      <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-base font-black text-slate-950">Mi perfil</h2>
+          <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200" aria-label="Cerrar">✕</button>
         </div>
 
         {/* Identidad compacta: avatar + correo (no editable) */}
-        <div className="mb-4 flex items-center gap-3 rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-violet-600 text-lg font-black text-white">
+        <div className="mb-3 flex items-center gap-3 rounded-xl bg-slate-50 p-2.5 ring-1 ring-slate-200">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-violet-600 text-base font-black text-white">
             {(displayName || email || "U").trim().charAt(0).toUpperCase()}
           </span>
           <div className="min-w-0">
@@ -105,16 +107,16 @@ export function ProfileModal({
         </div>
 
         {/* Pestañas: Perfil / Contraseña */}
-        <div className="mb-4 grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1">
+        <div className="mb-3 grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1">
           <button
             onClick={() => { setTab("perfil"); setError(""); }}
-            className={`rounded-lg py-2 text-sm font-black transition ${tab === "perfil" ? "bg-white text-violet-700 shadow-sm" : "text-slate-500"}`}
+            className={`rounded-lg py-1.5 text-sm font-black transition ${tab === "perfil" ? "bg-white text-violet-700 shadow-sm" : "text-slate-500"}`}
           >
             Perfil
           </button>
           <button
             onClick={() => { setTab("password"); setError(""); }}
-            className={`rounded-lg py-2 text-sm font-black transition ${tab === "password" ? "bg-white text-violet-700 shadow-sm" : "text-slate-500"}`}
+            className={`rounded-lg py-1.5 text-sm font-black transition ${tab === "password" ? "bg-white text-violet-700 shadow-sm" : "text-slate-500"}`}
           >
             Contraseña
           </button>
@@ -145,9 +147,9 @@ export function ProfileModal({
         {error && <p className="mt-3 rounded-lg bg-red-50 p-2.5 text-sm font-semibold text-red-700">{error}</p>}
         {ok && <p className="mt-3 rounded-lg bg-emerald-50 p-2.5 text-sm font-semibold text-emerald-700">✅ Cambios guardados.</p>}
 
-        <div className="mt-5 flex gap-2">
-          <button onClick={onClose} className="flex-1 rounded-xl bg-slate-100 py-2.5 font-bold text-slate-700 hover:bg-slate-200">Cancelar</button>
-          <button onClick={save} disabled={saving} className="flex-1 rounded-xl bg-violet-600 py-2.5 font-bold text-white hover:bg-violet-700 disabled:opacity-60">{saving ? "Guardando..." : "Guardar cambios"}</button>
+        <div className="mt-4 flex gap-2">
+          <button onClick={onClose} className="flex-1 rounded-xl bg-slate-100 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-200">Cancelar</button>
+          <button onClick={save} disabled={saving} className="flex-1 rounded-xl bg-violet-600 py-2.5 text-sm font-bold text-white hover:bg-violet-700 disabled:opacity-60">{saving ? "Guardando..." : "Guardar cambios"}</button>
         </div>
 
         {onLogout && (
@@ -155,7 +157,7 @@ export function ProfileModal({
             🚪 Cerrar sesión
           </button>
         )}
-        <style>{`.pm-input{height:2.75rem;width:100%;border-radius:.75rem;border:1px solid #cbd5e1;background:#fff;padding:0 .8rem;color:#0f172a;outline:none}.pm-input:focus{border-color:#7c3aed;box-shadow:0 0 0 3px #ede9fe}`}</style>
+        <style>{`.pm-input{height:2.6rem;width:100%;border-radius:.75rem;border:1px solid #cbd5e1;background:#fff;padding:0 .8rem;font-size:.95rem;color:#0f172a;outline:none}.pm-input:focus{border-color:#7c3aed;box-shadow:0 0 0 3px #ede9fe}`}</style>
       </div>
     </div>
   );
