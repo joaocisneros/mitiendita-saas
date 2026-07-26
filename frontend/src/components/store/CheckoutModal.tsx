@@ -33,6 +33,7 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [variants, setVariants] = useState<Record<string, { size?: string; color?: string }>>({});
+  const [showExtras, setShowExtras] = useState(false);
 
   function setVariant(productId: string, patch: { size?: string; color?: string }) {
     setVariants((prev) => ({ ...prev, [productId]: { ...prev[productId], ...patch } }));
@@ -200,19 +201,30 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
               </div>
 
               {method === "delivery" && (
-                <>
-                  <Field label="Dirección *">
-                    <input value={address} onChange={(e) => setAddress(e.target.value)} className="cm-input" placeholder="Calle, número, distrito" />
-                  </Field>
-                  <Field label="Referencia (opcional)">
-                    <input value={reference} onChange={(e) => setReference(e.target.value)} className="cm-input" placeholder="Ej: frente al parque" />
-                  </Field>
-                </>
+                <Field label="Dirección *" className="sm:col-span-2">
+                  <input value={address} onChange={(e) => setAddress(e.target.value)} className="cm-input" placeholder="Calle, número, distrito" />
+                </Field>
               )}
 
-              <Field label="Nota (opcional)" className="sm:col-span-2">
-                <textarea value={note} onChange={(e) => setNote(e.target.value)} className="cm-input" rows={1} style={{ minHeight: "2.6rem", height: "2.6rem" }} placeholder="Algún detalle para el negocio" />
-              </Field>
+              {/* Opcionales ocultos por defecto para no alargar el modal */}
+              <div className="sm:col-span-2">
+                {!showExtras ? (
+                  <button type="button" onClick={() => setShowExtras(true)} className="text-sm font-bold text-violet-700 hover:underline">
+                    ➕ Agregar nota{method === "delivery" ? " o referencia" : ""} (opcional)
+                  </button>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {method === "delivery" && (
+                      <Field label="Referencia (opcional)">
+                        <input value={reference} onChange={(e) => setReference(e.target.value)} className="cm-input" placeholder="Ej: frente al parque" />
+                      </Field>
+                    )}
+                    <Field label="Nota (opcional)">
+                      <input value={note} onChange={(e) => setNote(e.target.value)} className="cm-input" placeholder="Algún detalle para el negocio" />
+                    </Field>
+                  </div>
+                )}
+              </div>
 
               {items.some((i) => parseOptions(i.sizes).length > 0 || parseOptions(i.colors).length > 0) && (
                 <div className="sm:col-span-2 rounded-2xl border border-violet-200 bg-violet-50/60 p-2.5">
