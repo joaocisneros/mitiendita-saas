@@ -141,8 +141,8 @@ export default function ConfigPage() {
 
             <div className="border-t border-slate-200 pt-3">
               <p className="mb-2 text-xs font-black uppercase tracking-[0.12em] text-slate-400">Presencia (opcional)</p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Input label="Horario de atención" value={s.hours ?? ""} onChange={(v) => set("hours", v)} placeholder="Ej: Lun-Sáb 9am-8pm" />
+              <HoursPicker value={s.hours ?? ""} onChange={(v) => set("hours", v)} />
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
                 <Input label="Instagram" value={s.instagramUrl ?? ""} onChange={(v) => set("instagramUrl", v)} placeholder="https://instagram.com/tu-tienda" />
                 <Input label="Facebook" value={s.facebookUrl ?? ""} onChange={(v) => set("facebookUrl", v)} placeholder="https://facebook.com/tu-tienda" />
                 <Input label="TikTok" value={s.tiktokUrl ?? ""} onChange={(v) => set("tiktokUrl", v)} placeholder="https://tiktok.com/@tu-tienda" />
@@ -222,6 +222,63 @@ export default function ConfigPage() {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+const DAY_OPTIONS = ["Todos los días", "Lunes a Sábado", "Lunes a Viernes", "Sábado y Domingo"];
+const HOUR_OPTIONS = (() => {
+  const out: string[] = [];
+  for (let h = 6; h <= 23; h++) {
+    const ampm = h < 12 ? "am" : "pm";
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    out.push(`${h12}:00 ${ampm}`);
+    out.push(`${h12}:30 ${ampm}`);
+  }
+  return out;
+})();
+
+/** Selector fácil de horario: elige días + desde/hasta; arma el texto solo. */
+function HoursPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [dias, setDias] = useState("Lunes a Sábado");
+  const [desde, setDesde] = useState("9:00 am");
+  const [hasta, setHasta] = useState("8:00 pm");
+  const [enabled, setEnabled] = useState(Boolean(value));
+
+  function apply(d: string, de: string, h: string) {
+    onChange(`${d} ${de} - ${h}`);
+  }
+
+  return (
+    <div>
+      <span className="mb-1.5 block text-sm font-bold text-slate-800">Horario de atención</span>
+      {!enabled ? (
+        <button
+          type="button"
+          onClick={() => { setEnabled(true); apply(dias, desde, hasta); }}
+          className="rounded-lg bg-violet-50 px-3 py-2 text-sm font-bold text-violet-700 hover:bg-violet-100"
+        >
+          + Agregar horario
+        </button>
+      ) : (
+        <>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <select value={dias} onChange={(e) => { setDias(e.target.value); apply(e.target.value, desde, hasta); }} className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm font-medium text-slate-950 outline-none focus:border-violet-600">
+              {DAY_OPTIONS.map((d) => <option key={d}>{d}</option>)}
+            </select>
+            <select value={desde} onChange={(e) => { setDesde(e.target.value); apply(dias, e.target.value, hasta); }} className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm font-medium text-slate-950 outline-none focus:border-violet-600">
+              {HOUR_OPTIONS.map((h) => <option key={`d-${h}`}>{h}</option>)}
+            </select>
+            <select value={hasta} onChange={(e) => { setHasta(e.target.value); apply(dias, desde, e.target.value); }} className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm font-medium text-slate-950 outline-none focus:border-violet-600">
+              {HOUR_OPTIONS.map((h) => <option key={`h-${h}`}>{h}</option>)}
+            </select>
+          </div>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold text-slate-500">Se mostrará: <b className="text-slate-700">{value || `${dias} ${desde} - ${hasta}`}</b></p>
+            <button type="button" onClick={() => { setEnabled(false); onChange(""); }} className="shrink-0 text-xs font-bold text-red-500 hover:underline">Quitar</button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
