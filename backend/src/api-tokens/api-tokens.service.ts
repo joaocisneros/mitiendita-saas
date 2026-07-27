@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
-import { generateApiToken, decryptApiToken, COMPANY_SCOPES } from './api-token.util';
+import { generateApiToken, decryptApiToken, COMPANY_SCOPES, PLATFORM_SCOPES } from './api-token.util';
 import { CreateApiTokenDto } from './dto/create-api-token.dto';
 
 const TOKEN_SELECT = {
@@ -84,6 +84,27 @@ export class ApiTokensService {
       companyName: company?.name ?? null,
       companySubdomain: company?.subdomain ?? null,
     }));
+  }
+
+  /** Cambia los módulos permitidos de un token ya creado, sin tener que borrarlo. */
+  async updateScopes(id: string, scopes: string[]) {
+    const token = await this.prisma.apiToken.findUnique({ where: { id } });
+    if (!token) throw new NotFoundException('Token no encontrado.');
+    const validScopes: readonly string[] = token.companyId ? COMPANY_SCOPES : PLATFORM_SCOPES;
+
+    const unique = [...new Set(scopes)];
+    if (unique.length === 0) {
+      throw new BadRequestException('Selecciona al menos un módulo.');
+    }
+    const invalid = unique.filter((s) => !validScopes.includes(s));
+    if (invalid.length > 0) {
+      throw new BadRequestException(`Módulo(s) inválido(s): ${invalid.join(', ')}`);
+    }
+    return this.prisma.apiToken.update({
+      where: { id },
+      data: { scopes: unique },
+      select: TOKEN_SELECT,
+    });
   }
 
   /** Vuelve a mostrar el token completo (botón "Ver/Copiar"), en cualquier momento. */

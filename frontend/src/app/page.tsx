@@ -290,6 +290,7 @@ export default async function Home() {
             <Link href="/registro" className="hover:text-violet-700">Crear tienda</Link>
             <Link href="/panel/login" className="hover:text-violet-700">Ingresar</Link>
             <Link href="#precios" className="hover:text-violet-700">Precios</Link>
+            <Link href="/api-docs" className="hover:text-violet-700">Documentación de la API</Link>
             <a href={whatsappLink()} target="_blank" rel="noopener noreferrer" className="font-bold text-green-600 hover:text-green-700">
               WhatsApp
             </a>

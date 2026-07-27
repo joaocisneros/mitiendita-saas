@@ -401,6 +401,12 @@ export const superApi = {
     sfetch<{ ok: boolean }>(`/superadmin/api-tokens/${id}`, { method: "DELETE" }),
   revealApiToken: (id: string) =>
     sfetch<{ token: string }>(`/superadmin/api-tokens/${id}/reveal`, { method: "POST" }),
+  updateApiTokenScopes: (id: string, scopes: string[]) =>
+    sfetch<SaApiTokenRow>(`/superadmin/api-tokens/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scopes }),
+    }),
   // ── Tokens de API por empresa (el superadmin los crea; se avisan por WhatsApp) ──
   companyApiScopes: () => sfetch<string[]>("/superadmin/api-tokens/company-scopes"),
   apiTokenCompanies: () => sfetch<{ id: string; name: string; subdomain: string }[]>("/superadmin/api-tokens/companies"),

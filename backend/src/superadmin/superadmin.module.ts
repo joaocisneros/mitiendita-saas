@@ -51,6 +51,14 @@ import { SaWhatsappService } from './services/sa-whatsapp.service';
     SaSettingsService,
     SaWhatsappService,
   ],
-  exports: [SaCompaniesService],
+  exports: [
+    SaCompaniesService,
+    SaUsersService,
+    SaPlansService,
+    SaSubscriptionsService,
+    SaAuditService,
+    SaWhatsappService,
+    SaSettingsService,
+  ],
 })
 export class SuperAdminModule {}

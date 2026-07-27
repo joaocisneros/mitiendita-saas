@@ -1,9 +1,10 @@
-import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { SuperAdminGuard } from '../../common/guards/super-admin.guard';
 import { ApiTokensService } from '../../api-tokens/api-tokens.service';
 import { CreateApiTokenDto } from '../../api-tokens/dto/create-api-token.dto';
 import { CreateCompanyApiTokenDto } from '../../api-tokens/dto/create-company-api-token.dto';
+import { UpdateApiTokenScopesDto } from '../../api-tokens/dto/update-api-token-scopes.dto';
 import { COMPANY_SCOPES, PLATFORM_SCOPES } from '../../api-tokens/api-token.util';
 import { SaCompaniesService } from '../services/sa-companies.service';
 
@@ -61,6 +62,11 @@ export class SaApiTokensController {
   @Post(':id/reveal')
   reveal(@Param('id') id: string) {
     return this.tokens.reveal(id);
+  }
+
+  @Patch(':id')
+  updateScopes(@Param('id') id: string, @Body() dto: UpdateApiTokenScopesDto) {
+    return this.tokens.updateScopes(id, dto.scopes);
   }
 
   @Delete(':id')

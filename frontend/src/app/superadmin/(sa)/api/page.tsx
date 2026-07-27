@@ -29,19 +29,28 @@ const COMPANY_SCOPE_LABEL: Record<string, string> = {
 
 function TokenRow({
   token: t,
+  allScopes,
   scopeLabels,
   onRevoke,
+  onUpdated,
   showCompany,
 }: {
   token: SaApiTokenRow | SaCompanyApiTokenRow;
+  allScopes: string[];
   scopeLabels: Record<string, string>;
   onRevoke: (id: string) => void;
+  onUpdated: () => void;
   showCompany?: boolean;
 }) {
   const [revealed, setRevealed] = useState<string | null>(null);
   const [revealing, setRevealing] = useState(false);
   const [revealError, setRevealError] = useState("");
   const [copied, setCopied] = useState(false);
+
+  const [editing, setEditing] = useState(false);
+  const [selected, setSelected] = useState<string[]>(t.scopes);
+  const [savingScopes, setSavingScopes] = useState(false);
+  const [scopesError, setScopesError] = useState("");
 
   async function toggleReveal() {
     if (revealed) {
@@ -67,9 +76,35 @@ function TokenRow({
     setTimeout(() => setCopied(false), 2000);
   }
 
+  function startEditing() {
+    setSelected(t.scopes);
+    setScopesError("");
+    setEditing(true);
+  }
+  function toggleScope(scope: string) {
+    setSelected((prev) => (prev.includes(scope) ? prev.filter((s) => s !== scope) : [...prev, scope]));
+  }
+  async function saveScopes() {
+    if (selected.length === 0) {
+      setScopesError("Selecciona al menos un módulo.");
+      return;
+    }
+    setSavingScopes(true);
+    setScopesError("");
+    try {
+      await superApi.updateApiTokenScopes(t.id, selected);
+      setEditing(false);
+      onUpdated();
+    } catch (e) {
+      setScopesError(e instanceof Error ? e.message : "No se pudo actualizar.");
+    } finally {
+      setSavingScopes(false);
+    }
+  }
+
   return (
     <li className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-700">
             <DashboardIcon name="key" className="h-4 w-4" />
@@ -97,13 +132,54 @@ function TokenRow({
           <p className="mt-1 font-mono text-xs text-slate-500">{t.tokenPrefix}••••••••</p>
         )}
         {revealError && <p className="mt-1 text-xs font-semibold text-red-600">{revealError}</p>}
-        <div className="mt-1.5 flex flex-wrap gap-1">
-          {t.scopes.map((s) => (
-            <span key={s} className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
-              {scopeLabels[s] ?? s}
-            </span>
-          ))}
-        </div>
+
+        {editing ? (
+          <div className="mt-2 space-y-2 rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200">
+            <div className="flex flex-wrap gap-1.5">
+              {allScopes.map((s) => (
+                <label
+                  key={s}
+                  className={`flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 transition ${selected.includes(s) ? "bg-violet-50 text-violet-700 ring-violet-300" : "text-slate-500 ring-slate-200 hover:bg-slate-100"}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(s)}
+                    onChange={() => toggleScope(s)}
+                    className="accent-violet-600"
+                  />
+                  {scopeLabels[s] ?? s}
+                </label>
+              ))}
+            </div>
+            {scopesError && <p className="text-xs font-semibold text-red-600">{scopesError}</p>}
+            <div className="flex gap-2">
+              <button
+                onClick={saveScopes}
+                disabled={savingScopes}
+                className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-violet-700 disabled:opacity-60"
+              >
+                {savingScopes ? "Guardando..." : "Guardar"}
+              </button>
+              <button
+                onClick={() => setEditing(false)}
+                className="rounded-lg px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-1.5 flex flex-wrap items-center gap-1">
+            {t.scopes.map((s) => (
+              <span key={s} className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
+                {scopeLabels[s] ?? s}
+              </span>
+            ))}
+            <button onClick={startEditing} className="ml-1 text-xs font-bold text-violet-700 hover:underline">
+              Editar módulos
+            </button>
+          </div>
+        )}
       </div>
       <div className="flex shrink-0 items-center gap-2 self-start">
         <button
@@ -128,15 +204,19 @@ function TokenList({
   tokens,
   loading,
   emptyText,
+  allScopes,
   scopeLabels,
   onRevoke,
+  onUpdated,
   showCompany,
 }: {
   tokens: (SaApiTokenRow | SaCompanyApiTokenRow)[];
   loading: boolean;
   emptyText: string;
+  allScopes: string[];
   scopeLabels: Record<string, string>;
   onRevoke: (id: string) => void;
+  onUpdated: () => void;
   showCompany?: boolean;
 }) {
   return (
@@ -146,7 +226,15 @@ function TokenList({
       {tokens.length > 0 && (
         <ul className="divide-y divide-slate-100">
           {tokens.map((t) => (
-            <TokenRow key={t.id} token={t} scopeLabels={scopeLabels} onRevoke={onRevoke} showCompany={showCompany} />
+            <TokenRow
+              key={t.id}
+              token={t}
+              allScopes={allScopes}
+              scopeLabels={scopeLabels}
+              onRevoke={onRevoke}
+              onUpdated={onUpdated}
+              showCompany={showCompany}
+            />
           ))}
         </ul>
       )}
@@ -246,8 +334,10 @@ export default function SaApiTokensPage() {
             tokens={companyTokens}
             loading={loadingCompanyTokens}
             emptyText="Aún no se creó ningún token para ninguna tienda."
+            allScopes={companyScopes}
             scopeLabels={COMPANY_SCOPE_LABEL}
             onRevoke={setRevokeTarget}
+            onUpdated={loadCompanyData}
             showCompany
           />
         </div>
@@ -267,8 +357,10 @@ export default function SaApiTokensPage() {
             tokens={platformTokens}
             loading={loadingPlatformTokens}
             emptyText="Aún no se creó ningún token de plataforma."
+            allScopes={platformScopes}
             scopeLabels={PLATFORM_SCOPE_LABEL}
             onRevoke={setRevokeTarget}
+            onUpdated={loadPlatformData}
           />
         </div>
       )}
