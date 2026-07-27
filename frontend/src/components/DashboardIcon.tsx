@@ -15,7 +15,12 @@ type IconName =
   | "menu"
   | "inventory"
   | "reports"
-  | "calendar";
+  | "calendar"
+  | "flag"
+  | "whatsapp"
+  | "key"
+  | "copy"
+  | "check";
 
 const paths: Record<IconName, React.ReactNode> = {
   dashboard: (
@@ -111,6 +116,34 @@ const paths: Record<IconName, React.ReactNode> = {
     <>
       <rect x="3" y="4" width="18" height="17" rx="2" />
       <path d="M3 9h18M8 2v4M16 2v4M8 14h3M8 17h6" />
+    </>
+  ),
+  flag: (
+    <>
+      <path d="M5 21V4" />
+      <path d="M5 4h13l-3 4.5L18 13H5" />
+    </>
+  ),
+  whatsapp: (
+    <>
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z" />
+    </>
+  ),
+  key: (
+    <>
+      <circle cx="8" cy="15" r="4" />
+      <path d="M10.5 12.5 20 3M16 7l3 3M19 4l1.5 1.5" />
+    </>
+  ),
+  copy: (
+    <>
+      <rect x="9" y="9" width="12" height="12" rx="2" />
+      <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
+    </>
+  ),
+  check: (
+    <>
+      <path d="M20 6 9 17l-5-5" />
     </>
   ),
 };

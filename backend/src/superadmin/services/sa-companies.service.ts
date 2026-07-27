@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
+import { normalizePhone } from '../../common/utils/phone.util';
 import {
   isValidSubdomain,
   normalizeSubdomain,
@@ -80,7 +81,7 @@ export class SaCompaniesService {
           companyId: company.id,
           storeName: dto.commercialName.trim(),
           businessType: dto.businessType?.trim() || null,
-          whatsappNumber: dto.whatsappNumber.replace(/\s/g, ''),
+          whatsappNumber: normalizePhone(dto.whatsappNumber),
         },
       });
       const owner = await tx.user.create({
@@ -281,7 +282,7 @@ export class SaCompaniesService {
         ? { businessType: dto.businessType.trim() || null }
         : {}),
       ...(dto.whatsappNumber !== undefined
-        ? { whatsappNumber: dto.whatsappNumber.replace(/\s/g, '') || null }
+        ? { whatsappNumber: normalizePhone(dto.whatsappNumber) || null }
         : {}),
       ...(dto.storeAddress !== undefined
         ? { storeAddress: dto.storeAddress.trim() || null }

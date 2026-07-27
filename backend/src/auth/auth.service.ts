@@ -9,6 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { randomBytes, randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { normalizePhone } from '../common/utils/phone.util';
 import {
   isValidSubdomain,
   normalizeSubdomain,
@@ -78,7 +79,7 @@ export class AuthService {
           companyId: company.id,
           storeName: dto.commercialName,
           businessType: dto.businessType ?? null,
-          whatsappNumber: dto.whatsappNumber,
+          whatsappNumber: normalizePhone(dto.whatsappNumber),
         },
       });
 

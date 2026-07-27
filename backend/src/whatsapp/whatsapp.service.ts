@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../prisma/prisma.service';
 import { normalizePhone } from '../common/utils/phone.util';
 
 export type WhatsappNotificationResult = {
@@ -19,17 +20,21 @@ type TwilioResponse = { sid?: string; message?: string; code?: number };
 export class WhatsappService {
   private readonly logger = new Logger(WhatsappService.name);
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly prisma: PrismaService,
+  ) {}
 
-  private get enabled(): boolean {
-    return this.config.get<string>('TWILIO_ENABLED') === 'true';
-  }
-
-  private creds() {
+  /** Config guardada en superadmin (BD) con respaldo en las variables TWILIO_* del .env. */
+  private async creds() {
+    const settings = await this.prisma.platformSettings
+      .findUnique({ where: { id: 1 } })
+      .catch(() => null);
     return {
-      sid: this.config.get<string>('TWILIO_ACCOUNT_SID'),
-      token: this.config.get<string>('TWILIO_AUTH_TOKEN'),
-      from: this.config.get<string>('TWILIO_WHATSAPP_FROM'),
+      enabled: settings?.whatsappEnabled ?? this.config.get<string>('TWILIO_ENABLED') === 'true',
+      sid: settings?.twilioAccountSid || this.config.get<string>('TWILIO_ACCOUNT_SID'),
+      token: settings?.twilioAuthToken || this.config.get<string>('TWILIO_AUTH_TOKEN'),
+      from: settings?.twilioWhatsappFrom || this.config.get<string>('TWILIO_WHATSAPP_FROM'),
     };
   }
 
@@ -38,14 +43,14 @@ export class WhatsappService {
     body: string,
     mediaUrl?: string,
   ): Promise<WhatsappNotificationResult> {
-    if (!this.enabled) {
+    const { enabled, sid, token, from } = await this.creds();
+    if (!enabled) {
       return { status: 'disabled', reason: 'WhatsApp (Twilio) no está activado.' };
     }
     const digits = normalizePhone(rawTo ?? '');
     if (digits.length < 8) {
       return { status: 'skipped', reason: 'La tienda no tiene un WhatsApp válido.' };
     }
-    const { sid, token, from } = this.creds();
     if (!sid || !token || !from) {
       this.logger.warn('Twilio está activado pero su configuración está incompleta.');
       return { status: 'failed', reason: 'Configuración de Twilio incompleta.' };
@@ -80,6 +85,32 @@ export class WhatsappService {
       this.logger.error(`No se pudo enviar el WhatsApp por Twilio: ${message}`);
       return { status: 'failed', reason: 'No se pudo enviar el WhatsApp.' };
     }
+  }
+
+  /** Mensaje de prueba enviado desde Superadmin → WhatsApp para validar la integración. */
+  async sendTestMessage(to: string): Promise<WhatsappNotificationResult> {
+    return this.send(
+      to,
+      '✅ Mensaje de prueba de MiTiendita. Si lo recibiste, tu integración de WhatsApp funciona correctamente.',
+    );
+  }
+
+  /** Envía el token de API recién creado al WhatsApp de la tienda (el superadmin lo genera por ella). */
+  async sendApiTokenNotification(input: {
+    recipient: string | null | undefined;
+    storeName: string;
+    tokenName: string;
+    scopes: string[];
+    token: string;
+  }): Promise<WhatsappNotificationResult> {
+    const body = [
+      `🔑 Nuevo token de API — ${input.storeName}`,
+      `Nombre: ${input.tokenName}`,
+      `Módulos: ${input.scopes.join(', ')}`,
+      `Token: ${input.token}`,
+      '⚠️ Guárdalo en un lugar seguro, no lo compartas.',
+    ].join('\n');
+    return this.send(input.recipient, body);
   }
 
   /** Aviso con la FOTO del comprobante (cuando el cliente sube su captura). */

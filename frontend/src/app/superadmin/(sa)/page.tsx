@@ -92,7 +92,7 @@ export default function SuperDashboard() {
       <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <p className="text-sm font-bold text-violet-700">Centro de control</p>
-          <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-950">Panel global</h1>
+          <h1 className="mt-1 text-xl font-black tracking-tight text-slate-950">Panel global</h1>
           <p className="mt-2 text-sm font-medium text-slate-600">
             Prioridades comerciales, salud de suscripciones y operación de la plataforma.
           </p>

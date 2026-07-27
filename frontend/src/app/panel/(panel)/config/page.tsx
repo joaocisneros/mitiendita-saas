@@ -84,7 +84,7 @@ export default function ConfigPage() {
   return (
     <div className="mx-auto max-w-3xl pb-28">
       <div className="mb-4">
-        <h1 className="text-2xl font-black text-slate-950">Configuración</h1>
+        <h1 className="text-xl font-black text-slate-950">Configuración</h1>
         <p className="mt-0.5 text-sm font-medium text-slate-600">
           Tu tienda: <b className="text-slate-900">mitiendita-saas.vercel.app/tienda/{s.subdomain}</b>
         </p>

@@ -46,7 +46,7 @@ export default function CategoriasPage() {
 
   return (
     <div className="space-y-5">
-      <div><p className="text-sm font-bold text-violet-700">Catálogo</p><h1 className="mt-1 text-3xl font-black text-slate-950">Categorías</h1><p className="mt-2 text-sm font-medium text-slate-600">Organiza los productos para que tus clientes encuentren todo más rápido.</p></div>
+      <div><p className="text-sm font-bold text-violet-700">Catálogo</p><h1 className="mt-1 text-xl font-black text-slate-950">Categorías</h1><p className="mt-2 text-sm font-medium text-slate-600">Organiza los productos para que tus clientes encuentren todo más rápido.</p></div>
       <div className="flex max-w-xl gap-2"><input value={name} onChange={(event) => { setName(event.target.value); if (error) setError(""); }} onKeyDown={(event) => event.key === "Enter" && add()} placeholder="Ejemplo: Bebidas" className="h-11 flex-1 rounded-xl border border-slate-300 bg-white px-3 font-medium text-slate-950 outline-none placeholder:text-slate-500 focus:border-violet-600" /><button onClick={add} disabled={saving} className="rounded-xl bg-violet-600 px-5 font-bold text-white hover:bg-violet-700 disabled:opacity-60">Agregar</button></div>
       {error && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p>}
       <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">

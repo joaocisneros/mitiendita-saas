@@ -24,6 +24,8 @@ import { SuperAdminModule } from './superadmin/superadmin.module';
 import { CustomersModule } from './customers/customers.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { ReportsModule } from './reports/reports.module';
+import { ApiTokensModule } from './api-tokens/api-tokens.module';
+import { PublicApiModule } from './public-api/public-api.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { TenancyMiddleware } from './tenancy/tenancy.middleware';
@@ -49,6 +51,8 @@ import { TenancyMiddleware } from './tenancy/tenancy.middleware';
     CustomersModule,
     InventoryModule,
     ReportsModule,
+    ApiTokensModule,
+    PublicApiModule,
   ],
   controllers: [AppController],
   providers: [

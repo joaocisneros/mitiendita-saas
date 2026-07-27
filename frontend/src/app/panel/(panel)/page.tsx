@@ -85,7 +85,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-extrabold">Resumen de la tienda</h1>
+      <h1 className="text-xl font-extrabold">Resumen de la tienda</h1>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Stat label={isServiceLike ? "Ingresos de hoy" : "Ventas de hoy"} value={formatPrice(data.salesToday)} accent />

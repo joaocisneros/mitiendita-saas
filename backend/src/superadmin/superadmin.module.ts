@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 
+import { WhatsappModule } from '../whatsapp/whatsapp.module';
+import { ApiTokensModule } from '../api-tokens/api-tokens.module';
 import { SaAuthController } from './controllers/sa-auth.controller';
 import { SaStatsController } from './controllers/sa-stats.controller';
 import { SaCompaniesController } from './controllers/sa-companies.controller';
@@ -10,6 +12,8 @@ import { SaSubscriptionsController } from './controllers/sa-subscriptions.contro
 import { SaUsersController } from './controllers/sa-users.controller';
 import { SaAuditsController } from './controllers/sa-audits.controller';
 import { SaSettingsController } from './controllers/sa-settings.controller';
+import { SaWhatsappController } from './controllers/sa-whatsapp.controller';
+import { SaApiTokensController } from './controllers/sa-api-tokens.controller';
 
 import { SaAuthService } from './services/sa-auth.service';
 import { SaStatsService } from './services/sa-stats.service';
@@ -19,9 +23,10 @@ import { SaSubscriptionsService } from './services/sa-subscriptions.service';
 import { SaUsersService } from './services/sa-users.service';
 import { SaAuditService } from './services/sa-audit.service';
 import { SaSettingsService } from './services/sa-settings.service';
+import { SaWhatsappService } from './services/sa-whatsapp.service';
 
 @Module({
-  imports: [JwtModule.register({})],
+  imports: [JwtModule.register({}), WhatsappModule, ApiTokensModule],
   controllers: [
     SaAuthController,
     SaStatsController,
@@ -32,6 +37,8 @@ import { SaSettingsService } from './services/sa-settings.service';
     SaUsersController,
     SaAuditsController,
     SaSettingsController,
+    SaWhatsappController,
+    SaApiTokensController,
   ],
   providers: [
     SaAuthService,
@@ -42,6 +49,8 @@ import { SaSettingsService } from './services/sa-settings.service';
     SaUsersService,
     SaAuditService,
     SaSettingsService,
+    SaWhatsappService,
   ],
+  exports: [SaCompaniesService],
 })
 export class SuperAdminModule {}

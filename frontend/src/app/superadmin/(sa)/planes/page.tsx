@@ -100,7 +100,7 @@ export default function PlansPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm font-bold text-violet-700">Comercial</p>
-          <h1 className="mt-1 text-3xl font-black text-slate-950">Planes</h1>
+          <h1 className="mt-1 text-xl font-black text-slate-950">Planes</h1>
           <p className="mt-2 text-sm font-medium text-slate-600">
             Controla precios, límites y disponibilidad.
           </p>

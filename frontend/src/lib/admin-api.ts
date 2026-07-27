@@ -165,6 +165,7 @@ export const adminApi = {
       body: JSON.stringify(body),
     }).then((r) => jsonOrThrow<{ id: string; name: string; email: string }>(r, "No se pudo actualizar el perfil.")),
 
+
   async logout() {
     const refreshToken = typeof window === "undefined" ? null : localStorage.getItem(REFRESH_KEY);
     if (refreshToken) {

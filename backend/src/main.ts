@@ -188,8 +188,9 @@ async function bootstrap() {
   });
 
   const port = Number(process.env.PORT ?? 8300);
-  await app.listen(port);
+  const host = process.env.HOST ?? process.env.IP ?? '0.0.0.0';
+  await app.listen(port, host);
   // eslint-disable-next-line no-console
-  console.log(`MiTiendita API escuchando en http://localhost:${port}/api`);
+  console.log(`MiTiendita API escuchando en http://${host}:${port}/api`);
 }
 void bootstrap();

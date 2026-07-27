@@ -12,6 +12,6 @@ import { WhatsappModule } from '../whatsapp/whatsapp.module';
   imports: [MediaModule, WhatsappModule],
   controllers: [OrdersController, ShortLinkController, AdminOrdersController],
   providers: [OrdersService, AdminOrdersService, OrderExpirationService],
-  exports: [OrdersService],
+  exports: [OrdersService, AdminOrdersService],
 })
 export class OrdersModule {}

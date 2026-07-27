@@ -56,7 +56,7 @@ export default function PlatformConfigPage() {
     <div className="mx-auto max-w-6xl space-y-6 pb-24">
       <header>
         <p className="text-sm font-bold text-violet-700">Plataforma</p>
-        <h1 className="mt-1 text-3xl font-black text-slate-950">Configuración general</h1>
+        <h1 className="mt-1 text-xl font-black text-slate-950">Configuración general</h1>
         <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-600">
           Define la identidad, los canales de soporte, el periodo de prueba y los textos legales de MiTiendita.
         </p>

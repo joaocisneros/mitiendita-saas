@@ -367,7 +367,86 @@ export const superApi = {
     sfetch<{ accessToken: string }>(`/superadmin/companies/${id}/impersonate`, {
       method: "POST",
     }),
+  // ── Integración de WhatsApp (Twilio) ──
+  whatsappSettings: () => sfetch<SaWhatsappSettings>("/superadmin/whatsapp"),
+  updateWhatsappSettings: (body: {
+    enabled?: boolean;
+    accountSid?: string;
+    authToken?: string;
+    whatsappFrom?: string;
+  }) =>
+    sfetch<SaWhatsappSettings>("/superadmin/whatsapp", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  sendWhatsappTest: (to: string) =>
+    sfetch<{ status: string; messageId?: string; reason?: string }>("/superadmin/whatsapp/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to }),
+    }),
+  whatsappOwners: () => sfetch<SaWhatsappOwner[]>("/superadmin/whatsapp/duenos"),
+  whatsappCustomers: () => sfetch<SaWhatsappCustomer[]>("/superadmin/whatsapp/clientes"),
+  // ── Tokens de API de plataforma (self-service del superadmin) ──
+  platformApiScopes: () => sfetch<string[]>("/superadmin/api-tokens/platform-scopes"),
+  platformApiTokens: () => sfetch<SaApiTokenRow[]>("/superadmin/api-tokens"),
+  createPlatformApiToken: (body: { name: string; scopes: string[] }) =>
+    sfetch<{ token: string; prefix: string; scopes: string[] }>("/superadmin/api-tokens", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  revokeApiToken: (id: string) =>
+    sfetch<{ ok: boolean }>(`/superadmin/api-tokens/${id}`, { method: "DELETE" }),
+  revealApiToken: (id: string) =>
+    sfetch<{ token: string }>(`/superadmin/api-tokens/${id}/reveal`, { method: "POST" }),
+  // ── Tokens de API por empresa (el superadmin los crea; se avisan por WhatsApp) ──
+  companyApiScopes: () => sfetch<string[]>("/superadmin/api-tokens/company-scopes"),
+  apiTokenCompanies: () => sfetch<{ id: string; name: string; subdomain: string }[]>("/superadmin/api-tokens/companies"),
+  companyApiTokens: () => sfetch<SaCompanyApiTokenRow[]>("/superadmin/api-tokens/empresas"),
+  createCompanyApiToken: (body: { companyId: string; name: string; scopes: string[] }) =>
+    sfetch<{ token: string; prefix: string; scopes: string[]; whatsapp: string }>("/superadmin/api-tokens/empresas", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
 };
+
+export interface SaApiTokenRow {
+  id: string;
+  name: string;
+  scopes: string[];
+  tokenPrefix: string;
+  lastUsedAt: string | null;
+  createdAt: string;
+}
+
+export interface SaCompanyApiTokenRow extends SaApiTokenRow {
+  companyName: string | null;
+  companySubdomain: string | null;
+}
+
+export interface SaWhatsappSettings {
+  enabled: boolean;
+  accountSid: string | null;
+  whatsappFrom: string | null;
+  hasAuthToken: boolean;
+}
+
+export interface SaWhatsappCustomer {
+  id: string;
+  cliente: string;
+  telefono: string;
+  companyName: string;
+}
+
+export interface SaWhatsappOwner {
+  companyId: string;
+  companyName: string;
+  usuario: string | null;
+  whatsapp: string | null;
+}
 
 export interface GlobalUser {
   id: string;

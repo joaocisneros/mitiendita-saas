@@ -1,5 +1,10 @@
 import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../prisma/prisma.service';
 import { WhatsappService } from './whatsapp.service';
+
+const noSettings = {
+  platformSettings: { findUnique: jest.fn().mockResolvedValue(null) },
+} as unknown as PrismaService;
 
 describe('WhatsappService (Twilio)', () => {
   afterEach(() => jest.restoreAllMocks());
@@ -7,7 +12,7 @@ describe('WhatsappService (Twilio)', () => {
   it('no llama a Twilio cuando la integración está desactivada', async () => {
     const config = { get: jest.fn().mockReturnValue('false') } as unknown as ConfigService;
     const fetchSpy = jest.spyOn(global, 'fetch');
-    const service = new WhatsappService(config);
+    const service = new WhatsappService(config, noSettings);
 
     const result = await service.sendProofNotification({
       recipient: '51987654321',
@@ -37,7 +42,7 @@ describe('WhatsappService (Twilio)', () => {
         headers: { 'Content-Type': 'application/json' },
       }),
     );
-    const service = new WhatsappService(config);
+    const service = new WhatsappService(config, noSettings);
 
     const result = await service.sendProofNotification({
       recipient: '+51 987 654 321',

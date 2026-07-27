@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { MediaService } from '../media/media.service';
+import { normalizePhone } from '../common/utils/phone.util';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 
 @Injectable()
@@ -31,7 +32,12 @@ export class StoreSettingsService {
 
     await this.prisma.companySettings.update({
       where: { companyId },
-      data: { ...dto },
+      data: {
+        ...dto,
+        ...(dto.whatsappNumber !== undefined
+          ? { whatsappNumber: normalizePhone(dto.whatsappNumber) || null }
+          : {}),
+      },
     });
 
     // Borra el logo / QR anterior si fue reemplazado por uno nuevo.

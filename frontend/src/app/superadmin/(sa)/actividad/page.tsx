@@ -20,6 +20,9 @@ const LABELS: Record<string, string> = {
   "user.password_reset": "Restableció una contraseña",
   "user.toggled": "Activó/desactivó un usuario",
   "platform.settings_updated": "Actualizó la configuración",
+  "platform.whatsapp_updated": "Actualizó la integración de WhatsApp",
+  "api_token.approved": "Aprobó una solicitud de token de API",
+  "api_token.rejected": "Rechazó una solicitud de token de API",
 };
 
 function actionLabel(action: string) {
@@ -71,7 +74,7 @@ export default function ActivityPage() {
     <div className="space-y-6 pb-20 md:pb-0">
       <div>
         <p className="text-sm font-bold text-violet-700">Seguridad</p>
-        <h1 className="mt-1 text-3xl font-black text-slate-950">
+        <h1 className="mt-1 text-xl font-black text-slate-950">
           Actividad administrativa
         </h1>
         <p className="mt-2 text-sm font-medium text-slate-600">

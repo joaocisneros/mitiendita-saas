@@ -56,7 +56,7 @@ export default function UsersPage() {
     <div className="space-y-6 pb-20 md:pb-0">
       <div>
         <p className="text-sm font-bold text-violet-700">Plataforma</p>
-        <h1 className="mt-1 text-3xl font-black text-slate-950">Usuarios</h1>
+        <h1 className="mt-1 text-xl font-black text-slate-950">Usuarios</h1>
         <p className="mt-2 text-sm font-medium text-slate-600">{total} usuarios registrados en la plataforma.</p>
       </div>
 

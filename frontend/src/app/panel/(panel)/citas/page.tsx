@@ -90,7 +90,7 @@ export default function AppointmentsPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-sm font-bold text-violet-700">Operaciones</p>
-          <h1 className="mt-1 text-3xl font-black text-slate-950">Citas y reservas</h1>
+          <h1 className="mt-1 text-xl font-black text-slate-950">Citas y reservas</h1>
           <p className="mt-1 text-xs font-medium text-slate-500">
             Flujo de servicios: solicitud recibida, cita confirmada, en atención y finalizada.
           </p>

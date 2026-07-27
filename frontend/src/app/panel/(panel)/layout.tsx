@@ -102,55 +102,55 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="admin-shell flex h-dvh min-h-0 overflow-hidden bg-slate-100 text-slate-950">
-      <aside className="hidden h-dvh w-64 shrink-0 flex-col overflow-y-auto bg-slate-950 px-4 py-5 text-white shadow-xl md:flex">
-        <Link href="/panel" className="mb-8 flex items-center gap-3 px-2">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-600 shadow-lg shadow-violet-950/40">
-            <DashboardIcon name="store" />
+      <aside className="hidden h-dvh w-56 shrink-0 flex-col overflow-y-auto bg-slate-950 px-3 py-4 text-white shadow-xl md:flex">
+        <Link href="/panel" className="mb-6 flex items-center gap-2.5 px-1.5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-600 shadow-lg shadow-violet-950/40">
+            <DashboardIcon name="store" className="h-[18px] w-[18px]" />
           </span>
-          <span>
-            <span className="block text-lg font-black tracking-tight">MiTiendita</span>
-            <span className="block text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-black tracking-tight">MiTiendita</span>
+            <span className="block text-[9px] font-medium uppercase tracking-[0.16em] text-slate-400">
               Panel del negocio
             </span>
           </span>
         </Link>
 
-        <p className="mb-2 px-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Gestión</p>
-        <nav className="flex-1 space-y-1.5">
+        <p className="mb-1.5 px-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Gestión</p>
+        <nav className="flex-1 space-y-1">
           {nav.map((item) => {
             const active = isActive(item.href, pathname);
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+                className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-semibold transition ${
                   active ? "bg-violet-600 text-white shadow-md shadow-violet-950/30" : "text-slate-300 hover:bg-white/10 hover:text-white"
                 }`}
               >
-                <DashboardIcon name={item.icon} />
+                <DashboardIcon name={item.icon} className="h-4 w-4 shrink-0" />
                 {item.label}
               </Link>
             );
           })}
         </nav>
 
-        <div className="space-y-1.5 border-t border-white/10 pt-4">
+        <div className="space-y-1 border-t border-white/10 pt-3">
           {storeUrl && (
             <a
               href={storeUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex w-full items-center gap-3 rounded-xl bg-white/5 px-3 py-2.5 text-sm font-semibold text-violet-200 transition hover:bg-violet-500/20 hover:text-white"
+              className="flex w-full items-center gap-2.5 rounded-lg bg-white/5 px-2.5 py-2 text-[13px] font-semibold text-violet-200 transition hover:bg-violet-500/20 hover:text-white"
             >
-              <DashboardIcon name="store" />
+              <DashboardIcon name="store" className="h-4 w-4" />
               Ver mi tienda ↗
             </a>
           )}
           <button
             onClick={logout}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-300 transition hover:bg-red-500/15 hover:text-red-300"
+            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-semibold text-slate-300 transition hover:bg-red-500/15 hover:text-red-300"
           >
-            <DashboardIcon name="logout" />
+            <DashboardIcon name="logout" className="h-4 w-4" />
             Cerrar sesión
           </button>
         </div>
@@ -158,7 +158,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
       <div className="flex h-dvh min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {supportMode && (
-          <div className="flex flex-wrap items-center justify-between gap-2 bg-amber-500 px-4 py-2 text-sm font-bold text-amber-950 md:px-7">
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-amber-500 px-4 py-2 text-sm font-bold text-amber-950 md:px-6">
             <span>🛟 Estás en modo soporte (viendo esta tienda como superadmin).</span>
             <button
               onClick={exitSupport}
@@ -168,12 +168,12 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             </button>
           </div>
         )}
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur md:px-7">
-          <div className="flex items-center gap-3 md:hidden">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-600 text-white">
-              <DashboardIcon name="store" />
+        <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur md:px-6">
+          <div className="flex items-center gap-2.5 md:hidden">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-600 text-white">
+              <DashboardIcon name="store" className="h-4 w-4" />
             </span>
-            <span className="font-black">MiTiendita</span>
+            <span className="text-sm font-black">MiTiendita</span>
           </div>
           <div className="hidden md:block">
             <p className="text-sm font-bold text-slate-900">{current?.label ?? "Panel administrativo"}</p>
@@ -199,7 +199,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           </div>
         </header>
 
-        <main className="min-h-0 flex-1 overflow-y-auto p-4 pb-24 text-slate-950 md:p-7 md:pb-7">
+        <main className="min-h-0 flex-1 overflow-y-auto p-4 pb-24 text-slate-950 md:p-6 md:pb-6">
           {children}
         </main>
 

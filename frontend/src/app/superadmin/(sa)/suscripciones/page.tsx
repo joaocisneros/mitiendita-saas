@@ -58,7 +58,7 @@ export default function SubscriptionsPage() {
     <div className="space-y-6 pb-20 md:pb-0">
       <div>
         <p className="text-sm font-bold text-violet-700">Comercial</p>
-        <h1 className="mt-1 text-3xl font-black text-slate-950">Suscripciones</h1>
+        <h1 className="mt-1 text-xl font-black text-slate-950">Suscripciones</h1>
         <p className="mt-2 text-sm font-medium text-slate-600">
           {total} empresas · controla pagos y vencimientos.
         </p>
