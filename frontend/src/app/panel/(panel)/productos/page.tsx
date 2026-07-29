@@ -21,6 +21,7 @@ const EMPTY = {
   benefits: "",
   description: "",
   imageUrl: "",
+  images: [] as string[],
   sizes: "",
   colors: "",
   reservationPaymentMode: "optional" as "none" | "optional" | "required",
@@ -62,8 +63,11 @@ export default function ProductosPage() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const [isDigital, setIsDigital] = useState(false);
   const [isService, setIsService] = useState(false);
+  const [search, setSearch] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
 
   const noun = isDigital ? "plan" : isService ? "servicio" : "producto";
   const nounPlural = isDigital ? "Planes" : isService ? "Servicios" : "Productos";
@@ -73,8 +77,11 @@ export default function ProductosPage() {
     [form.shortDescription, form.benefits],
   );
 
+  const categoryName = (categoryId: string | null) =>
+    categories.find((c) => c.id === categoryId)?.name;
+
   function load() {
-    adminApi.products({}).then((d) => setProducts(d.items));
+    adminApi.products({ search: appliedSearch || undefined }).then((d) => setProducts(d.items));
     adminApi.categories().then(setCategories).catch(() => {});
     adminApi
       .settings()
@@ -88,7 +95,8 @@ export default function ProductosPage() {
 
   useEffect(() => {
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appliedSearch]);
 
   function openNew() {
     setForm({ ...EMPTY, stock: isDigital || isService ? "999" : "" });
@@ -108,6 +116,7 @@ export default function ProductosPage() {
       benefits: parsed.benefits,
       description: parsed.description,
       imageUrl: product.imageUrl ?? "",
+      images: product.images?.length ? product.images : product.imageUrl ? [product.imageUrl] : [],
       sizes: product.sizes ?? "",
       colors: product.colors ?? "",
       reservationPaymentMode: product.reservationPaymentMode ?? "optional",
@@ -140,7 +149,7 @@ export default function ProductosPage() {
         sku: form.sku || undefined,
         categoryId: form.categoryId || null,
         description: description || undefined,
-        imageUrl: form.imageUrl || undefined,
+        images: form.images,
         ...(!isDigital && !isService
           ? { sizes: form.sizes.trim() || undefined, colors: form.colors.trim() || undefined }
           : {}),
@@ -165,16 +174,31 @@ export default function ProductosPage() {
     }
   }
 
-  async function onImage(file: File) {
+  async function onImages(files: FileList | File[]) {
+    const remaining = Math.max(0, 4 - form.images.length);
+    const list = Array.from(files)
+      .filter((file) => file.type.startsWith("image/"))
+      .slice(0, remaining);
+    if (list.length === 0) return;
     setUploading(true);
     try {
-      const { url } = await adminApi.uploadImage(file, "products");
-      setForm((current) => ({ ...current, imageUrl: url }));
+      for (const file of list) {
+        const { url } = await adminApi.uploadImage(file, "products");
+        setForm((current) => ({ ...current, images: [...current.images, url].slice(0, 4) }));
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error al subir imagen");
     } finally {
       setUploading(false);
     }
+  }
+
+  function removeImage(url: string) {
+    setForm((current) => ({ ...current, images: current.images.filter((image) => image !== url) }));
+  }
+
+  function makeCover(url: string) {
+    setForm((current) => ({ ...current, images: [url, ...current.images.filter((image) => image !== url)] }));
   }
 
   async function remove(product: AdminProduct) {
@@ -204,49 +228,143 @@ export default function ProductosPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {products.map((product) => (
-          <div
-            key={product.id}
-            className="flex gap-3 rounded-2xl bg-white p-3 ring-1 ring-black/5"
-          >
-            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-gray-100">
-              {product.imageUrl ? (
-                <Image src={product.imageUrl} alt={product.name} fill sizes="64px" className="object-cover" />
-              ) : (
-                <div className="flex h-full items-center justify-center text-2xl text-gray-300">📦</div>
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-medium">{product.name}</p>
-              <p className="text-sm font-bold text-violet-700">{formatPrice(product.price)}</p>
-              <p className="text-xs text-gray-400">
-                {isDigital || isService ? "Activo para venta" : `Stock: ${product.stock - product.reserved}`} {!product.isActive && "· inactivo"}
-              </p>
-              {isService && (
-                <p className="mt-0.5 text-[11px] font-semibold text-slate-500">
-                  {product.reservationPaymentMode === "required"
-                    ? "Adelanto obligatorio"
-                    : product.reservationPaymentMode === "none"
-                      ? "Sin adelanto"
-                      : "Adelanto opcional"}
-                </p>
-              )}
-              <div className="mt-1 flex gap-2 text-xs">
-                <button onClick={() => openEdit(product)} className="text-violet-600">
-                  Editar
-                </button>
-                <button onClick={() => remove(product)} className="text-red-500">
-                  Eliminar
-                </button>
-              </div>
+      <div className="flex max-w-xl gap-2">
+        <input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          onKeyDown={(event) => event.key === "Enter" && setAppliedSearch(search.trim())}
+          placeholder={`Buscar ${nounPlural.toLowerCase()} por nombre o SKU`}
+          className="h-11 min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-500 focus:border-violet-600"
+        />
+        <button
+          onClick={() => setAppliedSearch(search.trim())}
+          className="rounded-xl bg-violet-600 px-5 text-sm font-bold text-white hover:bg-violet-700"
+        >
+          Buscar
+        </button>
+      </div>
+
+      {products.length === 0 ? (
+        <p className="text-gray-400">Aún no tienes {nounPlural.toLowerCase()}. Crea el primero.</p>
+      ) : (
+        <>
+          {/* Tabla: pantallas medianas en adelante */}
+          <div className="hidden overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 sm:block">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px] text-sm">
+                <thead className="bg-slate-50 text-left text-xs font-bold uppercase tracking-wide text-slate-700">
+                  <tr>
+                    <th className="p-4">{noun.charAt(0).toUpperCase() + noun.slice(1)}</th>
+                    <th className="p-4">Categoría</th>
+                    <th className="p-4">Precio</th>
+                    <th className="p-4">{isDigital || isService ? "Estado" : "Disponible"}</th>
+                    <th className="p-4">Visibilidad</th>
+                    <th className="p-4 text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {products.map((product) => (
+                    <tr key={product.id} className="hover:bg-slate-50">
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-gray-100">
+                            {product.imageUrl ? (
+                              <Image src={product.imageUrl} alt={product.name} fill sizes="44px" className="object-cover" />
+                            ) : (
+                              <div className="flex h-full items-center justify-center text-lg text-gray-300">📦</div>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate font-bold text-slate-950">{product.name}</p>
+                            {product.sku && <p className="text-xs font-medium text-slate-500">SKU: {product.sku}</p>}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4 text-slate-600">{categoryName(product.categoryId) ?? "—"}</td>
+                      <td className="p-4 font-bold text-slate-950">{formatPrice(product.price)}</td>
+                      <td className="p-4">
+                        {isDigital || isService ? (
+                          <span className="font-semibold text-slate-700">Activo para venta</span>
+                        ) : (
+                          <span className={`font-bold ${product.stock - product.reserved <= 5 ? "text-amber-600" : "text-emerald-700"}`}>
+                            {product.stock - product.reserved}
+                          </span>
+                        )}
+                        {isService && (
+                          <p className="mt-0.5 text-[11px] font-semibold text-slate-500">
+                            {product.reservationPaymentMode === "required"
+                              ? "Adelanto obligatorio"
+                              : product.reservationPaymentMode === "none"
+                                ? "Sin adelanto"
+                                : "Adelanto opcional"}
+                          </p>
+                        )}
+                      </td>
+                      <td className="p-4">
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${product.isActive ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
+                          {product.isActive ? "Activo" : "Inactivo"}
+                        </span>
+                        {product.isFeatured && (
+                          <span className="ml-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">Destacado</span>
+                        )}
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className="flex justify-end gap-2 text-xs font-bold">
+                          <button onClick={() => openEdit(product)} className="rounded-lg bg-violet-50 px-3 py-1.5 text-violet-700 hover:bg-violet-100">
+                            Editar
+                          </button>
+                          <button onClick={() => remove(product)} className="rounded-lg bg-red-50 px-3 py-1.5 text-red-600 hover:bg-red-100">
+                            Eliminar
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
-        ))}
-        {products.length === 0 && (
-          <p className="text-gray-400">Aún no tienes {nounPlural.toLowerCase()}. Crea el primero.</p>
-        )}
-      </div>
+
+          {/* Tarjetas: solo en móvil */}
+          <div className="grid grid-cols-1 gap-3 sm:hidden">
+            {products.map((product) => (
+              <div key={product.id} className="flex gap-3 rounded-2xl bg-white p-3 ring-1 ring-black/5">
+                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-gray-100">
+                  {product.imageUrl ? (
+                    <Image src={product.imageUrl} alt={product.name} fill sizes="64px" className="object-cover" />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-2xl text-gray-300">📦</div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium">{product.name}</p>
+                  <p className="text-sm font-bold text-violet-700">{formatPrice(product.price)}</p>
+                  <p className="text-xs text-gray-400">
+                    {isDigital || isService ? "Activo para venta" : `Stock: ${product.stock - product.reserved}`} {!product.isActive && "· inactivo"}
+                  </p>
+                  {isService && (
+                    <p className="mt-0.5 text-[11px] font-semibold text-slate-500">
+                      {product.reservationPaymentMode === "required"
+                        ? "Adelanto obligatorio"
+                        : product.reservationPaymentMode === "none"
+                          ? "Sin adelanto"
+                          : "Adelanto opcional"}
+                    </p>
+                  )}
+                  <div className="mt-1 flex gap-2 text-xs">
+                    <button onClick={() => openEdit(product)} className="text-violet-600">
+                      Editar
+                    </button>
+                    <button onClick={() => remove(product)} className="text-red-500">
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       {editing && (
         <Overlay onClose={() => setEditing(null)} size="wide">
@@ -341,34 +459,76 @@ export default function ProductosPage() {
 
             <aside className="space-y-3 rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200">
               <div>
-                <span className="mb-2 block text-sm font-bold text-gray-700">Foto</span>
-                <div className="flex items-center gap-3">
-                  <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-2xl bg-gray-100">
-                    {form.imageUrl ? (
-                      <Image src={form.imageUrl} alt="" fill sizes="112px" className="object-cover" />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-3xl text-gray-300">📦</div>
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <label className="inline-flex cursor-pointer rounded-lg bg-violet-50 px-3 py-2 text-sm font-semibold text-violet-700">
-                      {uploading ? "Subiendo..." : "Subir foto"}
+                <span className="mb-2 block text-sm font-bold text-gray-700">
+                  Fotos {form.images.length > 0 && <span className="font-normal text-slate-400">({form.images.length}/4)</span>}
+                </span>
+                <div
+                  className={`grid grid-cols-2 gap-2 sm:grid-cols-4 ${dragOver ? "rounded-2xl ring-2 ring-violet-400" : ""}`}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    if (form.images.length < 4) setDragOver(true);
+                  }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    setDragOver(false);
+                    if (event.dataTransfer.files.length) onImages(event.dataTransfer.files);
+                  }}
+                >
+                  {form.images.map((url, index) => (
+                    <div key={url} className="group relative aspect-square overflow-hidden rounded-2xl bg-gray-100">
+                      <Image
+                        src={url}
+                        alt={form.name ? `${form.name} - foto ${index + 1}` : `Foto ${index + 1}`}
+                        fill
+                        sizes="140px"
+                        className="object-cover"
+                      />
+                      {index === 0 ? (
+                        <span className="absolute left-1.5 top-1.5 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-bold text-white">
+                          Portada
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => makeCover(url)}
+                          className="absolute inset-x-0 bottom-0 bg-black/60 py-1 text-center text-[10px] font-bold text-white opacity-0 transition group-hover:opacity-100"
+                        >
+                          Hacer portada
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeImage(url)}
+                        className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-sm font-bold text-white opacity-0 transition group-hover:opacity-100"
+                        aria-label="Quitar foto"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  {form.images.length < 4 && (
+                    <label className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-gray-200 text-center text-xs font-semibold text-violet-700 hover:border-violet-300 hover:bg-violet-50">
+                      <span className="text-xl">{uploading ? "…" : "+"}</span>
+                      {uploading ? "Subiendo..." : "Agregar"}
+                      <span className="font-normal text-slate-400">o suelta archivos</span>
                       <input
                         type="file"
                         accept="image/*"
+                        multiple
                         className="hidden"
                         disabled={uploading}
                         onChange={(event) => {
-                          const file = event.target.files?.[0];
-                          if (file) onImage(file);
+                          if (event.target.files?.length) onImages(event.target.files);
+                          event.target.value = "";
                         }}
                       />
                     </label>
-                    <p className="mt-2 text-xs font-medium text-slate-500">
-                      Recomendado: imagen horizontal y clara.
-                    </p>
-                  </div>
+                  )}
                 </div>
+                <p className="mt-2 text-xs font-medium text-slate-500">
+                  La primera foto es la portada. Hasta 4 fotos por {noun}.
+                </p>
               </div>
 
               {(isDigital || isService) && (

@@ -487,6 +487,7 @@ export interface AdminProduct {
   reserved: number;
   sku: string | null;
   imageUrl: string | null;
+  images: string[] | null;
   sizes: string | null;
   colors: string | null;
   reservationPaymentMode?: "none" | "optional" | "required";
@@ -504,6 +505,7 @@ export interface ProductInput {
   sku?: string;
   categoryId?: string | null;
   imageUrl?: string;
+  images?: string[];
   sizes?: string;
   colors?: string;
   reservationPaymentMode?: "none" | "optional" | "required";

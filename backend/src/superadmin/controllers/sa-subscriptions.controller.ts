@@ -25,11 +25,13 @@ export class SaSubscriptionsController {
   @Get('subscriptions')
   list(
     @Query('status') status?: string,
+    @Query('alert') alert?: string,
     @Query('search') search?: string,
     @Query('page') page?: string,
   ) {
     return this.subscriptions.list({
       status: status || undefined,
+      alert: alert || undefined,
       search: search?.trim() || undefined,
       page: page ? Number(page) : 1,
     });

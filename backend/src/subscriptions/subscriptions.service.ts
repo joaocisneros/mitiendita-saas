@@ -218,7 +218,7 @@ export class SubscriptionsService {
     });
 
     if (sub.proofUrl && sub.proofUrl !== uploaded.url) {
-      void this.media.deleteByUrl(sub.proofUrl);
+      void this.media.deleteByUrl(sub.proofUrl, company.id);
     }
 
     const whatsappNotification =
@@ -295,7 +295,7 @@ export class SubscriptionsService {
     });
 
     if (sub.renewalProofUrl && sub.renewalProofUrl !== uploaded.url) {
-      void this.media.deleteByUrl(sub.renewalProofUrl);
+      void this.media.deleteByUrl(sub.renewalProofUrl, company.id);
     }
 
     return this.format(updated);
@@ -324,7 +324,7 @@ export class SubscriptionsService {
         renewalDetectedMethod: null,
       },
     });
-    void this.media.deleteByUrl(sub.renewalProofUrl);
+    void this.media.deleteByUrl(sub.renewalProofUrl, companyId);
     return this.format(updated);
   }
 
@@ -348,7 +348,7 @@ export class SubscriptionsService {
         renewalDetectedMethod: null,
       },
     });
-    void this.media.deleteByUrl(sub.renewalProofUrl);
+    void this.media.deleteByUrl(sub.renewalProofUrl, companyId);
     return this.format(updated);
   }
 

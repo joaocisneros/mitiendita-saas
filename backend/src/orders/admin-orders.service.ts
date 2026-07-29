@@ -335,7 +335,7 @@ export class AdminOrdersService {
         where: { orderId: order.id },
         data: { proofUrl: null },
       });
-      void this.media.deleteByUrl(proofUrl);
+      void this.media.deleteByUrl(proofUrl, companyId);
     }
 
     return this.get(companyId, id);

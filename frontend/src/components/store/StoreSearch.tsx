@@ -19,7 +19,7 @@ export function StoreSearch({
         name="search"
         defaultValue={defaultValue}
         placeholder={placeholder}
-        className="h-11 flex-1 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-500 focus:border-slate-400"
+        className="h-11 min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-500 focus:border-slate-400"
       />
       <button
         style={{ backgroundColor: accent }}

@@ -20,9 +20,17 @@ const FILTERS = [
   { value: "cancelled", label: "Canceladas" },
 ];
 
+const ALERT_LABELS: Record<string, string> = {
+  expiringSoon: "Vencen en 3 días",
+  pastDue: "Pagos pendientes",
+  suspendedForDebt: "Suspendidas por deuda",
+  atRisk: "Empresas en riesgo",
+};
+
 export default function SubscriptionsPage() {
   const [rows, setRows] = useState<SubscriptionRow[]>([]);
   const [status, setStatus] = useState("");
+  const [alert, setAlert] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [applied, setApplied] = useState("");
   const [page, setPage] = useState(1);
@@ -32,10 +40,15 @@ export default function SubscriptionsPage() {
   const [error, setError] = useState("");
   const [managing, setManaging] = useState<SubscriptionRow | null>(null);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setAlert(params.get("alert"));
+  }, []);
+
   const load = useCallback(
     (targetPage = 1) => {
       superApi
-        .subscriptions(status || undefined, applied || undefined, targetPage)
+        .subscriptions(status || undefined, applied || undefined, targetPage, alert || undefined)
         .then((result) => {
           setError("");
           setRows(result.items);
@@ -48,11 +61,16 @@ export default function SubscriptionsPage() {
         )
         .finally(() => setLoading(false));
     },
-    [status, applied],
+    [status, applied, alert],
   );
   useEffect(() => {
     load(1);
   }, [load]);
+
+  function clearAlert() {
+    setAlert(null);
+    window.history.replaceState(null, "", "/superadmin/suscripciones");
+  }
 
   return (
     <div className="space-y-6 pb-20 md:pb-0">
@@ -64,13 +82,27 @@ export default function SubscriptionsPage() {
         </p>
       </div>
 
+      {alert && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5">
+          <p className="text-sm font-bold text-amber-800">
+            Filtrando por: {ALERT_LABELS[alert] ?? alert}
+          </p>
+          <button onClick={clearAlert} className="text-xs font-bold text-amber-800 hover:underline">
+            Quitar filtro ×
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex gap-2 overflow-x-auto pb-1">
           {FILTERS.map((f) => (
             <button
               key={f.value}
-              onClick={() => setStatus(f.value)}
-              className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-bold ${status === f.value ? "bg-violet-600 text-white" : "bg-white text-slate-700 ring-1 ring-slate-200"}`}
+              onClick={() => {
+                setAlert(null);
+                setStatus(f.value);
+              }}
+              className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-bold ${!alert && status === f.value ? "bg-violet-600 text-white" : "bg-white text-slate-700 ring-1 ring-slate-200"}`}
             >
               {f.label}
             </button>

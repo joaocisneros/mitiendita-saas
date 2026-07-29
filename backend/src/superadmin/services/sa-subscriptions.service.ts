@@ -14,29 +14,68 @@ export class SaSubscriptionsService {
     private readonly audit: SaAuditService,
   ) {}
 
+  /** Mismo criterio que las tarjetas de "Acciones urgentes" del dashboard, para que el link filtre exactamente eso. */
+  private alertWhere(alert?: string): Record<string, unknown> | null {
+    const now = new Date();
+    const expiresSoonAt = new Date(now);
+    expiresSoonAt.setDate(expiresSoonAt.getDate() + 3);
+    switch (alert) {
+      case 'expiringSoon':
+        return {
+          subscriptionStatus: { in: ['trial', 'active'] },
+          currentPeriodEndsAt: { gt: now, lte: expiresSoonAt },
+        };
+      case 'pastDue':
+        return { subscriptionStatus: 'past_due' };
+      case 'suspendedForDebt':
+        return { status: 'suspended', subscriptionStatus: 'past_due' };
+      case 'atRisk':
+        return {
+          OR: [
+            { subscriptionStatus: 'past_due' },
+            {
+              subscriptionStatus: { in: ['trial', 'active'] },
+              currentPeriodEndsAt: { lt: now },
+            },
+            {
+              subscriptionStatus: { in: ['trial', 'active'] },
+              currentPeriodEndsAt: null,
+            },
+          ],
+        };
+      default:
+        return null;
+    }
+  }
+
   async list(opts: {
     status?: string;
+    alert?: string;
     search?: string;
     page?: number;
     limit?: number;
   }) {
     const page = Math.max(1, opts.page ?? 1);
     const limit = Math.min(100, Math.max(1, opts.limit ?? 20));
-    const where = {
-      deletedAt: null,
-      ...(opts.status &&
+    const alertWhere = this.alertWhere(opts.alert);
+    const conditions: Record<string, unknown>[] = [{ deletedAt: null }];
+    if (alertWhere) {
+      conditions.push(alertWhere);
+    } else if (
+      opts.status &&
       (SUBSCRIPTION_STATUSES as readonly string[]).includes(opts.status)
-        ? { subscriptionStatus: opts.status as SubscriptionStatus }
-        : {}),
-      ...(opts.search
-        ? {
-            OR: [
-              { name: { contains: opts.search } },
-              { subdomain: { contains: opts.search } },
-            ],
-          }
-        : {}),
-    };
+    ) {
+      conditions.push({ subscriptionStatus: opts.status as SubscriptionStatus });
+    }
+    if (opts.search) {
+      conditions.push({
+        OR: [
+          { name: { contains: opts.search } },
+          { subdomain: { contains: opts.search } },
+        ],
+      });
+    }
+    const where = { AND: conditions };
     const [rows, total] = await Promise.all([
       this.prisma.company.findMany({
         where,

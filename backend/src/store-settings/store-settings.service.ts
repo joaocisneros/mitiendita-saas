@@ -42,13 +42,13 @@ export class StoreSettingsService {
 
     // Borra el logo / QR anterior si fue reemplazado por uno nuevo.
     if (dto.logoUrl !== undefined && current?.logoUrl && current.logoUrl !== dto.logoUrl) {
-      void this.media.deleteByUrl(current.logoUrl);
+      void this.media.deleteByUrl(current.logoUrl, companyId);
     }
     if (dto.yapeQrUrl !== undefined && current?.yapeQrUrl && current.yapeQrUrl !== dto.yapeQrUrl) {
-      void this.media.deleteByUrl(current.yapeQrUrl);
+      void this.media.deleteByUrl(current.yapeQrUrl, companyId);
     }
     if (dto.plinQrUrl !== undefined && current?.plinQrUrl && current.plinQrUrl !== dto.plinQrUrl) {
-      void this.media.deleteByUrl(current.plinQrUrl);
+      void this.media.deleteByUrl(current.plinQrUrl, companyId);
     }
     return this.get(companyId);
   }

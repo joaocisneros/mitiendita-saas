@@ -42,6 +42,7 @@ export interface PublicProduct {
   slug: string;
   price: string;
   imageUrl: string | null;
+  images?: string[] | null;
   reservationPaymentMode?: "none" | "optional" | "required" | null;
   reservationAdvanceType?: "fixed" | "percent" | null;
   reservationAdvanceValue?: string | null;

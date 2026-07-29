@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect } from "react";
 import { AddToCart } from "@/components/AddToCart";
+import { ProductGallery } from "@/components/store/ProductGallery";
 import { ShareButton } from "@/components/store/ShareButton";
 import { formatPrice } from "@/lib/format";
 import type { PublicProduct } from "@/lib/types";
@@ -59,29 +59,17 @@ export function ProductDetailModal({
         </button>
 
         <div className="grid md:grid-cols-2">
-          <div className="relative aspect-square min-h-72 overflow-hidden bg-slate-100 md:aspect-auto md:min-h-[520px]">
-            {product.imageUrl ? (
-              <Image
-                src={product.imageUrl}
-                alt={product.name}
-                fill
-                sizes="(max-width: 768px) 100vw, 50vw"
-                className="object-cover"
-                priority
-              />
-            ) : (
-              <div className="flex h-full items-center justify-center text-7xl text-slate-300">
-                {placeholderIcon}
-              </div>
-            )}
-            {product.isFeatured && (
-              <span className="absolute left-4 top-4 rounded-full bg-amber-400 px-3 py-1 text-xs font-black text-amber-950 shadow-sm">
-                ⭐ Destacado
-              </span>
-            )}
+          <div className="p-4 sm:p-5">
+            <ProductGallery
+              images={product.images?.length ? product.images : product.imageUrl ? [product.imageUrl] : []}
+              name={product.name}
+              isFeatured={product.isFeatured}
+              placeholderIcon={placeholderIcon}
+              imageWrapperClassName="relative aspect-square overflow-hidden rounded-2xl bg-slate-100"
+            />
           </div>
 
-          <section className="flex flex-col justify-center p-6 sm:p-8 md:min-h-[520px]">
+          <section className="flex flex-col justify-center p-6 sm:p-8">
             {product.category && (
               <p className="text-xs font-black uppercase tracking-[0.16em]" style={{ color: accent }}>
                 {product.category.name}

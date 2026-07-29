@@ -37,6 +37,8 @@ export class ProductsService {
     await this.assertCategory(companyId, dto.categoryId);
     await this.assertSkuFree(companyId, dto.sku);
     const slug = await this.uniqueSlug(companyId, slugify(dto.name));
+    // La portada (imageUrl) siempre es la primera foto de la galería.
+    const images = dto.images?.slice(0, 4) ?? (dto.imageUrl ? [dto.imageUrl] : []);
 
     return this.prisma.product.create({
       data: {
@@ -48,7 +50,8 @@ export class ProductsService {
         price: dto.price,
         stock: dto.stock,
         sku: dto.sku ?? null,
-        imageUrl: dto.imageUrl ?? null,
+        imageUrl: images[0] ?? null,
+        images,
         sizes: dto.sizes ?? null,
         colors: dto.colors ?? null,
         reservationPaymentMode: dto.reservationPaymentMode ?? 'optional',
@@ -107,15 +110,21 @@ export class ProductsService {
     if (dto.name) {
       data.slug = await this.uniqueSlug(companyId, slugify(dto.name), id);
     }
+    const currentImages = (current.images as string[] | null) ?? (current.imageUrl ? [current.imageUrl] : []);
+    if (dto.images !== undefined) {
+      // La portada (imageUrl) siempre es la primera foto de la galería.
+      const images = dto.images.slice(0, 4);
+      data.images = images;
+      data.imageUrl = images[0] ?? null;
+    } else if (dto.imageUrl !== undefined) {
+      data.images = dto.imageUrl ? [dto.imageUrl] : [];
+    }
     const updated = await this.prisma.product.update({ where: { id }, data });
 
-    // Si cambió la imagen, borra la anterior para no acumular archivos.
-    if (
-      dto.imageUrl !== undefined &&
-      current.imageUrl &&
-      current.imageUrl !== dto.imageUrl
-    ) {
-      void this.media.deleteByUrl(current.imageUrl);
+    // Borra del storage las fotos que ya no están en la galería nueva.
+    const newImages = (updated.images as string[] | null) ?? [];
+    for (const url of currentImages) {
+      if (!newImages.includes(url)) void this.media.deleteByUrl(url, companyId);
     }
     return updated;
   }
@@ -132,8 +141,9 @@ export class ProductsService {
         sku: product.sku ? `${product.sku}--del-${Date.now()}` : null,
       },
     });
-    // El producto se elimina: su imagen ya no se necesita.
-    void this.media.deleteByUrl(product.imageUrl);
+    // El producto se elimina: sus fotos ya no se necesitan.
+    const images = (product.images as string[] | null) ?? (product.imageUrl ? [product.imageUrl] : []);
+    for (const url of images) void this.media.deleteByUrl(url, companyId);
     return { ok: true };
   }
 

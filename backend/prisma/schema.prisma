@@ -320,7 +320,8 @@ model Product {
   stock       Int       @default(0) // unidades físicas totales
   reserved    Int       @default(0) // unidades comprometidas por pedidos pendientes
   sku         String?
-  imageUrl    String?   @map("image_url")
+  imageUrl    String?   @map("image_url") // portada: siempre igual a images[0]
+  images      Json?     // galería, hasta 4 URLs: ["https://...", ...]
   sizes       String?   @db.Text // opciones de talla separadas por coma (ej. "S,M,L,XL"). Vacío = sin tallas.
   colors      String?   @db.Text // opciones de color separadas por coma (ej. "Negro,Blanco"). Vacío = sin colores.
   reservationPaymentMode String  @default("optional") @map("reservation_payment_mode") @db.VarChar(20) // none | optional | required

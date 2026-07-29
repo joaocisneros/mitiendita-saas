@@ -304,9 +304,10 @@ export const superApi = {
   },
   auditActions: () => sfetch<string[]>("/superadmin/audit-actions"),
 
-  subscriptions: (status?: string, search?: string, page = 1) => {
+  subscriptions: (status?: string, search?: string, page = 1, alert?: string) => {
     const q = new URLSearchParams();
     if (status) q.set("status", status);
+    if (alert) q.set("alert", alert);
     if (search) q.set("search", search);
     q.set("page", String(page));
     return sfetch<PageResult<SubscriptionRow>>(

@@ -1,4 +1,6 @@
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
   IsIn,
   IsInt,
@@ -43,6 +45,12 @@ export class CreateProductDto {
   @IsString()
   @MaxLength(500)
   imageUrl?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(4, { message: 'Máximo 4 fotos por producto.' })
+  @IsString({ each: true })
+  images?: string[];
 
   @IsOptional()
   @IsString()

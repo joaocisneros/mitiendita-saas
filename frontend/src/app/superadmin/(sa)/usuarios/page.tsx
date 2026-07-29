@@ -62,7 +62,7 @@ export default function UsersPage() {
 
       <div className="flex gap-2">
         <input value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === "Enter" && setApplied(search.trim())}
-          placeholder="Nombre o correo" className="h-11 flex-1 rounded-xl border border-slate-300 px-3 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-500 focus:border-violet-600" />
+          placeholder="Nombre o correo" className="h-11 min-w-0 flex-1 rounded-xl border border-slate-300 px-3 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-500 focus:border-violet-600" />
         <button onClick={() => setApplied(search.trim())} className="rounded-xl bg-violet-600 px-5 text-sm font-bold text-white">Buscar</button>
       </div>
 

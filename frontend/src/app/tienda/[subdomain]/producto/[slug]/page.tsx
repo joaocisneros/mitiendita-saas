@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddToCart } from "@/components/AddToCart";
+import { ProductGallery } from "@/components/store/ProductGallery";
 import { ServiceReserveButton } from "@/components/store/ServiceReserveButton";
 import { ShareButton } from "@/components/store/ShareButton";
 import { SubscribeButton } from "@/components/store/SubscribeButton";
@@ -92,27 +92,11 @@ export default async function ProductDetailPage({
       </header>
 
       <main className="mx-auto grid max-w-4xl gap-6 px-4 py-6 md:grid-cols-2">
-        <div className="relative aspect-square overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
-          {product.imageUrl ? (
-            <Image
-              src={product.imageUrl}
-              alt={product.name}
-              fill
-              sizes="(max-width:768px) 100vw, 50vw"
-              className="object-cover"
-              priority
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center text-7xl text-slate-300">
-              □
-            </div>
-          )}
-          {product.isFeatured && (
-            <span className="absolute left-4 top-4 rounded-full bg-amber-400 px-3 py-1 text-xs font-black text-amber-950">
-              Destacado
-            </span>
-          )}
-        </div>
+        <ProductGallery
+          images={product.images?.length ? product.images : product.imageUrl ? [product.imageUrl] : []}
+          name={product.name}
+          isFeatured={product.isFeatured}
+        />
 
         <section className="self-center rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 md:p-8">
           {product.category && (

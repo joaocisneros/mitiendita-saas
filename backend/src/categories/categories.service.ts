@@ -52,7 +52,7 @@ export class CategoriesService {
     }
     const updated = await this.prisma.category.update({ where: { id }, data });
     if (dto.imageUrl !== undefined && current.imageUrl && current.imageUrl !== dto.imageUrl) {
-      void this.media.deleteByUrl(current.imageUrl);
+      void this.media.deleteByUrl(current.imageUrl, companyId);
     }
     return updated;
   }
@@ -68,7 +68,7 @@ export class CategoriesService {
         slug: `${category.slug}--del-${Date.now()}`,
       },
     });
-    void this.media.deleteByUrl(category.imageUrl);
+    void this.media.deleteByUrl(category.imageUrl, companyId);
     return { ok: true };
   }
 

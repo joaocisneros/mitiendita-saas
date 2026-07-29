@@ -215,7 +215,7 @@ export class AppointmentsService {
     });
 
     if (appointment.proofUrl && appointment.proofUrl !== uploaded.url) {
-      void this.media.deleteByUrl(appointment.proofUrl);
+      void this.media.deleteByUrl(appointment.proofUrl, company.id);
     }
 
     return this.format(updated);

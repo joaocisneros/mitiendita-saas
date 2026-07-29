@@ -123,10 +123,10 @@ export default function SuperDashboard() {
         </div>
         {stats ? (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <AlertCard count={stats.alerts.expiringSoon} title="Vencen en 3 días" text="Contactar o renovar antes del vencimiento." tone="amber" />
-            <AlertCard count={stats.alerts.pastDue} title="Pagos pendientes" text="Suscripciones marcadas como vencidas." tone="red" />
-            <AlertCard count={stats.alerts.suspendedForDebt} title="Suspendidas por deuda" text="Requieren pago o revisión manual." tone="violet" />
-            <AlertCard count={stats.alerts.atRisk} title="Empresas en riesgo" text="Vencidas o sin fecha de renovación." tone="slate" />
+            <AlertCard count={stats.alerts.expiringSoon} title="Vencen en 3 días" text="Contactar o renovar antes del vencimiento." tone="amber" alert="expiringSoon" />
+            <AlertCard count={stats.alerts.pastDue} title="Pagos pendientes" text="Suscripciones marcadas como vencidas." tone="red" alert="pastDue" />
+            <AlertCard count={stats.alerts.suspendedForDebt} title="Suspendidas por deuda" text="Requieren pago o revisión manual." tone="violet" alert="suspendedForDebt" />
+            <AlertCard count={stats.alerts.atRisk} title="Empresas en riesgo" text="Vencidas o sin fecha de renovación." tone="slate" alert="atRisk" />
           </div>
         ) : <div className="h-28 animate-pulse rounded-xl bg-white/70" />}
       </section>
@@ -202,9 +202,9 @@ export default function SuperDashboard() {
   );
 }
 
-function AlertCard({ count, title, text, tone }: { count: number; title: string; text: string; tone: "amber" | "red" | "violet" | "slate" }) {
+function AlertCard({ count, title, text, tone, alert }: { count: number; title: string; text: string; tone: "amber" | "red" | "violet" | "slate"; alert: string }) {
   const colors = { amber: "border-amber-200 bg-white text-amber-700", red: "border-red-200 bg-red-50 text-red-700", violet: "border-violet-200 bg-violet-50 text-violet-700", slate: "border-slate-200 bg-slate-50 text-slate-700" };
-  return <Link href="/superadmin/suscripciones" className={`rounded-xl border p-4 transition hover:-translate-y-0.5 hover:shadow-sm ${colors[tone]}`}><div className="flex items-start justify-between gap-3"><div><p className="text-2xl font-black">{count}</p><h3 className="mt-1 text-sm font-black text-slate-950">{title}</h3></div><span className="flex h-8 w-8 items-center justify-center rounded-full bg-current/10 text-sm font-black">!</span></div><p className="mt-2 text-xs font-medium leading-5 text-slate-600">{count === 0 ? "Sin pendientes por ahora." : text}</p></Link>;
+  return <Link href={`/superadmin/suscripciones?alert=${alert}`} className={`rounded-xl border p-4 transition hover:-translate-y-0.5 hover:shadow-sm ${colors[tone]}`}><div className="flex items-start justify-between gap-3"><div><p className="text-2xl font-black">{count}</p><h3 className="mt-1 text-sm font-black text-slate-950">{title}</h3></div><span className="flex h-8 w-8 items-center justify-center rounded-full bg-current/10 text-sm font-black">!</span></div><p className="mt-2 text-xs font-medium leading-5 text-slate-600">{count === 0 ? "Sin pendientes por ahora." : text}</p></Link>;
 }
 
 type StatIcon = "companies" | "store" | "settings" | "orders" | "plans" | "activity" | "reports" | "customers";

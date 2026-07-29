@@ -77,31 +77,43 @@ export class MediaService {
   /**
    * Borra una imagen por su URL (Cloudinary o local). No lanza si falla:
    * la limpieza nunca debe romper la operación principal.
+   *
+   * `companyId` es obligatorio y se valida contra la carpeta embebida en la URL:
+   * varios campos (imageUrl de producto/categoría, logo, QR de Yape/Plin) se guardan
+   * como texto libre sin validar que la URL pertenezca a la empresa dueña del registro.
+   * Sin este chequeo, una empresa podría pegar la URL pública de la foto de OTRA
+   * empresa (visible en cualquier tienda pública) y luego borrarla desde su propio
+   * panel, destruyendo un archivo ajeno en Cloudinary/almacenamiento local.
    */
-  async deleteByUrl(url: string | null | undefined): Promise<void> {
-    if (!url) return;
+  async deleteByUrl(
+    url: string | null | undefined,
+    companyId: string,
+  ): Promise<void> {
+    if (!url || !companyId) return;
     try {
       // Almacenamiento local de desarrollo.
       if (url.includes('/media/local/')) {
         const parts = url.split('/media/local/')[1]?.split('/');
         if (parts && parts.length === 3) {
-          const [companyId, folder, filename] = parts;
+          const [urlCompanyId, folder, filename] = parts;
           if (
-            /^[a-zA-Z0-9-]+$/.test(companyId) &&
+            urlCompanyId === companyId &&
+            /^[a-zA-Z0-9-]+$/.test(urlCompanyId) &&
             /^[a-zA-Z0-9-]+$/.test(folder) &&
             /^[a-zA-Z0-9._-]+$/.test(filename)
           ) {
             await unlink(
-              join(process.cwd(), 'uploads', companyId, folder, filename),
+              join(process.cwd(), 'uploads', urlCompanyId, folder, filename),
             ).catch(() => undefined);
           }
         }
         return;
       }
-      // Cloudinary: derivar el public_id desde la URL y destruir.
+      // Cloudinary: derivar el public_id desde la URL y destruir, solo si
+      // vive dentro de la carpeta de la empresa dueña del registro.
       if (!this.cloudinaryEnabled) return;
       const publicId = this.cloudinaryPublicId(url);
-      if (publicId) {
+      if (publicId && publicId.startsWith(`mitiendita/${companyId}/`)) {
         await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
       }
     } catch (error) {

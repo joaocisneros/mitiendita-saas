@@ -142,7 +142,7 @@ export default function OrdersListPage() {
             }
           }}
           placeholder="Código, cliente o teléfono"
-          className="h-11 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-500 focus:border-violet-600"
+          className="h-11 min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-500 focus:border-violet-600"
         />
         <button
           onClick={() => {
