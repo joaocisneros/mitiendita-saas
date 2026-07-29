@@ -176,9 +176,15 @@ export class PublicApiController {
   @ApiScope('configuracion')
   @Get('configuracion')
   async configuracion() {
-    // Nunca expongas credenciales de Twilio por esta vía: solo configuración general.
-    const { twilioAuthToken: _twilioAuthToken, twilioAccountSid: _twilioAccountSid, ...settings } =
-      await this.settings.get();
+    // No expongas nada de Twilio por esta vía (ni las credenciales, ni el resto de
+    // su config): es una integración que hoy no se usa y no aporta al consumidor externo.
+    const {
+      twilioAuthToken: _twilioAuthToken,
+      twilioAccountSid: _twilioAccountSid,
+      twilioWhatsappFrom: _twilioWhatsappFrom,
+      whatsappEnabled: _whatsappEnabled,
+      ...settings
+    } = await this.settings.get();
     return settings;
   }
 }

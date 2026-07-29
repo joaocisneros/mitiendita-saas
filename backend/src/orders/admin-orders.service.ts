@@ -72,10 +72,16 @@ export class AdminOrdersService {
   ) {
     const page = q.page ?? 1;
     const limit = q.limit ?? 20;
+    // paymentStatus admite varios valores separados por coma (ej. "pending,proof_submitted").
+    const paymentStatuses = q.paymentStatus?.split(',').map((s) => s.trim()).filter(Boolean);
     const where = {
       companyId,
       ...(q.status ? { status: q.status as OrderStatus } : {}),
-      ...(q.paymentStatus ? { paymentStatus: q.paymentStatus as never } : {}),
+      ...(paymentStatuses?.length === 1
+        ? { paymentStatus: paymentStatuses[0] as never }
+        : paymentStatuses && paymentStatuses.length > 1
+          ? { paymentStatus: { in: paymentStatuses as never[] } }
+          : {}),
       ...(q.search
         ? {
             OR: [
@@ -104,12 +110,23 @@ export class AdminOrdersService {
           total: true,
           currency: true,
           createdAt: true,
+          payment: { select: { detectedMethod: true, operationNumber: true } },
         },
       }),
       this.prisma.order.count({ where }),
     ]);
 
-    return { items, total, page, limit, pages: Math.ceil(total / limit) };
+    return {
+      items: items.map(({ payment, ...row }) => ({
+        ...row,
+        detectedMethod: payment?.detectedMethod ?? null,
+        operationNumber: payment?.operationNumber ?? null,
+      })),
+      total,
+      page,
+      limit,
+      pages: Math.ceil(total / limit),
+    };
   }
 
   async get(companyId: string, id: string) {

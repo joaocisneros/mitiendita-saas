@@ -9,6 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { normalizePhone } from '../../common/utils/phone.util';
+import { toTitleCase } from '../../common/utils/text.util';
 import {
   isValidSubdomain,
   normalizeSubdomain,
@@ -85,7 +86,7 @@ export class SaCompaniesService {
         },
       });
       const owner = await tx.user.create({
-        data: { name: dto.responsibleName.trim(), email, passwordHash },
+        data: { name: toTitleCase(dto.responsibleName), email, passwordHash },
       });
       await tx.membership.create({
         data: { userId: owner.id, companyId: company.id, role: 'OWNER' },

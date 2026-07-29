@@ -71,6 +71,8 @@ export function ServiceReserveModal({
   const [day, setDay] = useState("");
   const [time, setTime] = useState("");
   const [note, setNote] = useState("");
+  const [bookedTimes, setBookedTimes] = useState<Set<string>>(new Set());
+  const [loadingAvailability, setLoadingAvailability] = useState(false);
   const normalizedReservationMode =
     reservationPaymentMode === "none" || reservationPaymentMode === "required"
       ? reservationPaymentMode
@@ -139,6 +141,42 @@ export function ServiceReserveModal({
     };
   }, [paymentConfig.yapeNumber, paymentConfig.yapeQrUrl, paymentConfig.plinNumber, paymentConfig.plinQrUrl, subdomain]);
 
+  useEffect(() => {
+    if (!day) {
+      setBookedTimes(new Set());
+      return;
+    }
+    let cancelled = false;
+    setLoadingAvailability(true);
+    storefrontApi
+      .getAppointmentAvailability(subdomain, day)
+      .then(({ bookedTimes: booked }) => {
+        if (cancelled) return;
+        const times = new Set(
+          booked.map((iso) => {
+            const d = new Date(iso);
+            return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+          }),
+        );
+        setBookedTimes(times);
+        setTime((current) => (current && times.has(current) ? "" : current));
+      })
+      .catch(() => {
+        if (!cancelled) setBookedTimes(new Set());
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingAvailability(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [day, subdomain]);
+
+  const availableTimeSlots = useMemo(
+    () => TIME_SLOTS.filter((s) => !bookedTimes.has(s.value)),
+    [bookedTimes],
+  );
+
   const minDay = useMemo(() => new Date().toLocaleDateString("en-CA"), []);
   const whenIso = day && time ? new Date(`${day}T${time}`).toISOString() : "";
   const prettyWhen = whenIso
@@ -176,27 +214,33 @@ export function ServiceReserveModal({
   const buildWaLink = useCallback(
     (proofUrl?: string | null) => {
       if (!phoneDigits) return null;
-      const base = [
-        `Hola ${storeName}, solicité una reserva.`,
-        `Servicio: *${serviceName}*`,
-        `Cliente: ${name} (${phone})`,
-        `Horario solicitado: ${prettyWhen}`,
-        ...(note ? [`Nota: ${note}`] : []),
+      const lines = [
+        `📅 *Reserva* — ${storeName}`,
+        "",
+        `👤 ${name} · ${phone}`,
+        `✂️ ${serviceName}`,
+        `🕒 ${prettyWhen}`,
+        ...(note ? [`📝 ${note}`] : []),
       ];
-      const paymentLines = proofUrl
-        ? [
-            `Adelanto: ${advanceLabel ?? "Por confirmar"}`,
-            `Comprobante: ${proofUrl}`,
-          ]
-        : appointment?.paymentMode === "advance"
-          ? [`Adelanto elegido: ${advanceLabel ?? "Por confirmar"}`]
-          : ["Reserva sin adelanto. Coordinaré el pago con el negocio."];
-      const message = [...base, ...paymentLines].join("\n");
+      if (proofUrl && appointment?.publicCode) {
+        const origin = typeof window !== "undefined" ? window.location.origin : "";
+        lines.push("");
+        lines.push(`💰 Adelanto: ${advanceLabel ?? "Por confirmar"}`);
+        lines.push(`✅ *Ya pagué.* Comprobante: ${origin}/ad/${appointment.publicCode}`);
+      } else if (appointment?.paymentMode === "advance") {
+        lines.push("");
+        lines.push(`💰 Adelanto elegido: ${advanceLabel ?? "Por confirmar"}`);
+      } else {
+        lines.push("");
+        lines.push("Reserva sin adelanto. Coordinaré el pago con el negocio.");
+      }
+      const message = lines.join("\n");
       return `https://wa.me/${phoneDigits}?text=${encodeURIComponent(message)}`;
     },
     [
       advanceLabel,
       appointment?.paymentMode,
+      appointment?.publicCode,
       name,
       note,
       phone,
@@ -564,10 +608,13 @@ export function ServiceReserveModal({
                   <select
                     value={time}
                     onChange={(e) => setTime(e.target.value)}
-                    className="srv-input bg-white"
+                    disabled={!day || loadingAvailability}
+                    className="srv-input bg-white disabled:opacity-60"
                   >
-                    <option value="">Elige hora</option>
-                    {TIME_SLOTS.map((s) => (
+                    <option value="">
+                      {!day ? "Elige el día primero" : loadingAvailability ? "Cargando horas..." : "Elige hora"}
+                    </option>
+                    {availableTimeSlots.map((s) => (
                       <option key={s.value} value={s.value}>
                         {s.label}
                       </option>
@@ -575,6 +622,11 @@ export function ServiceReserveModal({
                   </select>
                 </label>
               </div>
+              {day && !loadingAvailability && availableTimeSlots.length === 0 && (
+                <p className="rounded-lg bg-amber-50 px-3 py-2 text-center text-xs font-semibold text-amber-700">
+                  No quedan horarios libres ese día. Elige otra fecha.
+                </p>
+              )}
               {prettyWhen && (
                 <p className="rounded-lg bg-gray-50 px-3 py-2 text-center text-xs font-semibold text-gray-600">
                   📅 {prettyWhen}

@@ -388,6 +388,16 @@ export const superApi = {
     }),
   whatsappOwners: () => sfetch<SaWhatsappOwner[]>("/superadmin/whatsapp/duenos"),
   whatsappCustomers: () => sfetch<SaWhatsappCustomer[]>("/superadmin/whatsapp/clientes"),
+  whatsappDirectory: (opts: { search?: string; role?: string; page?: number; limit?: number }) => {
+    const params = new URLSearchParams();
+    if (opts.search) params.set("search", opts.search);
+    if (opts.role) params.set("role", opts.role);
+    if (opts.page) params.set("page", String(opts.page));
+    if (opts.limit) params.set("limit", String(opts.limit));
+    return sfetch<{ items: SaWhatsappDirectoryRow[]; total: number; page: number; limit: number; pages: number }>(
+      `/superadmin/whatsapp/directorio?${params.toString()}`,
+    );
+  },
   // ── Tokens de API de plataforma (self-service del superadmin) ──
   platformApiScopes: () => sfetch<string[]>("/superadmin/api-tokens/platform-scopes"),
   platformApiTokens: () => sfetch<SaApiTokenRow[]>("/superadmin/api-tokens"),
@@ -452,6 +462,14 @@ export interface SaWhatsappOwner {
   companyName: string;
   usuario: string | null;
   whatsapp: string | null;
+}
+
+export interface SaWhatsappDirectoryRow {
+  id: string;
+  nombres: string[];
+  telefono: string | null;
+  roles: ("Dueño" | "Cliente")[];
+  empresas: string[];
 }
 
 export interface GlobalUser {

@@ -96,14 +96,19 @@ export interface AppointmentBody {
 }
 export interface AppointmentView {
   id: string;
+  publicCode?: string | null;
   status: string;
   serviceName: string;
   preferredAt: string;
+  customerName?: string;
+  customerPhone?: string;
   paymentMode?: string | null;
   advanceAmount?: string | null;
   paymentStatus?: string;
   proofUrl?: string | null;
   proofSubmittedAt?: string | null;
+  rejectionComment?: string | null;
+  createdAt?: string;
 }
 export interface SubscriptionBody {
   customerName: string;
@@ -116,9 +121,19 @@ export interface SubscriptionView {
   id: string;
   publicCode?: string | null;
   status: string;
+  state?: "pending" | "active" | "expiring" | "expired" | "cancelled";
   planName: string;
+  customerName?: string;
+  customerPhone?: string;
+  startsAt?: string | null;
+  endsAt?: string | null;
   proofUrl?: string | null;
   proofSubmittedAt?: string | null;
+  price?: string | null;
+  renewalMonths?: number | null;
+  renewalProofUrl?: string | null;
+  renewalSubmittedAt?: string | null;
+  createdAt?: string;
   whatsappNotification?: {
     status: "sent" | "disabled" | "skipped" | "failed";
     messageId?: string;
@@ -246,6 +261,25 @@ export const storefrontApi = {
     return data as SubscriptionView;
   },
 
+  async submitSubscriptionRenewalProof(
+    subdomain: string,
+    subscriptionId: string,
+    months: number,
+    file: File,
+  ): Promise<SubscriptionView> {
+    const form = new FormData();
+    form.append("months", String(months));
+    form.append("file", file);
+    const res = await safeFetch(
+      `${API}/public/stores/${subdomain}/subscriptions/${subscriptionId}/renewal-proof`,
+      { method: "POST", body: form },
+    );
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok)
+      throw new Error(errorMessage(data, "No se pudo enviar la renovación."));
+    return data as SubscriptionView;
+  },
+
   async getOrder(subdomain: string, code: string): Promise<OrderView> {
     const res = await safeFetch(
       `${API}/public/stores/${subdomain}/orders/${code}`,
@@ -271,5 +305,35 @@ export const storefrontApi = {
     if (!res.ok)
       throw new Error(errorMessage(data, "No se pudo subir el comprobante."));
     return data as OrderView;
+  },
+
+  async getAppointmentAvailability(
+    subdomain: string,
+    date: string,
+  ): Promise<{ bookedTimes: string[] }> {
+    return get<{ bookedTimes: string[] }>(
+      `/public/stores/${subdomain}/appointments/availability?date=${date}`,
+      0,
+    );
+  },
+
+  async getAppointment(subdomain: string, id: string): Promise<AppointmentView> {
+    const res = await safeFetch(
+      `${API}/public/stores/${subdomain}/appointments/${id}`,
+      { cache: "no-store" },
+    );
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(errorMessage(data, "Cita no encontrada."));
+    return data as AppointmentView;
+  },
+
+  async getSubscription(subdomain: string, id: string): Promise<SubscriptionView> {
+    const res = await safeFetch(
+      `${API}/public/stores/${subdomain}/subscriptions/${id}`,
+      { cache: "no-store" },
+    );
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(errorMessage(data, "Suscripción no encontrada."));
+    return data as SubscriptionView;
   },
 };

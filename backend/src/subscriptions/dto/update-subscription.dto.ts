@@ -1,4 +1,5 @@
-import { IsDateString, IsIn, IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsDateString, IsIn, IsInt, IsNumber, IsOptional, Max, Min } from 'class-validator';
+import { Type } from 'class-transformer';
 
 /** Acción del dueño sobre una suscripción. */
 export class UpdateSubscriptionDto {
@@ -21,4 +22,11 @@ export class UpdateSubscriptionDto {
   @IsOptional()
   @IsDateString()
   endsAt?: string;
+
+  /** Para "activate" sin producto vinculado: monto cobrado, ingresado a mano. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  price?: number;
 }

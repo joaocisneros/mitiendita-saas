@@ -2,10 +2,12 @@ import {
   Body,
   Controller,
   FileTypeValidator,
+  Get,
   MaxFileSizeValidator,
   Param,
   ParseFilePipe,
   Post,
+  Query,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
@@ -50,5 +52,23 @@ export class AppointmentsController {
     file: Express.Multer.File,
   ) {
     return this.appointments.submitProof(subdomain, id, file);
+  }
+
+  /** Horarios ya reservados en una fecha, para no ofrecerlos de nuevo al elegir hora. */
+  @Get('appointments/availability')
+  getAvailability(
+    @Param('subdomain') subdomain: string,
+    @Query('date') date: string,
+  ) {
+    return this.appointments.getAvailability(subdomain, date);
+  }
+
+  /** Detalle público de una cita, para la página de recibo (sin login). */
+  @Get('appointments/:id')
+  getPublic(
+    @Param('subdomain') subdomain: string,
+    @Param('id') id: string,
+  ) {
+    return this.appointments.getPublic(subdomain, id);
   }
 }

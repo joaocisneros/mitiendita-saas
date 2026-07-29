@@ -331,13 +331,12 @@ export default function ApiDocsPage() {
             <Endpoint
               path="/v1/configuracion"
               scope="configuracion"
-              desc="Configuración general de la plataforma (nombre, dominio, moneda, textos legales). No incluye credenciales de Twilio."
+              desc="Configuración general de la plataforma (nombre, dominio, moneda, textos legales). No incluye nada de la integración de Twilio."
               example={`{
   "id": 1, "platformName": "MiTiendita", "logoUrl": null,
   "mainDomain": "mitiendita.com", "currency": "PEN",
-  "supportEmail": "soporte@mitiendita.com", "trialDays": 30,
-  "whatsappEnabled": false, "twilioWhatsappFrom": null,
-  "updatedAt": "2026-06-23T02:23:22.878Z"
+  "supportWhatsapp": "987654321", "supportEmail": "soporte@mitiendita.com",
+  "trialDays": 30, "updatedAt": "2026-06-23T02:23:22.878Z"
 }`}
             />
           </div>

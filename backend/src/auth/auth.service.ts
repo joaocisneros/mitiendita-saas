@@ -10,6 +10,7 @@ import * as bcrypt from 'bcrypt';
 import { randomBytes, randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { normalizePhone } from '../common/utils/phone.util';
+import { toTitleCase } from '../common/utils/text.util';
 import {
   isValidSubdomain,
   normalizeSubdomain,
@@ -85,7 +86,7 @@ export class AuthService {
 
       const user = await tx.user.create({
         data: {
-          name: dto.responsibleName,
+          name: toTitleCase(dto.responsibleName),
           email,
           passwordHash,
         },

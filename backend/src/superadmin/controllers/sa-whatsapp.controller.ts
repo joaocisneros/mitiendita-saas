@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import {
   CurrentUser,
@@ -37,5 +37,20 @@ export class SaWhatsappController {
   @Get('clientes')
   listCustomers() {
     return this.whatsapp.listCustomers();
+  }
+
+  @Get('directorio')
+  listDirectory(
+    @Query('search') search?: string,
+    @Query('role') role?: 'Dueño' | 'Cliente' | 'all',
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.whatsapp.listDirectory({
+      search,
+      role,
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+    });
   }
 }

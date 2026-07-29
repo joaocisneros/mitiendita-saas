@@ -76,11 +76,13 @@ export function SubscribeModal({
         : proofUrl;
     const message = proofUrl
       ? [
-          `Hola ${storeName}, ya subí mi comprobante de pago.`,
-          `Plan: *${planName}*`,
-          `Cliente: ${name} (${phone})`,
-          ...(amountLabel ? [`Monto: ${amountLabel}`] : []),
-          `Comprobante: ${shortProofUrl}`,
+          `📦 *Suscripción* — ${storeName}`,
+          "",
+          `👤 ${name} · ${phone}`,
+          `📄 Plan: ${planName}`,
+          ...(amountLabel ? [`💰 Monto: ${amountLabel}`] : []),
+          "",
+          `✅ *Ya pagué.* Comprobante: ${shortProofUrl}`,
         ].join("\n")
       : `Hola ${storeName}, quiero suscribirme al plan *${planName}*. Mi nombre es ${name}.`;
     return `https://wa.me/${phoneDigits}?text=${encodeURIComponent(message)}`;

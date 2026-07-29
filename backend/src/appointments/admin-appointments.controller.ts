@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Param, Patch, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { AppointmentsService } from './appointments.service';
 import { UpdateAppointmentStatusDto } from './dto/update-appointment-status.dto';
+import { RejectPaymentDto } from './dto/reject-payment.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
@@ -25,5 +26,24 @@ export class AdminAppointmentsController {
     @Body() dto: UpdateAppointmentStatusDto,
   ) {
     return this.appointments.updateStatus(companyId, id, dto.status);
+  }
+
+  @Post(':id/payment/approve')
+  approvePayment(
+    @CurrentUser('companyId') companyId: string,
+    @CurrentUser('userId') userId: string,
+    @Param('id') id: string,
+  ) {
+    return this.appointments.approvePayment(companyId, id, userId);
+  }
+
+  @Post(':id/payment/reject')
+  rejectPayment(
+    @CurrentUser('companyId') companyId: string,
+    @CurrentUser('userId') userId: string,
+    @Param('id') id: string,
+    @Body() dto: RejectPaymentDto,
+  ) {
+    return this.appointments.rejectPayment(companyId, id, userId, dto.comment);
   }
 }

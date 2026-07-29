@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { SubscriptionsService } from './subscriptions.service';
 import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -33,6 +33,25 @@ export class AdminSubscriptionsController {
       months: dto.months,
       startsAt: dto.startsAt,
       endsAt: dto.endsAt,
+      price: dto.price,
     });
+  }
+
+  /** Aprueba la renovación que el cliente pidió desde su link público. */
+  @Post(':id/renewal/approve')
+  approveRenewal(
+    @CurrentUser('companyId') companyId: string,
+    @Param('id') id: string,
+  ) {
+    return this.subscriptions.approveRenewal(companyId, id);
+  }
+
+  /** Rechaza el comprobante de renovación. */
+  @Post(':id/renewal/reject')
+  rejectRenewal(
+    @CurrentUser('companyId') companyId: string,
+    @Param('id') id: string,
+  ) {
+    return this.subscriptions.rejectRenewal(companyId, id);
   }
 }

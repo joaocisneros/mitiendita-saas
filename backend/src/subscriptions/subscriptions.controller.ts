@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   FileTypeValidator,
+  Get,
   MaxFileSizeValidator,
   Param,
   ParseFilePipe,
@@ -50,5 +51,35 @@ export class SubscriptionsController {
     file: Express.Multer.File,
   ) {
     return this.subscriptions.submitProof(subdomain, id, file);
+  }
+
+  /** El cliente pide renovar desde su link público, subiendo el comprobante del nuevo período. */
+  @Throttle({ default: { limit: 15, ttl: 60_000 } })
+  @Post('subscriptions/:id/renewal-proof')
+  @UseInterceptors(FileInterceptor('file'))
+  submitRenewalProof(
+    @Param('subdomain') subdomain: string,
+    @Param('id') id: string,
+    @Body('months') months: string,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: MAX_PROOF_BYTES }),
+          new FileTypeValidator({ fileType: /^image\/(jpe?g|png|webp)$/ }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+  ) {
+    return this.subscriptions.submitRenewalProof(subdomain, id, Number(months), file);
+  }
+
+  /** Detalle público de una suscripción, para la página de recibo (sin login). */
+  @Get('subscriptions/:id')
+  getPublic(
+    @Param('subdomain') subdomain: string,
+    @Param('id') id: string,
+  ) {
+    return this.subscriptions.getPublic(subdomain, id);
   }
 }

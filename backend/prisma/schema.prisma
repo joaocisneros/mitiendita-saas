@@ -456,6 +456,8 @@ model Payment {
   expectedAmount    Decimal       @map("expected_amount") @db.Decimal(12, 2)
   reportedAmount    Decimal?      @map("reported_amount") @db.Decimal(12, 2)
   proofUrl          String?       @map("proof_url")
+  operationNumber   String?       @map("operation_number") // N° de operación leído del comprobante (Yape/Plin), para detectar reuso
+  detectedMethod    String?       @map("detected_method") // yape | plin, leído del comprobante por OCR
   status            PaymentStatus @default(pending)
   submittedAt       DateTime?     @map("submitted_at")
   validatedAt       DateTime?     @map("validated_at")
@@ -504,6 +506,7 @@ model Appointment {
   id            String            @id @default(uuid())
   companyId     String            @map("company_id")
   productId     String?           @map("product_id") // servicio relacionado (opcional)
+  publicCode    String?           @unique @map("public_code") // código corto para el recibo/seguimiento
   serviceName   String            @map("service_name") // copia histórica del nombre
   customerName  String            @map("customer_name")
   customerPhone String            @map("customer_phone")
@@ -515,6 +518,11 @@ model Appointment {
   paymentStatus PaymentStatus     @default(pending) @map("payment_status")
   proofUrl      String?           @map("proof_url")
   proofSubmittedAt DateTime?      @map("proof_submitted_at")
+  operationNumber   String?       @map("operation_number") // N° de operación leído del comprobante, para detectar reuso
+  detectedMethod    String?       @map("detected_method") // yape | plin, leído del comprobante por OCR
+  validatedAt       DateTime?     @map("validated_at") // cuándo el dueño aprobó/rechazó el adelanto
+  validatedByUserId String?       @map("validated_by_user_id")
+  rejectionComment  String?       @map("rejection_comment")
   createdAt     DateTime          @default(now()) @map("created_at")
   updatedAt     DateTime          @updatedAt @map("updated_at")
 
@@ -542,6 +550,15 @@ model Subscription {
   note          String?   @db.Text
   proofUrl         String?   @map("proof_url") // comprobante de pago Yape (imagen)
   proofSubmittedAt DateTime? @map("proof_submitted_at") // cuándo subió el comprobante
+  operationNumber  String?   @map("operation_number") // N° de operación leído del comprobante, para detectar reuso
+  detectedMethod   String?   @map("detected_method") // yape | plin, leído del comprobante por OCR
+  price         Decimal?  @db.Decimal(12, 2) // monto cobrado: copiado del producto vinculado, o ingresado a mano al activar
+  // Renovación pedida por el cliente desde su link público: queda pendiente de aprobar sin pisar el comprobante original.
+  renewalMonths          Int?      @map("renewal_months")
+  renewalProofUrl        String?   @map("renewal_proof_url")
+  renewalSubmittedAt     DateTime? @map("renewal_submitted_at")
+  renewalOperationNumber String?   @map("renewal_operation_number")
+  renewalDetectedMethod  String?   @map("renewal_detected_method")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 

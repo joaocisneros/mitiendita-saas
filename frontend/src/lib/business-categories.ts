@@ -37,6 +37,10 @@ export const BUSINESS_CATEGORIES: BusinessCategory[] = [
       "Librerías",
       "Tiendas de mascotas",
       "Tecnología",
+      "Licorerías",
+      "Papelerías",
+      "Joyerías",
+      "Tiendas de electrodomésticos",
     ],
   },
   {
@@ -56,6 +60,11 @@ export const BUSINESS_CATEGORIES: BusinessCategory[] = [
       "Cafeterías",
       "Panaderías",
       "Pastelerías",
+      "Cevicherías",
+      "Chifas",
+      "Heladerías",
+      "Juguerías",
+      "Sanguicherías",
     ],
   },
   {
@@ -68,7 +77,7 @@ export const BUSINESS_CATEGORIES: BusinessCategory[] = [
       search: "Buscar servicios...",
       empty: "Aún no hay servicios publicados.",
     },
-    subtypes: ["SPA", "Barberías", "Salones de belleza", "Centros estéticos"],
+    subtypes: ["SPA", "Barberías", "Salones de belleza", "Centros estéticos", "Salones de uñas", "Estudios de tatuajes"],
   },
   {
     id: "salud",
@@ -85,6 +94,10 @@ export const BUSINESS_CATEGORIES: BusinessCategory[] = [
       "Consultorios",
       "Veterinarias",
       "Centros de terapia",
+      "Odontología",
+      "Ópticas",
+      "Psicología",
+      "Nutrición",
     ],
   },
   {
@@ -102,6 +115,9 @@ export const BUSINESS_CATEGORIES: BusinessCategory[] = [
       "Institutos",
       "Centros de capacitación",
       "Cursos online",
+      "Colegios",
+      "Nidos y guarderías",
+      "Academias de idiomas",
     ],
   },
   {
@@ -114,7 +130,7 @@ export const BUSINESS_CATEGORIES: BusinessCategory[] = [
       search: "Buscar...",
       empty: "Aún no hay publicaciones.",
     },
-    subtypes: ["Hoteles", "Hostales", "Agencias de viaje"],
+    subtypes: ["Hoteles", "Hostales", "Agencias de viaje", "Tours y excursiones", "Transporte turístico"],
   },
   {
     id: "automotriz",
@@ -130,6 +146,8 @@ export const BUSINESS_CATEGORIES: BusinessCategory[] = [
       "Talleres mecánicos",
       "Venta de repuestos",
       "Lavaderos de autos",
+      "Alquiler de autos",
+      "Llantas y neumáticos",
     ],
   },
   {
@@ -154,7 +172,7 @@ export const BUSINESS_CATEGORIES: BusinessCategory[] = [
       search: "Buscar servicios...",
       empty: "Aún no hay servicios publicados.",
     },
-    subtypes: ["Reparto a domicilio", "Mensajería", "Empresas de limpieza", "Seguridad"],
+    subtypes: ["Reparto a domicilio", "Mensajería", "Empresas de limpieza", "Seguridad", "Fotografía y eventos", "Abogados", "Contadores", "Mudanzas"],
   },
   {
     id: "digital",

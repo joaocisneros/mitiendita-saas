@@ -3,6 +3,7 @@ import { SubscriptionsService } from './subscriptions.service';
 import { SubscriptionsController } from './subscriptions.controller';
 import { AdminSubscriptionsController } from './admin-subscriptions.controller';
 import { SubscriptionShortLinkController } from './subscription-short-link.controller';
+import { SubscriptionReceiptShortLinkController } from './receipt-short-link.controller';
 import { WhatsappModule } from '../whatsapp/whatsapp.module';
 import { MediaModule } from '../media/media.module';
 
@@ -12,6 +13,7 @@ import { MediaModule } from '../media/media.module';
     SubscriptionsController,
     AdminSubscriptionsController,
     SubscriptionShortLinkController,
+    SubscriptionReceiptShortLinkController,
   ],
   providers: [SubscriptionsService],
   exports: [SubscriptionsService],

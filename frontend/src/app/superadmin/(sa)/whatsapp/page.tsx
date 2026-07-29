@@ -1,17 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { superApi } from "@/lib/superadmin-api";
-
-type Role = "Dueño" | "Cliente";
-
-type Row = {
-  id: string;
-  nombres: string[];
-  telefono: string | null;
-  roles: Role[];
-  empresas: string[];
-};
+import { useCallback, useEffect, useState } from "react";
+import { superApi, type SaWhatsappDirectoryRow } from "@/lib/superadmin-api";
 
 const ROLE_TABS = ["Todos", "Dueño", "Cliente"] as const;
 
@@ -33,90 +23,48 @@ function waDigits(raw: string | null): string | null {
   return digits.length > 9 ? digits : `51${digits}`;
 }
 
-const ROLE_BADGE: Record<Role, string> = {
+const ROLE_BADGE: Record<string, string> = {
   Dueño: "bg-violet-100 text-violet-700",
   Cliente: "bg-emerald-100 text-emerald-800",
 };
 
 export default function WhatsappSettingsPage() {
-  const [rows, setRows] = useState<Row[]>([]);
+  const [rows, setRows] = useState<SaWhatsappDirectoryRow[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
   const [search, setSearch] = useState("");
+  const [applied, setApplied] = useState("");
   const [role, setRole] = useState<(typeof ROLE_TABS)[number]>("Todos");
 
+  const load = useCallback(
+    (targetPage = 1) => {
+      setLoading(true);
+      superApi
+        .whatsappDirectory({
+          search: applied || undefined,
+          role: role === "Todos" ? undefined : role,
+          page: targetPage,
+          limit: 20,
+        })
+        .then((r) => {
+          setError("");
+          setRows(r.items);
+          setTotal(r.total);
+          setPage(r.page);
+          setPages(r.pages || 1);
+        })
+        .catch((e) => setError(e instanceof Error ? e.message : "No se pudo cargar la lista."))
+        .finally(() => setLoading(false));
+    },
+    [applied, role],
+  );
   useEffect(() => {
-    Promise.all([superApi.whatsappOwners(), superApi.whatsappCustomers()])
-      .then(([owners, customers]) => {
-        const source: { nombre: string; telefono: string | null; rol: Role; empresa: string }[] = [
-          ...owners.map((o) => ({
-            nombre: o.usuario ?? "Sin usuario",
-            telefono: o.whatsapp,
-            rol: "Dueño" as const,
-            empresa: o.companyName,
-          })),
-          ...customers.map((c) => ({
-            nombre: c.cliente,
-            telefono: c.telefono,
-            rol: "Cliente" as const,
-            empresa: c.companyName,
-          })),
-        ];
-
-        // Un mismo número no debe listarse más de una vez: si aparece como Dueño en
-        // una tienda y como Cliente en otra, se combina en una sola fila con ambos roles.
-        // Los que no tienen número (null) se muestran todos, cada uno por separado.
-        const groups = new Map<string, Row>();
-        const withoutPhone: Row[] = [];
-        let anonId = 0;
-
-        for (const item of source) {
-          const digits = item.telefono?.replace(/\D+/g, "") ?? "";
-          if (!digits) {
-            withoutPhone.push({
-              id: `sin-numero-${anonId++}`,
-              nombres: [item.nombre],
-              telefono: item.telefono,
-              roles: [item.rol],
-              empresas: [item.empresa],
-            });
-            continue;
-          }
-          const existing = groups.get(digits);
-          if (!existing) {
-            groups.set(digits, {
-              id: digits,
-              nombres: [item.nombre],
-              telefono: item.telefono,
-              roles: [item.rol],
-              empresas: [item.empresa],
-            });
-            continue;
-          }
-          if (!existing.nombres.includes(item.nombre)) existing.nombres.push(item.nombre);
-          if (!existing.roles.includes(item.rol)) existing.roles.push(item.rol);
-          if (!existing.empresas.includes(item.empresa)) existing.empresas.push(item.empresa);
-        }
-
-        const merged = [...groups.values(), ...withoutPhone];
-        setRows(merged.sort((a, b) => a.nombres[0].localeCompare(b.nombres[0])));
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : "No se pudo cargar la lista."))
-      .finally(() => setLoading(false));
-  }, []);
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return rows.filter((r) => {
-      if (role !== "Todos" && !r.roles.includes(role)) return false;
-      if (!q) return true;
-      return (
-        r.nombres.some((n) => n.toLowerCase().includes(q)) ||
-        r.empresas.some((e) => e.toLowerCase().includes(q)) ||
-        (r.telefono ?? "").toLowerCase().includes(q)
-      );
-    });
-  }, [rows, search, role]);
+    load(1);
+  }, [load]);
 
   return (
     <div className="space-y-6 pb-20 md:pb-0">
@@ -124,8 +72,7 @@ export default function WhatsappSettingsPage() {
         <p className="text-sm font-bold text-violet-700">Integraciones</p>
         <h1 className="mt-1 text-xl font-black text-slate-950">WhatsApp</h1>
         <p className="mt-2 text-sm font-medium text-slate-600">
-          {filtered.length} de {rows.length} registros: dueños y clientes de todas las tiendas, con su número de
-          WhatsApp.
+          {total} registros: dueños y clientes de todas las tiendas, con su número de WhatsApp.
         </p>
       </div>
 
@@ -133,9 +80,16 @@ export default function WhatsappSettingsPage() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && setApplied(search.trim())}
           placeholder="Buscar por nombre, empresa o número"
           className="h-11 min-w-[240px] flex-1 rounded-xl border border-slate-300 px-3 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-500 focus:border-violet-600"
         />
+        <button
+          onClick={() => setApplied(search.trim())}
+          className="h-11 rounded-xl bg-violet-600 px-4 text-sm font-bold text-white hover:bg-violet-700"
+        >
+          Buscar
+        </button>
         <div className="flex shrink-0 gap-1 rounded-xl border border-slate-200 bg-slate-100 p-1">
           {ROLE_TABS.map((tab) => (
             <button
@@ -171,7 +125,7 @@ export default function WhatsappSettingsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {filtered.map((r) => {
+              {rows.map((r) => {
                 const digits = waDigits(r.telefono);
                 return (
                   <tr key={r.id} className="text-slate-800">
@@ -207,10 +161,10 @@ export default function WhatsappSettingsPage() {
                   </tr>
                 );
               })}
-              {!loading && filtered.length === 0 && (
+              {!loading && rows.length === 0 && (
                 <tr>
                   <td colSpan={5} className="p-10 text-center font-semibold text-slate-600">
-                    {rows.length === 0 ? "Aún no hay registros." : "Nada coincide con el filtro."}
+                    {total === 0 ? "Aún no hay registros." : "Nada coincide con el filtro."}
                   </td>
                 </tr>
               )}
@@ -223,6 +177,27 @@ export default function WhatsappSettingsPage() {
               )}
             </tbody>
           </table>
+        </div>
+        <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3">
+          <p className="text-sm font-medium text-slate-600">
+            Página {page} de {pages}
+          </p>
+          <div className="flex gap-2">
+            <button
+              disabled={page <= 1 || loading}
+              onClick={() => load(page - 1)}
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-bold text-slate-700 disabled:opacity-40"
+            >
+              Anterior
+            </button>
+            <button
+              disabled={page >= pages || loading}
+              onClick={() => load(page + 1)}
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-bold text-slate-700 disabled:opacity-40"
+            >
+              Siguiente
+            </button>
+          </div>
         </div>
       </section>
     </div>

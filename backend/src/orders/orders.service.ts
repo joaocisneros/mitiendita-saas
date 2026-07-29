@@ -8,7 +8,10 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { MediaService } from '../media/media.service';
 import { normalizePhone } from '../common/utils/phone.util';
+import { toTitleCase } from '../common/utils/text.util';
 import { generateOrderCode } from '../common/utils/order-code.util';
+import { analyzePaymentProof } from '../common/utils/yape-ocr.util';
+import { findDuplicateOperation } from '../common/utils/duplicate-proof.util';
 import { CheckoutDto } from './dto/checkout.dto';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
 
@@ -108,6 +111,7 @@ export class OrdersService {
     const total = round2(subtotal + deliveryFee);
     const currency = settings?.currency ?? 'PEN';
     const phone = normalizePhone(dto.customerPhone);
+    const customerName = toTitleCase(dto.customerName);
 
     const reservationMinutes = Number(process.env.RESERVATION_MINUTES ?? 30);
     const reservationExpiresAt = new Date(
@@ -121,13 +125,13 @@ export class OrdersService {
       const customer = await tx.customer.upsert({
         where: { companyId_phone: { companyId: company.id, phone } },
         update: {
-          name: dto.customerName,
+          name: customerName,
           address: dto.address ?? undefined,
           lastPurchaseAt: now,
         },
         create: {
           companyId: company.id,
-          name: dto.customerName,
+          name: customerName,
           phone,
           address: dto.address ?? null,
           firstPurchaseAt: now,
@@ -265,6 +269,23 @@ export class OrdersService {
       throw new BadRequestException('Este pedido ya no admite pagos.');
     }
 
+    const proofCheck = await analyzePaymentProof(file.buffer);
+    if (!proofCheck.looksLikePaymentProof) {
+      throw new BadRequestException(
+        'La imagen no parece ser un comprobante de Yape o Plin. Sube la captura de pantalla del pago.',
+      );
+    }
+    if (proofCheck.operationNumber && process.env.NODE_ENV === 'production') {
+      const isDuplicate = await findDuplicateOperation(this.prisma, company.id, proofCheck.operationNumber, {
+        paymentOrderId: order.id,
+      });
+      if (isDuplicate) {
+        throw new BadRequestException(
+          'Este comprobante ya fue usado en otro pedido. Si crees que es un error, contáctanos.',
+        );
+      }
+    }
+
     const uploaded = await this.media.uploadImage(file, company.id, 'proofs');
 
     await this.prisma.$transaction([
@@ -275,6 +296,8 @@ export class OrdersService {
           reportedAmount: reportedAmount ?? null,
           status: 'proof_submitted',
           submittedAt: new Date(),
+          operationNumber: proofCheck.operationNumber,
+          detectedMethod: proofCheck.detectedMethod,
         },
       }),
       this.prisma.order.update({
@@ -308,6 +331,16 @@ export class OrdersService {
       include: { payment: true },
     });
     return order?.payment?.proofUrl ?? null;
+  }
+
+  /** Resuelve el subdominio a partir del código (para el link corto del recibo). */
+  async resolveByCode(code: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { publicCode: code },
+      select: { company: { select: { subdomain: true } } },
+    });
+    if (!order) return null;
+    return { subdomain: order.company.subdomain };
   }
 
   // ───────────────────── helpers ─────────────────────

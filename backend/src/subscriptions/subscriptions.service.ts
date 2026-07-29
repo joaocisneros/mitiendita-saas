@@ -7,9 +7,12 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
 import { normalizePhone } from '../common/utils/phone.util';
+import { toTitleCase } from '../common/utils/text.util';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { MediaService } from '../media/media.service';
 import { generateSubscriptionCode } from '../common/utils/order-code.util';
+import { analyzePaymentProof } from '../common/utils/yape-ocr.util';
+import { findDuplicateOperation } from '../common/utils/duplicate-proof.util';
 
 const DAY = 86_400_000;
 const EXPIRING_DAYS = 7; // "por vencer" si vence en 7 días o menos
@@ -36,6 +39,14 @@ type SubRow = {
   note: string | null;
   proofUrl: string | null;
   proofSubmittedAt: Date | null;
+  operationNumber: string | null;
+  detectedMethod: string | null;
+  price: { toString(): string } | null;
+  renewalMonths: number | null;
+  renewalProofUrl: string | null;
+  renewalSubmittedAt: Date | null;
+  renewalOperationNumber: string | null;
+  renewalDetectedMethod: string | null;
   createdAt: Date;
 };
 
@@ -69,13 +80,31 @@ export class SubscriptionsService {
       throw new ForbiddenException('Esta tienda no está disponible.');
     }
 
+    let price: number | null = null;
     if (dto.productId) {
       const owned = await this.prisma.product.findFirst({
         where: { id: dto.productId, companyId: company.id, deletedAt: null },
-        select: { id: true },
+        select: { id: true, price: true },
       });
       if (!owned) dto.productId = undefined;
+      else price = Number(owned.price);
     }
+
+    const customerName = toTitleCase(dto.customerName);
+    const customerPhone = normalizePhone(dto.customerPhone);
+    // Registrar/actualizar el cliente en la libreta de contactos del negocio (igual que Pedidos).
+    const now = new Date();
+    await this.prisma.customer.upsert({
+      where: { companyId_phone: { companyId: company.id, phone: customerPhone } },
+      update: { name: customerName, lastPurchaseAt: now },
+      create: {
+        companyId: company.id,
+        name: customerName,
+        phone: customerPhone,
+        firstPurchaseAt: now,
+        lastPurchaseAt: now,
+      },
+    });
 
     let publicCode = generateSubscriptionCode();
     for (let i = 0; i < 5; i++) {
@@ -93,9 +122,10 @@ export class SubscriptionsService {
         productId: dto.productId ?? null,
         publicCode,
         planName: dto.planName,
-        customerName: dto.customerName,
-        customerPhone: normalizePhone(dto.customerPhone),
+        customerName,
+        customerPhone,
         note: dto.note ?? null,
+        price,
       },
     });
 
@@ -121,6 +151,16 @@ export class SubscriptionsService {
     return sub?.proofUrl ?? null;
   }
 
+  /** Resuelve id + subdominio a partir del código (para el link corto del recibo). */
+  async resolveByCode(code: string) {
+    const sub = await this.prisma.subscription.findFirst({
+      where: { publicCode: code },
+      select: { id: true, company: { select: { subdomain: true } } },
+    });
+    if (!sub) return null;
+    return { id: sub.id, subdomain: sub.company.subdomain };
+  }
+
   /** El cliente sube su comprobante Yape para una suscripción digital. */
   async submitProof(
     subdomain: string,
@@ -144,6 +184,23 @@ export class SubscriptionsService {
       throw new BadRequestException('Esta suscripción ya no admite comprobantes.');
     }
 
+    const proofCheck = await analyzePaymentProof(file.buffer);
+    if (!proofCheck.looksLikePaymentProof) {
+      throw new BadRequestException(
+        'La imagen no parece ser un comprobante de Yape o Plin. Sube la captura de pantalla del pago.',
+      );
+    }
+    if (proofCheck.operationNumber && process.env.NODE_ENV === 'production') {
+      const isDuplicate = await findDuplicateOperation(this.prisma, company.id, proofCheck.operationNumber, {
+        subscriptionId: sub.id,
+      });
+      if (isDuplicate) {
+        throw new BadRequestException(
+          'Este comprobante ya fue usado en otro pedido. Si crees que es un error, contáctanos.',
+        );
+      }
+    }
+
     const uploaded = await this.media.uploadImage(
       file,
       company.id,
@@ -155,6 +212,8 @@ export class SubscriptionsService {
       data: {
         proofUrl: uploaded.url,
         proofSubmittedAt: new Date(),
+        operationNumber: proofCheck.operationNumber,
+        detectedMethod: proofCheck.detectedMethod,
       },
     });
 
@@ -175,11 +234,129 @@ export class SubscriptionsService {
     return { ...this.format(updated), whatsappNotification };
   }
 
+  /** El cliente pide renovar desde su link público: queda pendiente de aprobar, sin pisar el comprobante original. */
+  async submitRenewalProof(
+    subdomain: string,
+    id: string,
+    months: number,
+    file: Express.Multer.File,
+  ) {
+    const company = await this.prisma.company.findFirst({
+      where: { subdomain, deletedAt: null },
+    });
+    if (!company) throw new NotFoundException('Tienda no encontrada.');
+    if (company.status !== 'active') {
+      throw new ForbiddenException('Esta tienda no está disponible.');
+    }
+    if (!months || months <= 0) {
+      throw new BadRequestException('Elige la duración de la renovación.');
+    }
+
+    const sub = await this.prisma.subscription.findFirst({
+      where: { id, companyId: company.id },
+    });
+    if (!sub) throw new NotFoundException('Suscripción no encontrada.');
+    if (sub.status !== 'active') {
+      throw new BadRequestException('Esta suscripción todavía no se puede renovar.');
+    }
+
+    const proofCheck = await analyzePaymentProof(file.buffer);
+    if (!proofCheck.looksLikePaymentProof) {
+      throw new BadRequestException(
+        'La imagen no parece ser un comprobante de Yape o Plin. Sube la captura de pantalla del pago.',
+      );
+    }
+    if (proofCheck.operationNumber && process.env.NODE_ENV === 'production') {
+      const isDuplicate = await findDuplicateOperation(this.prisma, company.id, proofCheck.operationNumber, {
+        subscriptionId: sub.id,
+      });
+      if (isDuplicate) {
+        throw new BadRequestException(
+          'Este comprobante ya fue usado en otro pedido. Si crees que es un error, contáctanos.',
+        );
+      }
+    }
+
+    const uploaded = await this.media.uploadImage(
+      file,
+      company.id,
+      'subscription-renewal-proofs',
+    );
+
+    const updated = await this.prisma.subscription.update({
+      where: { id: sub.id },
+      data: {
+        renewalMonths: months,
+        renewalProofUrl: uploaded.url,
+        renewalSubmittedAt: new Date(),
+        renewalOperationNumber: proofCheck.operationNumber,
+        renewalDetectedMethod: proofCheck.detectedMethod,
+      },
+    });
+
+    if (sub.renewalProofUrl && sub.renewalProofUrl !== uploaded.url) {
+      void this.media.deleteByUrl(sub.renewalProofUrl);
+    }
+
+    return this.format(updated);
+  }
+
+  /** Aprueba la renovación pedida por el cliente: extiende el vencimiento y limpia el pedido. */
+  async approveRenewal(companyId: string, id: string) {
+    const sub = await this.prisma.subscription.findFirst({
+      where: { id, companyId },
+    });
+    if (!sub) throw new NotFoundException('Suscripción no encontrada.');
+    if (!sub.renewalProofUrl || !sub.renewalMonths) {
+      throw new BadRequestException('No hay una renovación pendiente para aprobar.');
+    }
+
+    const base = sub.endsAt && sub.endsAt.getTime() > Date.now() ? sub.endsAt : new Date();
+    const updated = await this.prisma.subscription.update({
+      where: { id },
+      data: {
+        status: 'active',
+        endsAt: addMonths(base, sub.renewalMonths),
+        renewalMonths: null,
+        renewalProofUrl: null,
+        renewalSubmittedAt: null,
+        renewalOperationNumber: null,
+        renewalDetectedMethod: null,
+      },
+    });
+    void this.media.deleteByUrl(sub.renewalProofUrl);
+    return this.format(updated);
+  }
+
+  /** Rechaza el comprobante de renovación: el cliente puede volver a intentarlo. */
+  async rejectRenewal(companyId: string, id: string) {
+    const sub = await this.prisma.subscription.findFirst({
+      where: { id, companyId },
+    });
+    if (!sub) throw new NotFoundException('Suscripción no encontrada.');
+    if (!sub.renewalProofUrl) {
+      throw new BadRequestException('No hay una renovación pendiente para rechazar.');
+    }
+
+    const updated = await this.prisma.subscription.update({
+      where: { id },
+      data: {
+        renewalMonths: null,
+        renewalProofUrl: null,
+        renewalSubmittedAt: null,
+        renewalOperationNumber: null,
+        renewalDetectedMethod: null,
+      },
+    });
+    void this.media.deleteByUrl(sub.renewalProofUrl);
+    return this.format(updated);
+  }
+
   /** Lista para el panel, con estado calculado. filter: all|active|expiring|expired|pending|cancelled */
   async listForCompany(companyId: string, filter = 'all') {
     const rows = await this.prisma.subscription.findMany({
       where: { companyId },
-      orderBy: [{ status: 'asc' }, { endsAt: 'asc' }],
+      orderBy: [{ createdAt: 'desc' }],
       take: 300,
     });
     const mapped = rows.map((s) => this.format(s));
@@ -212,7 +389,7 @@ export class SubscriptionsService {
     companyId: string,
     id: string,
     action: 'activate' | 'renew' | 'cancel' | 'edit',
-    opts: { months?: number; startsAt?: string; endsAt?: string } = {},
+    opts: { months?: number; startsAt?: string; endsAt?: string; price?: number } = {},
   ) {
     const months = opts.months ?? 1;
     const sub = await this.prisma.subscription.findFirst({
@@ -241,6 +418,10 @@ export class SubscriptionsService {
         startsAt: now,
         endsAt: addMonths(now, months),
       };
+      // Si no venía precio de un producto vinculado, el dueño lo puede ingresar acá.
+      if (sub.price == null && opts.price != null) {
+        data.price = opts.price;
+      }
     } else {
       // renew: extiende desde la fecha de vencimiento actual (o desde hoy si ya venció).
       if (sub.status === 'cancelled') {
@@ -256,6 +437,15 @@ export class SubscriptionsService {
 
     const updated = await this.prisma.subscription.update({ where: { id }, data });
     return this.format(updated);
+  }
+
+  /** Detalle público de una suscripción, para la página de recibo (sin login). */
+  async getPublic(subdomain: string, id: string) {
+    const sub = await this.prisma.subscription.findFirst({
+      where: { id, company: { subdomain, deletedAt: null } },
+    });
+    if (!sub) throw new NotFoundException('Suscripción no encontrada.');
+    return this.format(sub);
   }
 
   private format(s: SubRow) {
@@ -274,6 +464,14 @@ export class SubscriptionsService {
       note: s.note,
       proofUrl: s.proofUrl,
       proofSubmittedAt: s.proofSubmittedAt,
+      operationNumber: s.operationNumber,
+      detectedMethod: s.detectedMethod,
+      price: s.price?.toString() ?? null,
+      renewalMonths: s.renewalMonths,
+      renewalProofUrl: s.renewalProofUrl,
+      renewalSubmittedAt: s.renewalSubmittedAt,
+      renewalOperationNumber: s.renewalOperationNumber,
+      renewalDetectedMethod: s.renewalDetectedMethod,
       createdAt: s.createdAt,
     };
   }

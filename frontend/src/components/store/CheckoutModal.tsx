@@ -410,25 +410,30 @@ function genIdempotencyKey(): string {
 
 function buildWaMessage(order: OrderView, storeName: string): string {
   const lines = [
-    `*Pedido ${order.code}* — ${storeName}`,
-    `Cliente: ${order.customerName} (${order.customerPhone})`,
-    `Entrega: ${order.deliveryMethod === "delivery" ? "Entrega a domicilio" : "Recojo en tienda"}`,
+    `🧾 *Pedido ${order.code}* — ${storeName}`,
+    "",
+    `👤 ${order.customerName} · ${order.customerPhone}`,
+    `${order.deliveryMethod === "delivery" ? "🚚 Entrega a domicilio" : "🏪 Recojo en tienda"}`,
   ];
   if (order.deliveryMethod === "delivery" && order.address) {
-    lines.push(`Dirección: ${order.address}${order.reference ? ` (${order.reference})` : ""}`);
+    lines.push(`📍 ${order.address}${order.reference ? ` (${order.reference})` : ""}`);
   }
-  lines.push("--------------------");
-  for (const it of order.items) lines.push(`• ${it.quantity}x ${it.name}${it.variant ? ` (${it.variant})` : ""} — ${order.currency} ${it.lineTotal}`);
-  lines.push("--------------------");
-  lines.push(`Subtotal: ${order.currency} ${order.subtotal}`);
-  lines.push(`Costo de entrega: ${order.currency} ${order.deliveryFee}`);
-  lines.push(`*Total: ${order.currency} ${order.total}*`);
-  if (order.customerNote) lines.push(`Nota: ${order.customerNote}`);
+  lines.push("");
+  lines.push("*Detalle:*");
+  for (const it of order.items) {
+    lines.push(`• ${it.name}${it.variant ? ` (${it.variant})` : ""} ×${it.quantity} — ${formatPrice(it.lineTotal, order.currency)}`);
+  }
+  lines.push("");
+  lines.push(`Subtotal: ${formatPrice(order.subtotal, order.currency)}`);
+  if (order.deliveryMethod === "delivery") {
+    lines.push(`Delivery: ${formatPrice(order.deliveryFee, order.currency)}`);
+  }
+  lines.push(`*Total: ${formatPrice(order.total, order.currency)}*`);
+  if (order.customerNote) lines.push(`📝 ${order.customerNote}`);
   if (order.proofUrl) {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    lines.push("--------------------");
-    lines.push("✅ *Ya pagué.* Comprobante:");
-    lines.push(`${origin}/c/${order.code}`);
+    lines.push("");
+    lines.push(`✅ *Ya pagué.* Comprobante: ${origin}/c/${order.code}`);
   }
   return lines.join("\n");
 }

@@ -7,12 +7,17 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
 import { normalizePhone } from '../common/utils/phone.util';
+import { toTitleCase } from '../common/utils/text.util';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { MediaService } from '../media/media.service';
 import { AppointmentStatus, PaymentStatus } from '../../generated/prisma/enums';
+import { generateAppointmentCode } from '../common/utils/order-code.util';
+import { analyzePaymentProof } from '../common/utils/yape-ocr.util';
+import { findDuplicateOperation } from '../common/utils/duplicate-proof.util';
 
 type AppointmentRow = {
   id: string;
+  publicCode: string | null;
   serviceName: string;
   customerName: string;
   customerPhone: string;
@@ -24,15 +29,10 @@ type AppointmentRow = {
   paymentStatus: PaymentStatus;
   proofUrl: string | null;
   proofSubmittedAt: Date | null;
+  rejectionComment: string | null;
+  operationNumber: string | null;
+  detectedMethod: string | null;
   createdAt: Date;
-};
-
-const STATUS_WEIGHT: Record<AppointmentStatus, number> = {
-  pending: 1,
-  confirmed: 2,
-  in_progress: 3,
-  completed: 4,
-  cancelled: 5,
 };
 
 const APPOINTMENT_TRANSITIONS: Record<
@@ -85,14 +85,56 @@ export class AppointmentsService {
       throw new BadRequestException('El adelanto debe ser mayor a cero.');
     }
 
+    const customerName = toTitleCase(dto.customerName);
+    const customerPhone = normalizePhone(dto.customerPhone);
+    // Registrar/actualizar el cliente en la libreta de contactos del negocio (igual que Pedidos).
+    const now = new Date();
+    await this.prisma.customer.upsert({
+      where: { companyId_phone: { companyId: company.id, phone: customerPhone } },
+      update: { name: customerName, lastPurchaseAt: now },
+      create: {
+        companyId: company.id,
+        name: customerName,
+        phone: customerPhone,
+        firstPurchaseAt: now,
+        lastPurchaseAt: now,
+      },
+    });
+
+    const preferredAt = new Date(dto.preferredAt);
+    const conflict = await this.prisma.appointment.findFirst({
+      where: {
+        companyId: company.id,
+        preferredAt,
+        status: { not: AppointmentStatus.cancelled },
+      },
+      select: { id: true },
+    });
+    if (conflict) {
+      throw new BadRequestException(
+        'Ese horario ya fue reservado. Elige otro horario disponible.',
+      );
+    }
+
+    let publicCode = generateAppointmentCode();
+    for (let i = 0; i < 5; i++) {
+      const exists = await this.prisma.appointment.findUnique({
+        where: { publicCode },
+        select: { id: true },
+      });
+      if (!exists) break;
+      publicCode = generateAppointmentCode();
+    }
+
     const appointment = await this.prisma.appointment.create({
       data: {
         companyId: company.id,
         productId: dto.productId ?? null,
+        publicCode,
         serviceName: dto.serviceName,
-        customerName: dto.customerName,
-        customerPhone: normalizePhone(dto.customerPhone),
-        preferredAt: new Date(dto.preferredAt),
+        customerName,
+        customerPhone,
+        preferredAt,
         note: dto.note ?? null,
         paymentMode,
         advanceAmount,
@@ -138,6 +180,23 @@ export class AppointmentsService {
       throw new BadRequestException('Esta cita no requiere adelanto.');
     }
 
+    const proofCheck = await analyzePaymentProof(file.buffer);
+    if (!proofCheck.looksLikePaymentProof) {
+      throw new BadRequestException(
+        'La imagen no parece ser un comprobante de Yape o Plin. Sube la captura de pantalla del pago.',
+      );
+    }
+    if (proofCheck.operationNumber && process.env.NODE_ENV === 'production') {
+      const isDuplicate = await findDuplicateOperation(this.prisma, company.id, proofCheck.operationNumber, {
+        appointmentId: appointment.id,
+      });
+      if (isDuplicate) {
+        throw new BadRequestException(
+          'Este comprobante ya fue usado en otro pedido. Si crees que es un error, contáctanos.',
+        );
+      }
+    }
+
     const uploaded = await this.media.uploadImage(
       file,
       company.id,
@@ -149,6 +208,8 @@ export class AppointmentsService {
       data: {
         proofUrl: uploaded.url,
         proofSubmittedAt: new Date(),
+        operationNumber: proofCheck.operationNumber,
+        detectedMethod: proofCheck.detectedMethod,
         paymentStatus: PaymentStatus.proof_submitted,
       },
     });
@@ -169,16 +230,12 @@ export class AppointmentsService {
           ? { status: status as AppointmentStatus }
           : {}),
       },
-      orderBy: [{ preferredAt: 'asc' }],
+      orderBy: [{ createdAt: 'desc' }],
       take: 200,
     });
 
-    return items
-      .sort(
-        (a, b) =>
-          (STATUS_WEIGHT[a.status] ?? 99) - (STATUS_WEIGHT[b.status] ?? 99),
-      )
-      .map((a) => this.format(a));
+    // Orden fijo por cuándo se envió la solicitud (más nuevo primero): cambiar de estado no corre la fila de lugar.
+    return items.map((a) => this.format(a));
   }
 
   /** Cambia el estado de una cita respetando el flujo de atención. */
@@ -206,9 +263,114 @@ export class AppointmentsService {
     return this.format(updated);
   }
 
+  /** Aprueba el adelanto de una cita (panel del dueño). */
+  async approvePayment(companyId: string, id: string, userId: string) {
+    const appointment = await this.prisma.appointment.findFirst({
+      where: { id, companyId },
+    });
+    if (!appointment) throw new NotFoundException('Cita no encontrada.');
+    if (appointment.paymentMode !== 'advance') {
+      throw new BadRequestException('Esta cita no tiene adelanto para aprobar.');
+    }
+
+    const updated = await this.prisma.appointment.update({
+      where: { id },
+      data: {
+        paymentStatus: PaymentStatus.approved,
+        validatedAt: new Date(),
+        validatedByUserId: userId,
+        rejectionComment: null,
+        // Aprobar el adelanto ya implica aceptar la reserva: no hace falta un segundo clic en "Confirmar".
+        status: appointment.status === AppointmentStatus.pending ? AppointmentStatus.confirmed : appointment.status,
+      },
+    });
+    return this.format(updated);
+  }
+
+  /** Rechaza el adelanto de una cita. El cliente puede resubir el comprobante. */
+  async rejectPayment(
+    companyId: string,
+    id: string,
+    userId: string,
+    comment?: string,
+  ) {
+    const appointment = await this.prisma.appointment.findFirst({
+      where: { id, companyId },
+    });
+    if (!appointment) throw new NotFoundException('Cita no encontrada.');
+    if (appointment.paymentMode !== 'advance') {
+      throw new BadRequestException('Esta cita no tiene adelanto para rechazar.');
+    }
+
+    const updated = await this.prisma.appointment.update({
+      where: { id },
+      data: {
+        paymentStatus: PaymentStatus.rejected,
+        rejectionComment: comment ?? null,
+        validatedAt: new Date(),
+        validatedByUserId: userId,
+      },
+    });
+    return this.format(updated);
+  }
+
+  /** Horarios ya reservados (no cancelados) de una fecha, para no ofrecerlos de nuevo. */
+  async getAvailability(subdomain: string, date: string) {
+    const company = await this.prisma.company.findFirst({
+      where: { subdomain, deletedAt: null },
+      select: { id: true },
+    });
+    if (!company) throw new NotFoundException('Tienda no encontrada.');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      throw new BadRequestException('Fecha inválida.');
+    }
+
+    const items = await this.prisma.appointment.findMany({
+      where: {
+        companyId: company.id,
+        preferredAt: {
+          gte: new Date(`${date}T00:00:00`),
+          lte: new Date(`${date}T23:59:59.999`),
+        },
+        status: { not: AppointmentStatus.cancelled },
+      },
+      select: { preferredAt: true },
+    });
+    return { bookedTimes: items.map((a) => a.preferredAt.toISOString()) };
+  }
+
+  /** Detalle público de una cita, para la página de recibo (sin login). */
+  async getPublic(subdomain: string, id: string) {
+    const appointment = await this.prisma.appointment.findFirst({
+      where: { id, company: { subdomain, deletedAt: null } },
+    });
+    if (!appointment) throw new NotFoundException('Cita no encontrada.');
+    return this.format(appointment);
+  }
+
+  /** Resuelve id + subdominio a partir del código corto (para el link corto del recibo). */
+  async resolveByCode(code: string) {
+    const appointment = await this.prisma.appointment.findFirst({
+      where: { publicCode: code },
+      select: { id: true, company: { select: { subdomain: true } } },
+    });
+    if (!appointment) return null;
+    return { id: appointment.id, subdomain: appointment.company.subdomain };
+  }
+
+  /** Devuelve la URL de la foto del adelanto por su código (para el link corto). */
+  async getProofUrlByCode(code: string): Promise<string | null> {
+    const appointment = await this.prisma.appointment.findFirst({
+      where: { OR: [{ publicCode: code }, { id: code }] },
+      select: { proofUrl: true },
+    });
+    return appointment?.proofUrl ?? null;
+  }
+
   private format(a: AppointmentRow) {
     return {
       id: a.id,
+      publicCode: a.publicCode,
       serviceName: a.serviceName,
       customerName: a.customerName,
       customerPhone: a.customerPhone,
@@ -220,6 +382,9 @@ export class AppointmentsService {
       paymentStatus: a.paymentStatus,
       proofUrl: a.proofUrl,
       proofSubmittedAt: a.proofSubmittedAt,
+      rejectionComment: a.rejectionComment,
+      operationNumber: a.operationNumber,
+      detectedMethod: a.detectedMethod,
       createdAt: a.createdAt,
     };
   }

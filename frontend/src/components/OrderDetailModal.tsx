@@ -6,6 +6,7 @@ import { adminApi, type AdminOrderDetail } from "@/lib/admin-api";
 import { formatPrice } from "@/lib/format";
 import { StatusBadge, orderStatusMeta, type OrderStatusContext } from "@/components/StatusBadge";
 import { archetypeOf, resolveCategory } from "@/lib/business-categories";
+import { OrderReceiptModal } from "@/components/receipt/OrderReceiptModal";
 
 /** Flujo físico corto: recojo = confirmar→recogido; domicilio = confirmar→en camino→entregado. */
 function nextPhysical(status: string, isPickup: boolean): { value: string; label: string }[] {
@@ -81,15 +82,18 @@ export function OrderDetailModal({
   onChanged?: () => void;
 }) {
   const [order, setOrder] = useState<AdminOrderDetail | null>(null);
+  const [subdomain, setSubdomain] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [proofPreview, setProofPreview] = useState<string | null>(null);
+  const [receiptOpen, setReceiptOpen] = useState(false);
 
   useEffect(() => {
     adminApi
       .order(orderId)
       .then(setOrder)
       .catch((e) => setError(e instanceof Error ? e.message : "Error"));
+    adminApi.settings().then((s) => setSubdomain(s.subdomain ?? null)).catch(() => {});
   }, [orderId]);
 
   async function run(fn: () => Promise<AdminOrderDetail>) {
@@ -107,11 +111,12 @@ export function OrderDetailModal({
 
   const canValidatePayment =
     order?.payment &&
-    ["proof_submitted", "pending", "rejected"].includes(order.payment.status);
+    ["proof_submitted", "pending"].includes(order.payment.status);
   const context = order ? orderContext(order) : null;
   const nextTransitions = order ? nextForOrder(order) : [];
 
   return (
+    <>
     <Overlay onClose={onClose} size="medium">
       {!order || !context ? (
         <p className="p-8 text-center text-slate-500">{error || "Cargando..."}</p>
@@ -123,6 +128,25 @@ export function OrderDetailModal({
               <p className="text-sm text-slate-500">
                 {new Date(order.createdAt).toLocaleString("es-PE")}
               </p>
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                <button
+                  type="button"
+                  onClick={() => setReceiptOpen(true)}
+                  className="text-xs font-bold text-violet-600 hover:text-violet-700"
+                >
+                  Ver recibo →
+                </button>
+                {subdomain && (
+                  <a
+                    href={receiptWhatsappLink(order)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-bold text-green-600 hover:text-green-700"
+                  >
+                    📲 Enviar por WhatsApp
+                  </a>
+                )}
+              </div>
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1">
               <OrderStatusBadge order={order} />
@@ -177,7 +201,7 @@ export function OrderDetailModal({
             </div>
 
             <div className="space-y-4">
-              <Card title="Pago (Yape)">
+              <Card title="Pago">
                 {order.payment?.proofUrl ? (
                   <button
                     type="button"
@@ -198,6 +222,18 @@ export function OrderDetailModal({
                 ) : (
                   <p className="text-sm text-slate-400">El cliente aún no subió comprobante.</p>
                 )}
+                {(order.payment?.detectedMethod || order.payment?.operationNumber) && (
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                    {order.payment?.detectedMethod && (
+                      <span className="rounded-full bg-violet-100 px-2 py-0.5 font-bold capitalize text-violet-700">
+                        {order.payment.detectedMethod}
+                      </span>
+                    )}
+                    {order.payment?.operationNumber && (
+                      <span className="font-mono text-slate-500">N° op. {order.payment.operationNumber}</span>
+                    )}
+                  </div>
+                )}
                 {order.payment?.rejectionComment && (
                   <p className="mt-2 text-sm text-red-600">Rechazo: {order.payment.rejectionComment}</p>
                 )}
@@ -212,10 +248,7 @@ export function OrderDetailModal({
                     </button>
                     <button
                       disabled={busy}
-                      onClick={() => {
-                        const comment = prompt("Motivo del rechazo (opcional):") ?? "";
-                        run(() => adminApi.rejectPayment(order.id, comment));
-                      }}
+                      onClick={() => run(() => adminApi.rejectPayment(order.id, ""))}
                       className="flex-1 rounded-lg bg-red-100 py-2 font-semibold text-red-700 hover:bg-red-200 disabled:opacity-60"
                     >
                       Rechazar
@@ -313,6 +346,14 @@ export function OrderDetailModal({
         </div>
       )}
     </Overlay>
+    {receiptOpen && subdomain && order && (
+      <OrderReceiptModal
+        subdomain={subdomain}
+        code={order.publicCode}
+        onClose={() => setReceiptOpen(false)}
+      />
+    )}
+    </>
   );
 }
 
@@ -378,4 +419,12 @@ function Row({ label, value }: { label: string; value: string }) {
       <span>{value}</span>
     </div>
   );
+}
+
+/** Link wa.me con el recibo público del pedido (link corto), listo para mandarle al cliente. */
+function receiptWhatsappLink(order: AdminOrderDetail): string {
+  const url = `${window.location.origin}/r/pedido/${order.publicCode}`;
+  const phone = order.customerPhone.replace(/\D/g, "");
+  const text = `Hola ${order.customerName}, aquí tienes tu recibo de compra: ${url}`;
+  return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
 }

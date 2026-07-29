@@ -103,9 +103,12 @@ export interface AdminOrderRow {
   paymentStatus: string;
   deliveryMethod?: string;
   customerName: string;
+  customerPhone: string;
   total: string;
   currency: string;
   createdAt: string;
+  detectedMethod: string | null;
+  operationNumber: string | null;
 }
 export interface AdminOrderDetail extends AdminOrderRow {
   businessType: string | null;
@@ -116,7 +119,14 @@ export interface AdminOrderDetail extends AdminOrderRow {
   subtotal: string;
   deliveryFee: string;
   items: { name: string; variant?: string | null; sku: string | null; unitPrice: string; quantity: number; lineTotal: string }[];
-  payment: { status: string; expectedAmount: string; proofUrl: string | null; rejectionComment: string | null } | null;
+  payment: {
+    status: string;
+    expectedAmount: string;
+    proofUrl: string | null;
+    rejectionComment: string | null;
+    operationNumber: string | null;
+    detectedMethod: string | null;
+  } | null;
   history: { fromStatus: string | null; toStatus: string; comment: string | null; createdAt: string }[];
 }
 
@@ -183,9 +193,10 @@ export const adminApi = {
       jsonOrThrow<DashboardData>(r, "Error al cargar el dashboard."),
     ),
 
-  orders: (params: { status?: string; search?: string; page?: number } = {}) => {
+  orders: (params: { status?: string; paymentStatus?: string; search?: string; page?: number } = {}) => {
     const q = new URLSearchParams();
     if (params.status) q.set("status", params.status);
+    if (params.paymentStatus) q.set("paymentStatus", params.paymentStatus);
     if (params.search) q.set("search", params.search);
     if (params.page) q.set("page", String(params.page));
     const qs = q.toString();
@@ -338,6 +349,16 @@ export const adminApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     }).then((r) => jsonOrThrow<AdminAppointment>(r, "No se pudo actualizar la cita.")),
+  approveAppointmentPayment: (id: string) =>
+    authFetch(`/admin/appointments/${id}/payment/approve`, { method: "POST" }).then((r) =>
+      jsonOrThrow<AdminAppointment>(r, "No se pudo aprobar el adelanto."),
+    ),
+  rejectAppointmentPayment: (id: string, comment: string) =>
+    authFetch(`/admin/appointments/${id}/payment/reject`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ comment }),
+    }).then((r) => jsonOrThrow<AdminAppointment>(r, "No se pudo rechazar el adelanto.")),
 
   // ── Suscripciones (planes digitales) ──
   subscriptions: (filter?: string) => {
@@ -350,11 +371,11 @@ export const adminApi = {
     authFetch(`/admin/subscriptions/summary`).then((r) =>
       jsonOrThrow<{ active: number; expiring: number; expired: number }>(r, "Error."),
     ),
-  updateSubscription: (id: string, action: "activate" | "renew" | "cancel", months?: number) =>
+  updateSubscription: (id: string, action: "activate" | "renew" | "cancel", months?: number, price?: number) =>
     authFetch(`/admin/subscriptions/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, ...(months ? { months } : {}) }),
+      body: JSON.stringify({ action, ...(months ? { months } : {}), ...(price != null ? { price } : {}) }),
     }).then((r) => jsonOrThrow<AdminSubscription>(r, "No se pudo actualizar la suscripción.")),
   editSubscription: (id: string, startsAt: string, endsAt: string) =>
     authFetch(`/admin/subscriptions/${id}`, {
@@ -362,6 +383,14 @@ export const adminApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "edit", startsAt, endsAt }),
     }).then((r) => jsonOrThrow<AdminSubscription>(r, "No se pudo editar la suscripción.")),
+  approveSubscriptionRenewal: (id: string) =>
+    authFetch(`/admin/subscriptions/${id}/renewal/approve`, { method: "POST" }).then((r) =>
+      jsonOrThrow<AdminSubscription>(r, "No se pudo aprobar la renovación."),
+    ),
+  rejectSubscriptionRenewal: (id: string) =>
+    authFetch(`/admin/subscriptions/${id}/renewal/reject`, { method: "POST" }).then((r) =>
+      jsonOrThrow<AdminSubscription>(r, "No se pudo rechazar la renovación."),
+    ),
 
   // ── Reportes ──
   reports: (from?: string, to?: string) => {
@@ -377,6 +406,7 @@ export const adminApi = {
 
 export interface AdminAppointment {
   id: string;
+  publicCode: string | null;
   serviceName: string;
   customerName: string;
   customerPhone: string;
@@ -388,6 +418,9 @@ export interface AdminAppointment {
   paymentStatus: string;
   proofUrl: string | null;
   proofSubmittedAt: string | null;
+  rejectionComment: string | null;
+  operationNumber: string | null;
+  detectedMethod: string | null;
   createdAt: string;
 }
 
@@ -405,6 +438,14 @@ export interface AdminSubscription {
   note: string | null;
   proofUrl: string | null;
   proofSubmittedAt: string | null;
+  operationNumber: string | null;
+  detectedMethod: string | null;
+  price: string | null;
+  renewalMonths: number | null;
+  renewalProofUrl: string | null;
+  renewalSubmittedAt: string | null;
+  renewalOperationNumber: string | null;
+  renewalDetectedMethod: string | null;
   createdAt: string;
 }
 

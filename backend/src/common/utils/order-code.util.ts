@@ -18,3 +18,12 @@ export function generateSubscriptionCode(): string {
   }
   return `MS-${code}`;
 }
+
+/** Genera un código público de cita tipo "MC-7K3P9Q". */
+export function generateAppointmentCode(): string {
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += ALPHABET[randomInt(ALPHABET.length)];
+  }
+  return `MC-${code}`;
+}

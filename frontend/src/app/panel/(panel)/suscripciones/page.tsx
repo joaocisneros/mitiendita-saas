@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { adminApi, type AdminSubscription } from "@/lib/admin-api";
+import { formatPrice } from "@/lib/format";
+import { SubscriptionReceiptModal } from "@/components/receipt/SubscriptionReceiptModal";
 import { Skeleton } from "@/components/Skeleton";
 
 const FILTERS = [
@@ -17,16 +19,21 @@ const FILTERS = [
 type Filter = (typeof FILTERS)[number]["value"];
 
 const STATE_META: Record<string, { label: string; className: string }> = {
-  pending: { label: "Solicitud recibida", className: "bg-amber-100 text-amber-800" },
-  proof: { label: "Pago en revisión", className: "bg-violet-100 text-violet-800" },
-  active: { label: "Activa", className: "bg-emerald-100 text-emerald-800" },
-  expiring: { label: "Por vencer", className: "bg-orange-100 text-orange-800" },
+  pending: { label: "Solicitud recibida", className: "bg-gray-100 text-gray-700" },
+  proof: { label: "Pago en revisión", className: "bg-amber-100 text-amber-700" },
+  active: { label: "Activa", className: "bg-green-100 text-green-700" },
+  expiring: { label: "Por vencer", className: "bg-orange-100 text-orange-700" },
   expired: { label: "Vencida", className: "bg-red-100 text-red-700" },
   cancelled: { label: "Cancelada", className: "bg-slate-200 text-slate-600" },
 };
 
 function displayState(sub: AdminSubscription) {
+  if (sub.renewalProofUrl) return "proof";
   return sub.state === "pending" && sub.proofUrl ? "proof" : sub.state;
+}
+
+function fmtDateTime(iso: string) {
+  return new Date(iso).toLocaleString("es-PE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 function fmtDate(iso: string | null) {
@@ -51,6 +58,9 @@ export default function SubscriptionsPage() {
   } | null>(null);
   const [monthsById, setMonthsById] = useState<Record<string, number>>({});
   const monthsFor = (id: string) => monthsById[id] ?? 1;
+  const [priceById, setPriceById] = useState<Record<string, string>>({});
+  const [subdomain, setSubdomain] = useState<string | null>(null);
+  const [receiptId, setReceiptId] = useState<string | null>(null);
 
   const load = useCallback(() => {
     adminApi
@@ -74,6 +84,10 @@ export default function SubscriptionsPage() {
     };
   }, [load]);
 
+  useEffect(() => {
+    adminApi.settings().then((s) => setSubdomain(s.subdomain ?? null)).catch(() => {});
+  }, []);
+
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: all.length };
     for (const sub of all) {
@@ -83,15 +97,38 @@ export default function SubscriptionsPage() {
     return c;
   }, [all]);
 
+  // Orden fijo (el que ya trae el backend): aprobar/renovar/cancelar nunca mueve la fila de lugar.
   const rows = filter === "all" ? all : all.filter((sub) => displayState(sub) === filter);
 
-  async function act(id: string, action: "activate" | "renew" | "cancel") {
+  async function act(id: string, action: "activate" | "renew" | "cancel", sub?: AdminSubscription) {
+    if (action === "activate" && sub?.price == null) {
+      const raw = priceById[id];
+      const price = raw ? Number(raw) : NaN;
+      if (!raw || Number.isNaN(price) || price <= 0) {
+        setError("Ingresa el monto cobrado antes de activar.");
+        return;
+      }
+    }
     setBusyId(id);
     try {
-      await adminApi.updateSubscription(id, action, action === "cancel" ? undefined : monthsFor(id));
+      const price = action === "activate" && sub?.price == null ? Number(priceById[id]) : undefined;
+      await adminApi.updateSubscription(id, action, action === "cancel" ? undefined : monthsFor(id), price);
       load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo actualizar.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function actRenewal(id: string, decision: "approve" | "reject") {
+    setBusyId(id);
+    try {
+      if (decision === "approve") await adminApi.approveSubscriptionRenewal(id);
+      else await adminApi.rejectSubscriptionRenewal(id);
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo actualizar la renovación.");
     } finally {
       setBusyId(null);
     }
@@ -159,127 +196,232 @@ export default function SubscriptionsPage() {
             No hay solicitudes de planes aquí.
           </p>
         ) : (
-          <ul className="divide-y divide-black/5">
-            {rows.map((sub) => {
-              const state = displayState(sub);
-              const meta = STATE_META[state] ?? { label: sub.state, className: "bg-slate-100 text-slate-700" };
-              const phone = sub.customerPhone.replace(/\D/g, "");
-              const waLink = `https://wa.me/${phone}?text=${encodeURIComponent(`Hola ${sub.customerName}, sobre tu solicitud del plan ${sub.planName}:`)}`;
-              return (
-                <li key={sub.id} className="flex flex-col gap-3 px-4 py-3.5 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${meta.className}`}>
-                        {meta.label}
-                      </span>
-                      <p className="font-bold text-slate-900">{sub.planName}</p>
-                      {sub.publicCode && (
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-500">
-                          {sub.publicCode}
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[980px] text-sm">
+              <thead className="bg-slate-50 text-left text-xs font-bold uppercase tracking-wide text-slate-700">
+                <tr>
+                  <th className="p-4">Cliente</th>
+                  <th className="p-4">Plan</th>
+                  <th className="p-4">Fecha</th>
+                  <th className="p-4">Pago</th>
+                  <th className="p-4">Vigencia</th>
+                  <th className="p-4">Estado</th>
+                  <th className="p-4">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {rows.map((sub) => {
+                  const state = displayState(sub);
+                  const isRenewal = Boolean(sub.renewalProofUrl);
+                  const meta = isRenewal
+                    ? { label: "Renovación en revisión", className: "bg-amber-100 text-amber-700" }
+                    : STATE_META[state] ?? { label: sub.state, className: "bg-slate-100 text-slate-700" };
+                  const phone = sub.customerPhone.replace(/\D/g, "");
+                  const waLink = `https://wa.me/${phone}?text=${encodeURIComponent(`Hola ${sub.customerName}, sobre tu solicitud del plan ${sub.planName}:`)}`;
+                  return (
+                    <tr key={sub.id} className="hover:bg-slate-50">
+                      <td className="p-4">
+                        <p className="font-bold text-slate-950">{sub.customerName}</p>
+                        <a href={waLink} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-green-600 hover:underline">
+                          {sub.customerPhone}
+                        </a>
+                      </td>
+                      <td className="p-4">
+                        <p className="font-medium text-slate-800">{sub.planName}</p>
+                        {sub.publicCode && <p className="font-mono text-xs text-slate-400">{sub.publicCode}</p>}
+                        {sub.note && <p className="text-xs italic text-slate-500">“{sub.note}”</p>}
+                      </td>
+                      <td className="p-4 text-slate-600">{fmtDateTime(sub.createdAt)}</td>
+                      <td className="p-4">
+                        {isRenewal ? (
+                          <div className="flex flex-col items-start gap-1">
+                            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">
+                              Renovar {sub.renewalMonths} {sub.renewalMonths === 1 ? "mes" : "meses"}
+                            </span>
+                            {sub.renewalDetectedMethod && (
+                              <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-bold capitalize text-violet-700">
+                                {sub.renewalDetectedMethod}
+                              </span>
+                            )}
+                            {sub.renewalOperationNumber && (
+                              <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-500">
+                                N° op. {sub.renewalOperationNumber}
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setProofPreview({ url: sub.renewalProofUrl!, title: `Renovación · ${sub.planName} · ${sub.customerName}` })}
+                              className="text-[11px] font-bold text-violet-600 hover:underline"
+                            >
+                              Ver comprobante →
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-start gap-1">
+                            {sub.price != null && (
+                              <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-bold text-violet-700">
+                                {formatPrice(sub.price)}
+                              </span>
+                            )}
+                            {sub.detectedMethod && (
+                              <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-bold capitalize text-violet-700">
+                                {sub.detectedMethod}
+                              </span>
+                            )}
+                            {sub.operationNumber && (
+                              <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-500">
+                                N° op. {sub.operationNumber}
+                              </span>
+                            )}
+                            {sub.proofUrl ? (
+                              <button
+                                type="button"
+                                onClick={() => setProofPreview({ url: sub.proofUrl!, title: `${sub.planName} · ${sub.customerName}` })}
+                                className="text-[11px] font-bold text-violet-600 hover:underline"
+                              >
+                                Ver comprobante →
+                              </button>
+                            ) : (
+                              <span className="text-slate-300">—</span>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-4 text-xs text-slate-600">
+                        {sub.startsAt || sub.endsAt ? (
+                          <>
+                            <p>Inicio: {fmtDate(sub.startsAt)}</p>
+                            <p className={sub.state === "expired" ? "font-bold text-red-600" : ""}>Vence: {fmtDate(sub.endsAt)}</p>
+                            {sub.state === "expiring" && sub.daysLeft !== null && (
+                              <p className="font-bold text-orange-600">vence en {sub.daysLeft} día{sub.daysLeft === 1 ? "" : "s"}</p>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-slate-300">—</span>
+                        )}
+                      </td>
+                      <td className="p-4">
+                        <span className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold ${meta.className}`}>
+                          {meta.label}
                         </span>
-                      )}
-                      {sub.state === "expiring" && sub.daysLeft !== null && (
-                        <span className="text-xs font-bold text-orange-600">
-                          vence en {sub.daysLeft} día{sub.daysLeft === 1 ? "" : "s"}
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-1 text-sm text-slate-600">
-                      Cliente: <b>{sub.customerName}</b> ·{" "}
-                      <a href={waLink} target="_blank" rel="noopener noreferrer" className="font-semibold text-green-600 hover:underline">
-                        {sub.customerPhone}
-                      </a>
-                    </p>
-                    {(sub.startsAt || sub.endsAt) && (
-                      <p className="mt-0.5 text-xs font-medium text-slate-500">
-                        Inicio: <b>{fmtDate(sub.startsAt)}</b> · Vence:{" "}
-                        <b className={sub.state === "expired" ? "text-red-600" : ""}>{fmtDate(sub.endsAt)}</b>
-                      </p>
-                    )}
-                    {sub.note && <p className="mt-0.5 text-xs italic text-slate-500">“{sub.note}”</p>}
-                    {sub.proofUrl ? (
-                      <p className="mt-1 text-xs font-semibold text-emerald-700">
-                        Comprobante recibido{sub.proofSubmittedAt ? ` · ${fmtDate(sub.proofSubmittedAt)}` : ""} ·{" "}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setProofPreview({
-                              url: sub.proofUrl!,
-                              title: `${sub.planName} · ${sub.customerName}`,
-                            })
-                          }
-                          className="underline hover:text-emerald-900"
-                        >
-                          ver imagen
-                        </button>
-                      </p>
-                    ) : (
-                      sub.state === "pending" && (
-                        <p className="mt-1 text-xs font-semibold text-amber-700">
-                          El cliente aún no subió comprobante.
-                        </p>
-                      )
-                    )}
-                  </div>
-
-                  <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    {sub.state !== "cancelled" && (
-                      <select
-                        value={monthsFor(sub.id)}
-                        onChange={(e) => setMonthsById((current) => ({ ...current, [sub.id]: Number(e.target.value) }))}
-                        className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold text-slate-700 outline-none"
-                        aria-label="Duración"
-                      >
-                        {[1, 3, 6, 12].map((n) => (
-                          <option key={n} value={n}>
-                            {n} {n === 1 ? "mes" : "meses"}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                    {sub.state === "pending" && (
-                      <button
-                        disabled={busyId === sub.id}
-                        onClick={() => act(sub.id, "activate")}
-                        className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
-                      >
-                        {sub.proofUrl ? "Aprobar y activar" : "Activar manualmente"}
-                      </button>
-                    )}
-                    {(sub.state === "active" || sub.state === "expiring" || sub.state === "expired") && (
-                      <button
-                        disabled={busyId === sub.id}
-                        onClick={() => act(sub.id, "renew")}
-                        className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-violet-700 disabled:opacity-50"
-                      >
-                        Renovar +
-                      </button>
-                    )}
-                    {sub.state !== "cancelled" && (
-                      <button
-                        onClick={() => setEditing(sub)}
-                        className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
-                      >
-                        Editar fechas
-                      </button>
-                    )}
-                    {sub.state !== "cancelled" && (
-                      <button
-                        disabled={busyId === sub.id}
-                        onClick={() => act(sub.id, "cancel")}
-                        className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-red-600 ring-1 ring-red-200 hover:bg-red-50 disabled:opacity-50"
-                      >
-                        Cancelar
-                      </button>
-                    )}
-                    <a href={waLink} target="_blank" rel="noopener noreferrer" className="rounded-lg bg-green-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-green-600">
-                      WhatsApp
-                    </a>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {sub.proofUrl && subdomain && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => setReceiptId(sub.id)}
+                                className="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-bold text-violet-700 hover:bg-violet-100"
+                              >
+                                🧾
+                              </button>
+                              <a
+                                href={`https://wa.me/${phone}?text=${encodeURIComponent(
+                                  `Hola ${sub.customerName}, aquí tienes tu comprobante de suscripción: ${window.location.origin}${
+                                    sub.publicCode ? `/r/suscripcion/${sub.publicCode}` : `/tienda/${subdomain}/suscripcion/${sub.id}/recibo`
+                                  }`,
+                                )}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="rounded-full bg-green-50 px-2.5 py-1 text-xs font-bold text-green-700 hover:bg-green-100"
+                              >
+                                📲
+                              </a>
+                            </>
+                          )}
+                          {isRenewal ? (
+                            <>
+                              <button
+                                disabled={busyId === sub.id}
+                                onClick={() => actRenewal(sub.id, "approve")}
+                                className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                              >
+                                Aprobar renovación
+                              </button>
+                              <button
+                                disabled={busyId === sub.id}
+                                onClick={() => actRenewal(sub.id, "reject")}
+                                className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-red-600 ring-1 ring-red-200 hover:bg-red-50 disabled:opacity-50"
+                              >
+                                Rechazar
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              {sub.state !== "cancelled" && (
+                                <select
+                                  value={monthsFor(sub.id)}
+                                  onChange={(e) => setMonthsById((current) => ({ ...current, [sub.id]: Number(e.target.value) }))}
+                                  className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold text-slate-700 outline-none"
+                                  aria-label="Duración"
+                                >
+                                  {[1, 3, 6, 12].map((n) => (
+                                    <option key={n} value={n}>
+                                      {n} {n === 1 ? "mes" : "meses"}
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
+                              {sub.state === "pending" && sub.price == null && (
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.10"
+                                  placeholder="Monto S/"
+                                  value={priceById[sub.id] ?? ""}
+                                  onChange={(e) => setPriceById((current) => ({ ...current, [sub.id]: e.target.value }))}
+                                  className="w-24 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold text-slate-700 outline-none focus:border-violet-500"
+                                  aria-label="Monto cobrado"
+                                />
+                              )}
+                              {sub.state === "pending" && (
+                                <button
+                                  disabled={busyId === sub.id}
+                                  onClick={() => act(sub.id, "activate", sub)}
+                                  className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                                >
+                                  {sub.proofUrl ? "Aprobar y activar" : "Activar"}
+                                </button>
+                              )}
+                              {(sub.state === "active" || sub.state === "expiring" || sub.state === "expired") && (
+                                <button
+                                  disabled={busyId === sub.id}
+                                  onClick={() => act(sub.id, "renew")}
+                                  className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-violet-700 disabled:opacity-50"
+                                >
+                                  Renovar +
+                                </button>
+                              )}
+                              {sub.state !== "cancelled" && (
+                                <button
+                                  onClick={() => setEditing(sub)}
+                                  title="Editar fechas"
+                                  className="rounded-full bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
+                                >
+                                  📅
+                                </button>
+                              )}
+                              {sub.state !== "cancelled" && (
+                                <button
+                                  disabled={busyId === sub.id}
+                                  onClick={() => act(sub.id, "cancel")}
+                                  title="Cancelar"
+                                  className="rounded-full px-2 py-1.5 text-sm font-bold text-red-500 hover:bg-red-50 disabled:opacity-50"
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
@@ -335,6 +477,14 @@ export default function SubscriptionsPage() {
             </a>
           </div>
         </div>
+      )}
+
+      {receiptId && subdomain && (
+        <SubscriptionReceiptModal
+          subdomain={subdomain}
+          id={receiptId}
+          onClose={() => setReceiptId(null)}
+        />
       )}
     </div>
   );

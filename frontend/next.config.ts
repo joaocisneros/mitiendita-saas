@@ -14,6 +14,11 @@ const nextConfig: NextConfig = {
       // Link corto del comprobante: /c/MT-XXXX → backend redirige a la foto.
       { source: "/c/:code", destination: `${backend}/api/c/:code` },
       { source: "/s/:code", destination: `${backend}/api/s/:code` },
+      { source: "/ad/:code", destination: `${backend}/api/ad/:code` },
+      // Link corto de los recibos (pedido/cita/suscripción): /r/pedido/MT-XXXX, etc.
+      { source: "/r/pedido/:code", destination: `${backend}/api/r/pedido/:code` },
+      { source: "/r/cita/:code", destination: `${backend}/api/r/cita/:code` },
+      { source: "/r/suscripcion/:code", destination: `${backend}/api/r/suscripcion/:code` },
     ];
   },
   images: {

@@ -77,7 +77,29 @@ export default function OrderPage() {
 
         {/* Resumen del pedido */}
         <div className="rounded-2xl bg-white p-4 ring-1 ring-black/5">
-          <h2 className="mb-2 font-bold">Tu pedido</h2>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+            <h2 className="font-bold">Tu pedido</h2>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <Link
+                href={`/tienda/${subdomain}/pedido/${code}/recibo`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-bold text-violet-600 hover:text-violet-700"
+              >
+                Ver recibo →
+              </Link>
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(
+                  `Mi recibo de compra: ${window.location.origin}/r/pedido/${code}`,
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-bold text-green-600 hover:text-green-700"
+              >
+                📲 Enviar por WhatsApp
+              </a>
+            </div>
+          </div>
           <ul className="space-y-1 text-sm">
             {order.items.map((it, idx) => (
               <li key={idx} className="flex justify-between">
@@ -94,7 +116,7 @@ export default function OrderPage() {
               <span>{formatPrice(order.subtotal, currency)}</span>
             </div>
             <div className="flex justify-between">
-              <span>Entrega a domicilio</span>
+              <span>{order.deliveryMethod === "delivery" ? "Entrega a domicilio" : "Recojo en tienda"}</span>
               <span>{formatPrice(order.deliveryFee, currency)}</span>
             </div>
             <div className="flex justify-between text-base font-extrabold text-gray-900">
@@ -108,26 +130,28 @@ export default function OrderPage() {
         {order.paymentStatus !== "approved" && (
           <div className="rounded-2xl bg-white p-4 ring-1 ring-black/5">
             <h2 className="mb-2 font-bold text-violet-700">💳 Realiza tu pago</h2>
-            {store.yapeQrUrl || store.yapeNumber || store.plinQrUrl || store.plinNumber ? (
-              <>
-                <PayOptions
-                  yapeQrUrl={store.yapeQrUrl}
-                  yapeHolderName={store.yapeHolderName}
-                  yapeNumber={store.yapeNumber}
-                  plinQrUrl={store.plinQrUrl}
-                  plinHolderName={store.plinHolderName}
-                  plinNumber={store.plinNumber}
-                />
-                <p className="mt-3 text-center text-lg">
-                  Monto exacto:{" "}
-                  <b className="text-violet-700">{formatPrice(order.total, currency)}</b>
+            {!order.proofUrl || order.paymentStatus === "rejected" ? (
+              store.yapeQrUrl || store.yapeNumber || store.plinQrUrl || store.plinNumber ? (
+                <>
+                  <PayOptions
+                    yapeQrUrl={store.yapeQrUrl}
+                    yapeHolderName={store.yapeHolderName}
+                    yapeNumber={store.yapeNumber}
+                    plinQrUrl={store.plinQrUrl}
+                    plinHolderName={store.plinHolderName}
+                    plinNumber={store.plinNumber}
+                  />
+                  <p className="mt-3 text-center text-lg">
+                    Monto exacto:{" "}
+                    <b className="text-violet-700">{formatPrice(order.total, currency)}</b>
+                  </p>
+                </>
+              ) : (
+                <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-700">
+                  El negocio aún no cargó su QR de pago. Coordina el pago por WhatsApp.
                 </p>
-              </>
-            ) : (
-              <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-700">
-                El negocio aún no cargó su QR de pago. Coordina el pago por WhatsApp.
-              </p>
-            )}
+              )
+            ) : null}
 
             {/* Subir comprobante */}
             <div className="mt-4 border-t pt-4">
@@ -191,22 +215,31 @@ export default function OrderPage() {
 
 function buildWhatsappMessage(order: OrderView, storeName: string): string {
   const lines = [
-    `*Pedido ${order.code}* — ${storeName}`,
-    `Cliente: ${order.customerName} (${order.customerPhone})`,
-    `Entrega: ${order.deliveryMethod === "delivery" ? "Entrega a domicilio" : "Recojo en tienda"}`,
+    `🧾 *Pedido ${order.code}* — ${storeName}`,
+    "",
+    `👤 ${order.customerName} · ${order.customerPhone}`,
+    `${order.deliveryMethod === "delivery" ? "🚚 Entrega a domicilio" : "🏪 Recojo en tienda"}`,
   ];
   if (order.deliveryMethod === "delivery" && order.address) {
-    lines.push(`Dirección: ${order.address}${order.reference ? ` (${order.reference})` : ""}`);
+    lines.push(`📍 ${order.address}${order.reference ? ` (${order.reference})` : ""}`);
   }
-  lines.push("--------------------");
+  lines.push("");
+  lines.push("*Detalle:*");
   for (const it of order.items) {
-    lines.push(`• ${it.quantity}x ${it.name} — ${order.currency} ${it.lineTotal}`);
+    lines.push(`• ${it.name}${it.variant ? ` (${it.variant})` : ""} ×${it.quantity} — ${formatPrice(it.lineTotal, order.currency)}`);
   }
-  lines.push("--------------------");
-  lines.push(`Subtotal: ${order.currency} ${order.subtotal}`);
-  lines.push(`Costo de entrega: ${order.currency} ${order.deliveryFee}`);
-  lines.push(`*Total: ${order.currency} ${order.total}*`);
-  if (order.customerNote) lines.push(`Nota: ${order.customerNote}`);
+  lines.push("");
+  lines.push(`Subtotal: ${formatPrice(order.subtotal, order.currency)}`);
+  if (order.deliveryMethod === "delivery") {
+    lines.push(`Delivery: ${formatPrice(order.deliveryFee, order.currency)}`);
+  }
+  lines.push(`*Total: ${formatPrice(order.total, order.currency)}*`);
+  if (order.customerNote) lines.push(`📝 ${order.customerNote}`);
+  if (order.proofUrl) {
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    lines.push("");
+    lines.push(`✅ *Ya pagué.* Comprobante: ${origin}/c/${order.code}`);
+  }
   return lines.join("\n");
 }
 
