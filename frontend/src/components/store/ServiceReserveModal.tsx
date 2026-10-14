@@ -109,14 +109,16 @@ export function ServiceReserveModal({
   }, [onClose]);
 
   useEffect(() => {
-    setPaymentConfig({
-      yapeQrUrl: yapeQrUrl ?? null,
-      yapeHolderName: yapeHolderName ?? null,
-      yapeNumber: yapeNumber ?? null,
-      plinQrUrl: plinQrUrl ?? null,
-      plinHolderName: plinHolderName ?? null,
-      plinNumber: plinNumber ?? null,
-    });
+    queueMicrotask(() =>
+      setPaymentConfig({
+        yapeQrUrl: yapeQrUrl ?? null,
+        yapeHolderName: yapeHolderName ?? null,
+        yapeNumber: yapeNumber ?? null,
+        plinQrUrl: plinQrUrl ?? null,
+        plinHolderName: plinHolderName ?? null,
+        plinNumber: plinNumber ?? null,
+      }),
+    );
   }, [yapeHolderName, yapeNumber, yapeQrUrl, plinHolderName, plinNumber, plinQrUrl]);
 
   useEffect(() => {
@@ -143,11 +145,11 @@ export function ServiceReserveModal({
 
   useEffect(() => {
     if (!day) {
-      setBookedTimes(new Set());
+      queueMicrotask(() => setBookedTimes(new Set()));
       return;
     }
     let cancelled = false;
-    setLoadingAvailability(true);
+    queueMicrotask(() => setLoadingAvailability(true));
     storefrontApi
       .getAppointmentAvailability(subdomain, day)
       .then(({ bookedTimes: booked }) => {
@@ -239,8 +241,7 @@ export function ServiceReserveModal({
     },
     [
       advanceLabel,
-      appointment?.paymentMode,
-      appointment?.publicCode,
+      appointment,
       name,
       note,
       phone,

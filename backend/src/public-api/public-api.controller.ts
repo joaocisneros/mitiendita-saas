@@ -1,4 +1,10 @@
-import { BadRequestException, Controller, Get, Query, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '../common/decorators/public.decorator';
 import { ApiTokenGuard } from '../api-tokens/guards/api-token.guard';
@@ -48,7 +54,9 @@ export class PublicApiController {
 
   private requireCompany(companyId: string | null): string {
     if (!companyId) {
-      throw new BadRequestException('Este token no está asociado a una tienda.');
+      throw new BadRequestException(
+        'Este token no está asociado a una tienda.',
+      );
     }
     return companyId;
   }
@@ -119,8 +127,14 @@ export class PublicApiController {
 
   @ApiScope('citas')
   @Get('citas')
-  citas(@CurrentApiToken('companyId') companyId: string | null, @Query('status') status?: string) {
-    return this.appointments.listForCompany(this.requireCompany(companyId), status);
+  citas(
+    @CurrentApiToken('companyId') companyId: string | null,
+    @Query('status') status?: string,
+  ) {
+    return this.appointments.listForCompany(
+      this.requireCompany(companyId),
+      status,
+    );
   }
 
   // ── "suscripciones" existe para tienda (sus solicitudes de plan) Y para
@@ -128,7 +142,10 @@ export class PublicApiController {
 
   @ApiScope('suscripciones')
   @Get('suscripciones')
-  suscripciones(@CurrentApiToken('companyId') companyId: string | null, @Query('filter') filter?: string) {
+  suscripciones(
+    @CurrentApiToken('companyId') companyId: string | null,
+    @Query('filter') filter?: string,
+  ) {
     if (companyId) return this.subscriptions.listForCompany(companyId, filter);
     return this.saSubscriptions.list({ status: filter });
   }
@@ -146,7 +163,11 @@ export class PublicApiController {
 
   @ApiScope('usuarios')
   @Get('usuarios')
-  usuarios(@Query('search') search?: string, @Query('page') page?: string, @Query('limit') limit?: string) {
+  usuarios(
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
     return this.users.list({
       search,
       page: page ? Number(page) : undefined,
@@ -169,7 +190,10 @@ export class PublicApiController {
   @ApiScope('whatsapp')
   @Get('whatsapp')
   async whatsappEndpoint() {
-    const [duenos, clientes] = await Promise.all([this.whatsapp.listOwners(), this.whatsapp.listCustomers()]);
+    const [duenos, clientes] = await Promise.all([
+      this.whatsapp.listOwners(),
+      this.whatsapp.listCustomers(),
+    ]);
     return { duenos, clientes };
   }
 

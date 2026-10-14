@@ -1,11 +1,23 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { SuperAdminGuard } from '../../common/guards/super-admin.guard';
 import { ApiTokensService } from '../../api-tokens/api-tokens.service';
 import { CreateApiTokenDto } from '../../api-tokens/dto/create-api-token.dto';
 import { CreateCompanyApiTokenDto } from '../../api-tokens/dto/create-company-api-token.dto';
 import { UpdateApiTokenScopesDto } from '../../api-tokens/dto/update-api-token-scopes.dto';
-import { COMPANY_SCOPES, PLATFORM_SCOPES } from '../../api-tokens/api-token.util';
+import {
+  COMPANY_SCOPES,
+  PLATFORM_SCOPES,
+} from '../../api-tokens/api-token.util';
 import { SaCompaniesService } from '../services/sa-companies.service';
 
 /**
@@ -34,7 +46,11 @@ export class SaApiTokensController {
   @Get('companies')
   async listCompanies() {
     const { items } = await this.companies.list({ limit: 200 });
-    return items.map((c) => ({ id: c.id, name: c.name, subdomain: c.subdomain }));
+    return items.map((c) => ({
+      id: c.id,
+      name: c.name,
+      subdomain: c.subdomain,
+    }));
   }
 
   @Get()

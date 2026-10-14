@@ -55,3 +55,25 @@ textarea::placeholder {
 .admin-shell select {
   color: #0f172a;
 }
+
+/* Comprobantes optimizados para rollo térmico de 80 mm. */
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+
+  html,
+  body {
+    width: 80mm;
+    min-width: 80mm;
+    background: #ffffff !important;
+  }
+
+  .thermal-receipt {
+    width: 80mm !important;
+    max-width: 80mm !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+}

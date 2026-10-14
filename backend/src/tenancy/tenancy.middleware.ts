@@ -3,6 +3,11 @@ import { ConfigService } from '@nestjs/config';
 import { NextFunction, Request, Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 
+type TenantRequest = Request & {
+  tenant: unknown;
+  tenantSubdomain: string | null;
+};
+
 // Subdominios de sistema que NUNCA son una tienda.
 const SYSTEM_SUBDOMAINS = new Set([
   'www',
@@ -28,12 +33,14 @@ export class TenancyMiddleware implements NestMiddleware {
   ) {}
 
   async use(req: Request, _res: Response, next: NextFunction): Promise<void> {
-    const host = (
-      (req.headers['x-forwarded-host'] as string) ||
-      req.headers.host ||
-      ''
-    )
+    const trustProxy = this.config.get<string>('TRUST_PROXY') === 'true';
+    const forwardedHost = trustProxy
+      ? (req.headers['x-forwarded-host'] as string | undefined)
+      : undefined;
+    const host = (forwardedHost || req.headers.host || '')
       .toString()
+      .split(',')[0]
+      .trim()
       .split(':')[0]
       .toLowerCase();
 
@@ -43,8 +50,9 @@ export class TenancyMiddleware implements NestMiddleware {
 
     const subdomain = this.extractSubdomain(host, rootDomain);
 
-    (req as any).tenant = null;
-    (req as any).tenantSubdomain = subdomain;
+    const tenantRequest = req as TenantRequest;
+    tenantRequest.tenant = null;
+    tenantRequest.tenantSubdomain = subdomain;
 
     if (subdomain && !SYSTEM_SUBDOMAINS.has(subdomain)) {
       const company = await this.prisma.company.findUnique({
@@ -52,7 +60,7 @@ export class TenancyMiddleware implements NestMiddleware {
         include: { settings: true },
       });
       if (company) {
-        (req as any).tenant = company;
+        tenantRequest.tenant = company;
       }
     }
 

@@ -40,7 +40,9 @@ export class SaCompaniesService {
     const email = dto.email.toLowerCase().trim();
     const [reserved, existingCompany, existingUser, selectedPlan, settings] =
       await Promise.all([
-        this.prisma.reservedSubdomain.findUnique({ where: { slug: subdomain } }),
+        this.prisma.reservedSubdomain.findUnique({
+          where: { slug: subdomain },
+        }),
         this.prisma.company.findUnique({ where: { subdomain } }),
         this.prisma.user.findUnique({ where: { email } }),
         dto.planId
@@ -386,12 +388,26 @@ export class SaCompaniesService {
 
   /** Genera un token del propietario para dar soporte (impersonar). */
   async impersonate(actorId: string, companyId: string) {
+    const company = await this.prisma.company.findFirst({
+      where: { id: companyId, status: 'active', deletedAt: null },
+      select: { id: true },
+    });
+    if (!company) {
+      throw new BadRequestException(
+        'Solo puedes ingresar como soporte a una empresa activa.',
+      );
+    }
     const membership = await this.prisma.membership.findFirst({
       where: { companyId, role: 'OWNER' },
       include: { user: true },
     });
     if (!membership) {
       throw new NotFoundException('La empresa no tiene propietario.');
+    }
+    if (!membership.user.isActive) {
+      throw new BadRequestException(
+        'El propietario de la empresa está inactivo.',
+      );
     }
     const accessToken = await this.jwt.signAsync(
       {

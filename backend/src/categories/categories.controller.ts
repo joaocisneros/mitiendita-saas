@@ -52,10 +52,7 @@ export class CategoriesController {
   }
 
   @Delete(':id')
-  remove(
-    @CurrentUser('companyId') companyId: string,
-    @Param('id') id: string,
-  ) {
+  remove(@CurrentUser('companyId') companyId: string, @Param('id') id: string) {
     return this.categories.remove(companyId, id);
   }
 }

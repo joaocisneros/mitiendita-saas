@@ -23,7 +23,13 @@ export class SaPlansService {
     return this.prisma.plan.findMany({
       where: { isActive: true },
       orderBy: { priceMonth: 'asc' },
-      select: { id: true, name: true, slug: true, priceMonth: true, maxProducts: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        priceMonth: true,
+        maxProducts: true,
+      },
     });
   }
 
@@ -42,7 +48,9 @@ export class SaPlansService {
     const plan = await this.prisma.plan.create({
       data: { ...dto, slug, maxProducts: dto.maxProducts ?? null },
     });
-    await this.audit.log(actorId, 'plan.created', undefined, { planId: plan.id });
+    await this.audit.log(actorId, 'plan.created', undefined, {
+      planId: plan.id,
+    });
     return plan;
   }
 

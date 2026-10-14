@@ -137,16 +137,16 @@ describe('Panel de pedidos del dueño (e2e)', () => {
     await http()
       .patch(`/api/admin/orders/${orderId}/status`)
       .set(A())
-      .send({ status: 'delivered' }) // confirmed -> delivered no es válido
+      .send({ status: 'preparing' }) // recojo usa el flujo corto: no pasa por preparando
       .expect(400);
   });
 
-  it('permite una transición válida (confirmed -> preparing)', async () => {
+  it('permite una transición válida de recojo (confirmed -> delivered)', async () => {
     const res = await http()
       .patch(`/api/admin/orders/${orderId}/status`)
       .set(A())
-      .send({ status: 'preparing' })
+      .send({ status: 'delivered' })
       .expect(200);
-    expect(res.body.status).toBe('preparing');
+    expect(res.body.status).toBe('delivered');
   });
 });

@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { SubscriptionsService } from './subscriptions.service';
 import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
 import { Roles } from '../common/decorators/roles.decorator';

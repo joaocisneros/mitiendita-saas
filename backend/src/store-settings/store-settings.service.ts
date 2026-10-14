@@ -20,7 +20,11 @@ export class StoreSettingsService {
       where: { id: companyId },
       select: { subdomain: true, status: true },
     });
-    return { ...settings, subdomain: company?.subdomain, status: company?.status };
+    return {
+      ...settings,
+      subdomain: company?.subdomain,
+      status: company?.status,
+    };
   }
 
   async update(companyId: string, dto: UpdateSettingsDto) {
@@ -41,13 +45,25 @@ export class StoreSettingsService {
     });
 
     // Borra el logo / QR anterior si fue reemplazado por uno nuevo.
-    if (dto.logoUrl !== undefined && current?.logoUrl && current.logoUrl !== dto.logoUrl) {
+    if (
+      dto.logoUrl !== undefined &&
+      current?.logoUrl &&
+      current.logoUrl !== dto.logoUrl
+    ) {
       void this.media.deleteByUrl(current.logoUrl, companyId);
     }
-    if (dto.yapeQrUrl !== undefined && current?.yapeQrUrl && current.yapeQrUrl !== dto.yapeQrUrl) {
+    if (
+      dto.yapeQrUrl !== undefined &&
+      current?.yapeQrUrl &&
+      current.yapeQrUrl !== dto.yapeQrUrl
+    ) {
       void this.media.deleteByUrl(current.yapeQrUrl, companyId);
     }
-    if (dto.plinQrUrl !== undefined && current?.plinQrUrl && current.plinQrUrl !== dto.plinQrUrl) {
+    if (
+      dto.plinQrUrl !== undefined &&
+      current?.plinQrUrl &&
+      current.plinQrUrl !== dto.plinQrUrl
+    ) {
       void this.media.deleteByUrl(current.plinQrUrl, companyId);
     }
     return this.get(companyId);

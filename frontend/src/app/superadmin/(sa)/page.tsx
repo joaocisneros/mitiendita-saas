@@ -22,23 +22,41 @@ export default function SuperDashboard() {
   const [companies, setCompanies] = useState<SaCompany[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [error, setError] = useState("");
+  const [statsError, setStatsError] = useState("");
+  const [catalogError, setCatalogError] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busyCompanyId, setBusyCompanyId] = useState<string | null>(null);
 
   useEffect(() => {
-    superApi.stats(rangeDays).then(setStats).catch((reason) =>
-      setError(reason instanceof Error ? reason.message : "No se pudieron cargar las métricas."),
-    );
+    setStatsError("");
+    superApi.stats(rangeDays)
+      .then((result) => {
+        setStats(result);
+        setStatsError("");
+      })
+      .catch((reason) =>
+        setStatsError(
+          reason instanceof Error
+            ? `Métricas: ${reason.message}`
+            : "No se pudieron cargar las métricas.",
+        ),
+      );
   }, [rangeDays]);
 
   useEffect(() => {
+    setCatalogError("");
     Promise.all([superApi.companies({ limit: 6 }), superApi.plans()])
       .then(([result, planRows]) => {
         setCompanies(result.items);
         setPlans(planRows);
+        setCatalogError("");
       })
       .catch((reason) =>
-        setError(reason instanceof Error ? reason.message : "No se pudieron cargar las empresas."),
+        setCatalogError(
+          reason instanceof Error
+            ? `Empresas y planes: ${reason.message}`
+            : "No se pudieron cargar las empresas y los planes.",
+        ),
       );
   }, []);
 
@@ -111,7 +129,11 @@ export default function SuperDashboard() {
         </div>
       </header>
 
-      {error && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p>}
+      {(error || statsError || catalogError) && (
+        <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">
+          {error || statsError || catalogError}
+        </p>
+      )}
 
       <section aria-labelledby="urgent-title" className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 sm:p-5">
         <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">

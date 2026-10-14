@@ -35,20 +35,18 @@ type AppointmentRow = {
   createdAt: Date;
 };
 
-const APPOINTMENT_TRANSITIONS: Record<
-  AppointmentStatus,
-  AppointmentStatus[]
-> = {
-  pending: [AppointmentStatus.confirmed, AppointmentStatus.cancelled],
-  confirmed: [
-    AppointmentStatus.in_progress,
-    AppointmentStatus.completed,
-    AppointmentStatus.cancelled,
-  ],
-  in_progress: [AppointmentStatus.completed, AppointmentStatus.cancelled],
-  completed: [],
-  cancelled: [],
-};
+const APPOINTMENT_TRANSITIONS: Record<AppointmentStatus, AppointmentStatus[]> =
+  {
+    pending: [AppointmentStatus.confirmed, AppointmentStatus.cancelled],
+    confirmed: [
+      AppointmentStatus.in_progress,
+      AppointmentStatus.completed,
+      AppointmentStatus.cancelled,
+    ],
+    in_progress: [AppointmentStatus.completed, AppointmentStatus.cancelled],
+    completed: [],
+    cancelled: [],
+  };
 
 @Injectable()
 export class AppointmentsService {
@@ -90,7 +88,9 @@ export class AppointmentsService {
     // Registrar/actualizar el cliente en la libreta de contactos del negocio (igual que Pedidos).
     const now = new Date();
     await this.prisma.customer.upsert({
-      where: { companyId_phone: { companyId: company.id, phone: customerPhone } },
+      where: {
+        companyId_phone: { companyId: company.id, phone: customerPhone },
+      },
       update: { name: customerName, lastPurchaseAt: now },
       create: {
         companyId: company.id,
@@ -155,11 +155,7 @@ export class AppointmentsService {
   }
 
   /** El cliente sube su comprobante Yape cuando eligió adelanto. */
-  async submitProof(
-    subdomain: string,
-    id: string,
-    file: Express.Multer.File,
-  ) {
+  async submitProof(subdomain: string, id: string, file: Express.Multer.File) {
     const company = await this.prisma.company.findFirst({
       where: { subdomain, deletedAt: null },
       include: { settings: true },
@@ -187,9 +183,14 @@ export class AppointmentsService {
       );
     }
     if (proofCheck.operationNumber && process.env.NODE_ENV === 'production') {
-      const isDuplicate = await findDuplicateOperation(this.prisma, company.id, proofCheck.operationNumber, {
-        appointmentId: appointment.id,
-      });
+      const isDuplicate = await findDuplicateOperation(
+        this.prisma,
+        company.id,
+        proofCheck.operationNumber,
+        {
+          appointmentId: appointment.id,
+        },
+      );
       if (isDuplicate) {
         throw new BadRequestException(
           'Este comprobante ya fue usado en otro pedido. Si crees que es un error, contáctanos.',
@@ -239,11 +240,7 @@ export class AppointmentsService {
   }
 
   /** Cambia el estado de una cita respetando el flujo de atención. */
-  async updateStatus(
-    companyId: string,
-    id: string,
-    status: AppointmentStatus,
-  ) {
+  async updateStatus(companyId: string, id: string, status: AppointmentStatus) {
     const appointment = await this.prisma.appointment.findFirst({
       where: { id, companyId },
     });
@@ -270,7 +267,9 @@ export class AppointmentsService {
     });
     if (!appointment) throw new NotFoundException('Cita no encontrada.');
     if (appointment.paymentMode !== 'advance') {
-      throw new BadRequestException('Esta cita no tiene adelanto para aprobar.');
+      throw new BadRequestException(
+        'Esta cita no tiene adelanto para aprobar.',
+      );
     }
 
     const updated = await this.prisma.appointment.update({
@@ -281,7 +280,10 @@ export class AppointmentsService {
         validatedByUserId: userId,
         rejectionComment: null,
         // Aprobar el adelanto ya implica aceptar la reserva: no hace falta un segundo clic en "Confirmar".
-        status: appointment.status === AppointmentStatus.pending ? AppointmentStatus.confirmed : appointment.status,
+        status:
+          appointment.status === AppointmentStatus.pending
+            ? AppointmentStatus.confirmed
+            : appointment.status,
       },
     });
     return this.format(updated);
@@ -299,7 +301,9 @@ export class AppointmentsService {
     });
     if (!appointment) throw new NotFoundException('Cita no encontrada.');
     if (appointment.paymentMode !== 'advance') {
-      throw new BadRequestException('Esta cita no tiene adelanto para rechazar.');
+      throw new BadRequestException(
+        'Esta cita no tiene adelanto para rechazar.',
+      );
     }
 
     const updated = await this.prisma.appointment.update({

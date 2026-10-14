@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { AppointmentsService } from './appointments.service';
 import { UpdateAppointmentStatusDto } from './dto/update-appointment-status.dto';
 import { RejectPaymentDto } from './dto/reject-payment.dto';

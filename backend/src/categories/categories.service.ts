@@ -51,7 +51,11 @@ export class CategoriesService {
       data.slug = await this.uniqueSlug(companyId, slugify(dto.name), id);
     }
     const updated = await this.prisma.category.update({ where: { id }, data });
-    if (dto.imageUrl !== undefined && current.imageUrl && current.imageUrl !== dto.imageUrl) {
+    if (
+      dto.imageUrl !== undefined &&
+      current.imageUrl &&
+      current.imageUrl !== dto.imageUrl
+    ) {
       void this.media.deleteByUrl(current.imageUrl, companyId);
     }
     return updated;

@@ -37,7 +37,7 @@ export class UpdatePlatformSettingsDto {
   supportWhatsapp?: string;
 
   @IsOptional()
-  @ValidateIf((o) => o.supportEmail !== '')
+  @ValidateIf((o: UpdatePlatformSettingsDto) => o.supportEmail !== '')
   @IsEmail()
   @MaxLength(160)
   supportEmail?: string;

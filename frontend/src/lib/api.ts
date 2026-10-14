@@ -19,8 +19,11 @@ function safeFetch(url: string, init?: RequestInit): Promise<Response> {
   });
 }
 
-async function get<T>(path: string, revalidate = 10): Promise<T> {
-  const res = await fetch(`${API}${path}`, { next: { revalidate } });
+async function get<T>(path: string, revalidate = 0): Promise<T> {
+  const res = await fetch(
+    `${API}${path}`,
+    revalidate > 0 ? { next: { revalidate } } : { cache: "no-store" },
+  );
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error((body as { message?: string }).message ?? res.statusText);

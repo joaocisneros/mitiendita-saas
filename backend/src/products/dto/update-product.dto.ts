@@ -27,7 +27,10 @@ export class UpdateProductDto {
   description?: string;
 
   @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 2 }, { message: 'El precio admite máximo 2 decimales.' })
+  @IsNumber(
+    { maxDecimalPlaces: 2 },
+    { message: 'El precio admite máximo 2 decimales.' },
+  )
   @Min(0, { message: 'El precio no puede ser negativo.' })
   price?: number;
 
@@ -75,7 +78,10 @@ export class UpdateProductDto {
   reservationAdvanceType?: 'fixed' | 'percent';
 
   @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 2 }, { message: 'El adelanto admite máximo 2 decimales.' })
+  @IsNumber(
+    { maxDecimalPlaces: 2 },
+    { message: 'El adelanto admite máximo 2 decimales.' },
+  )
   @Min(0, { message: 'El adelanto no puede ser negativo.' })
   reservationAdvanceValue?: number;
 

@@ -30,7 +30,11 @@ const ALERT_LABELS: Record<string, string> = {
 export default function SubscriptionsPage() {
   const [rows, setRows] = useState<SubscriptionRow[]>([]);
   const [status, setStatus] = useState("");
-  const [alert, setAlert] = useState<string | null>(null);
+  const [alert, setAlert] = useState<string | null>(() =>
+    typeof window === "undefined"
+      ? null
+      : new URLSearchParams(window.location.search).get("alert"),
+  );
   const [search, setSearch] = useState("");
   const [applied, setApplied] = useState("");
   const [page, setPage] = useState(1);
@@ -39,11 +43,6 @@ export default function SubscriptionsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [managing, setManaging] = useState<SubscriptionRow | null>(null);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setAlert(params.get("alert"));
-  }, []);
 
   const load = useCallback(
     (targetPage = 1) => {

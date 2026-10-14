@@ -1,4 +1,12 @@
-import { IsDateString, IsIn, IsInt, IsNumber, IsOptional, Max, Min } from 'class-validator';
+import {
+  IsDateString,
+  IsIn,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  Max,
+  Min,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 /** Acción del dueño sobre una suscripción. */

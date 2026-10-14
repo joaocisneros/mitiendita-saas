@@ -63,7 +63,7 @@ export default function WhatsappSettingsPage() {
     [applied, role],
   );
   useEffect(() => {
-    load(1);
+    queueMicrotask(() => load(1));
   }, [load]);
 
   return (

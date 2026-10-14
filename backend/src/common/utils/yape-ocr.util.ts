@@ -14,10 +14,7 @@ export interface ProofOcrResult {
 }
 
 function normalize(text: string): string {
-  return (text || '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '');
+  return (text || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
 /** Busca el N° de operación cerca de la palabra "operación" en el texto leído. */
@@ -37,7 +34,9 @@ function extractOperationNumber(text: string): string | null {
  * de comprobante de Yape/Plin. No es infalible: es un primer filtro contra
  * fotos que evidentemente no son un comprobante, no contra una edición prolija.
  */
-export async function analyzePaymentProof(buffer: Buffer): Promise<ProofOcrResult> {
+export async function analyzePaymentProof(
+  buffer: Buffer,
+): Promise<ProofOcrResult> {
   const worker = await createWorker('spa');
   try {
     const {

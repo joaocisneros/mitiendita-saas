@@ -1,8 +1,4 @@
-/*
-  Warnings:
-
-  - Added the required column `token_encrypted` to the `api_tokens` table without a default value. This is not possible if the table is not empty.
-
-*/
 -- AlterTable
-ALTER TABLE `api_tokens` ADD COLUMN `token_encrypted` TEXT NOT NULL;
+-- Nullable para ser compatible con tokens creados antes de esta migración.
+-- Los tokens antiguos deben regenerarse si se necesita volver a mostrarlos.
+ALTER TABLE `api_tokens` ADD COLUMN `token_encrypted` TEXT NULL;

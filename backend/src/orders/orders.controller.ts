@@ -38,10 +38,7 @@ export class OrdersController {
   }
 
   @Get('orders/:code')
-  getOrder(
-    @Param('subdomain') subdomain: string,
-    @Param('code') code: string,
-  ) {
+  getOrder(@Param('subdomain') subdomain: string, @Param('code') code: string) {
     return this.orders.getByCode(subdomain, code);
   }
 

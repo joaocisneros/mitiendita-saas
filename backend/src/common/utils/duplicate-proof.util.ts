@@ -8,14 +8,20 @@ export async function findDuplicateOperation(
   prisma: PrismaService,
   companyId: string,
   operationNumber: string,
-  exclude: { paymentOrderId?: string; appointmentId?: string; subscriptionId?: string } = {},
+  exclude: {
+    paymentOrderId?: string;
+    appointmentId?: string;
+    subscriptionId?: string;
+  } = {},
 ): Promise<boolean> {
   const [payment, appointment, subscription] = await Promise.all([
     prisma.payment.findFirst({
       where: {
         companyId,
         operationNumber,
-        ...(exclude.paymentOrderId ? { orderId: { not: exclude.paymentOrderId } } : {}),
+        ...(exclude.paymentOrderId
+          ? { orderId: { not: exclude.paymentOrderId } }
+          : {}),
       },
       select: { id: true },
     }),
@@ -23,7 +29,9 @@ export async function findDuplicateOperation(
       where: {
         companyId,
         operationNumber,
-        ...(exclude.appointmentId ? { id: { not: exclude.appointmentId } } : {}),
+        ...(exclude.appointmentId
+          ? { id: { not: exclude.appointmentId } }
+          : {}),
       },
       select: { id: true },
     }),
@@ -31,7 +39,9 @@ export async function findDuplicateOperation(
       where: {
         companyId,
         operationNumber,
-        ...(exclude.subscriptionId ? { id: { not: exclude.subscriptionId } } : {}),
+        ...(exclude.subscriptionId
+          ? { id: { not: exclude.subscriptionId } }
+          : {}),
       },
       select: { id: true },
     }),

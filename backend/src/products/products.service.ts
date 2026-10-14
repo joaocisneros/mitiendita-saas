@@ -38,7 +38,8 @@ export class ProductsService {
     await this.assertSkuFree(companyId, dto.sku);
     const slug = await this.uniqueSlug(companyId, slugify(dto.name));
     // La portada (imageUrl) siempre es la primera foto de la galería.
-    const images = dto.images?.slice(0, 4) ?? (dto.imageUrl ? [dto.imageUrl] : []);
+    const images =
+      dto.images?.slice(0, 4) ?? (dto.imageUrl ? [dto.imageUrl] : []);
 
     return this.prisma.product.create({
       data: {
@@ -110,7 +111,9 @@ export class ProductsService {
     if (dto.name) {
       data.slug = await this.uniqueSlug(companyId, slugify(dto.name), id);
     }
-    const currentImages = (current.images as string[] | null) ?? (current.imageUrl ? [current.imageUrl] : []);
+    const currentImages =
+      (current.images as string[] | null) ??
+      (current.imageUrl ? [current.imageUrl] : []);
     if (dto.images !== undefined) {
       // La portada (imageUrl) siempre es la primera foto de la galería.
       const images = dto.images.slice(0, 4);
@@ -142,7 +145,9 @@ export class ProductsService {
       },
     });
     // El producto se elimina: sus fotos ya no se necesitan.
-    const images = (product.images as string[] | null) ?? (product.imageUrl ? [product.imageUrl] : []);
+    const images =
+      (product.images as string[] | null) ??
+      (product.imageUrl ? [product.imageUrl] : []);
     for (const url of images) void this.media.deleteByUrl(url, companyId);
     return { ok: true };
   }

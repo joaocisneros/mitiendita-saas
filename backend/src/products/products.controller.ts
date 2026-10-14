@@ -54,10 +54,7 @@ export class ProductsController {
   }
 
   @Delete(':id')
-  remove(
-    @CurrentUser('companyId') companyId: string,
-    @Param('id') id: string,
-  ) {
+  remove(@CurrentUser('companyId') companyId: string, @Param('id') id: string) {
     return this.products.remove(companyId, id);
   }
 }

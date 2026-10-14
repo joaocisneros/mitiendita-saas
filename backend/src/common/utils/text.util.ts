@@ -5,6 +5,11 @@ export function toTitleCase(value: string): string {
     .toLowerCase()
     .split(/\s+/)
     .filter(Boolean)
-    .map((word) => word.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join('-'))
+    .map((word) =>
+      word
+        .split('-')
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join('-'),
+    )
     .join(' ');
 }

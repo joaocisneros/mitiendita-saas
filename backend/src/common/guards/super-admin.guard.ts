@@ -10,9 +10,11 @@ import type { AuthUser } from '../decorators/current-user.decorator';
 @Injectable()
 export class SuperAdminGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
-    const user = context.switchToHttp().getRequest().user as AuthUser;
+    const user = context.switchToHttp().getRequest<{ user?: AuthUser }>().user;
     if (user?.scope !== 'super') {
-      throw new ForbiddenException('Acceso solo para administradores de la plataforma.');
+      throw new ForbiddenException(
+        'Acceso solo para administradores de la plataforma.',
+      );
     }
     return true;
   }

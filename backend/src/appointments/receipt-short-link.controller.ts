@@ -18,7 +18,12 @@ export class AppointmentReceiptShortLinkController {
   async redirect(@Param('code') code: string, @Res() res: Response) {
     const found = await this.appointments.resolveByCode(code);
     if (!found) {
-      res.status(404).type('html').send('<p style="font-family:sans-serif;text-align:center;padding:3rem">Cita no encontrada.</p>');
+      res
+        .status(404)
+        .type('html')
+        .send(
+          '<p style="font-family:sans-serif;text-align:center;padding:3rem">Cita no encontrada.</p>',
+        );
       return;
     }
     res.redirect(302, `/tienda/${found.subdomain}/cita/${found.id}/recibo`);

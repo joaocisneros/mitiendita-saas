@@ -67,6 +67,12 @@ export class AdminOrdersController {
     @Param('id') id: string,
     @Body() dto: ChangeStatusDto,
   ) {
-    return this.orders.changeStatus(companyId, id, dto.status, userId, dto.comment);
+    return this.orders.changeStatus(
+      companyId,
+      id,
+      dto.status,
+      userId,
+      dto.comment,
+    );
   }
 }

@@ -21,19 +21,25 @@ describe('Pedidos / checkout (e2e)', () => {
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix('api');
     app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
     );
     await app.init();
 
     ownerToken = (
-      await request(app.getHttpServer()).post('/api/auth/register').send({
-        responsibleName: 'Dueño Ord',
-        email: `ord_${tag}@test.com`,
-        password: 'clave12345',
-        commercialName: 'Tienda Ord',
-        subdomain,
-        whatsappNumber: '+51900000000',
-      })
+      await request(app.getHttpServer())
+        .post('/api/auth/register')
+        .send({
+          responsibleName: 'Dueño Ord',
+          email: `ord_${tag}@test.com`,
+          password: 'clave12345',
+          commercialName: 'Tienda Ord',
+          subdomain,
+          whatsappNumber: '+51900000000',
+        })
     ).body.accessToken;
 
     // Producto con stock conocido = 5.

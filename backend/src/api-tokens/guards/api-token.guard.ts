@@ -28,23 +28,46 @@ export class ApiTokenGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
-    const authHeader: string | undefined = request.headers.authorization;
+    const request = context.switchToHttp().getRequest<{
+      headers: { authorization?: string };
+      apiToken?: ApiTokenContext;
+    }>();
+    const authHeader = request.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Falta el token de API (Authorization: Bearer ...).');
+      throw new UnauthorizedException(
+        'Falta el token de API (Authorization: Bearer ...).',
+      );
     }
     const token = authHeader.slice('Bearer '.length).trim();
     const record = await this.prisma.apiToken.findUnique({
       where: { tokenHash: hashApiToken(token) },
+      include: {
+        company: { select: { status: true, deletedAt: true } },
+      },
     });
     if (!record) {
       throw new UnauthorizedException('Token inválido o revocado.');
     }
+    if (
+      record.companyId &&
+      (!record.company ||
+        record.company.status !== 'active' ||
+        record.company.deletedAt)
+    ) {
+      throw new ForbiddenException(
+        'La empresa asociada al token no está activa.',
+      );
+    }
 
-    const requiredScope = this.reflector.get<string>(API_SCOPE_KEY, context.getHandler());
+    const requiredScope = this.reflector.get<string>(
+      API_SCOPE_KEY,
+      context.getHandler(),
+    );
     const scopes = record.scopes as string[];
     if (requiredScope && !scopes.includes(requiredScope)) {
-      throw new ForbiddenException(`Este token no tiene acceso al módulo "${requiredScope}".`);
+      throw new ForbiddenException(
+        `Este token no tiene acceso al módulo "${requiredScope}".`,
+      );
     }
 
     request.apiToken = {

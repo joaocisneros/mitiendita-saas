@@ -30,11 +30,13 @@ export class SaWhatsappService {
   async update(actorId: string, dto: UpdateWhatsappSettingsDto) {
     const data: Record<string, unknown> = {};
     if (dto.enabled !== undefined) data.whatsappEnabled = dto.enabled;
-    if (dto.accountSid !== undefined) data.twilioAccountSid = dto.accountSid.trim() || null;
+    if (dto.accountSid !== undefined)
+      data.twilioAccountSid = dto.accountSid.trim() || null;
     // El token solo se sobrescribe si mandan uno nuevo no vacío (así el formulario
     // puede guardar los demás campos sin tener que reingresarlo cada vez).
     if (dto.authToken) data.twilioAuthToken = dto.authToken.trim();
-    if (dto.whatsappFrom !== undefined) data.twilioWhatsappFrom = dto.whatsappFrom.trim() || null;
+    if (dto.whatsappFrom !== undefined)
+      data.twilioWhatsappFrom = dto.whatsappFrom.trim() || null;
 
     await this.prisma.platformSettings.upsert({
       where: { id: 1 },
@@ -91,7 +93,12 @@ export class SaWhatsappService {
    * como dueño en una tienda y cliente en otra, se fusiona en una fila con ambos roles.
    * Búsqueda, filtro por rol y paginación se resuelven acá, no en el navegador.
    */
-  async listDirectory(opts: { search?: string; role?: 'Dueño' | 'Cliente' | 'all'; page?: number; limit?: number }) {
+  async listDirectory(opts: {
+    search?: string;
+    role?: 'Dueño' | 'Cliente' | 'all';
+    page?: number;
+    limit?: number;
+  }) {
     const page = Math.max(1, opts.page ?? 1);
     const limit = Math.min(100, Math.max(1, opts.limit ?? 20));
 
@@ -99,7 +106,11 @@ export class SaWhatsappService {
       this.prisma.company.findMany({
         where: { deletedAt: null },
         include: {
-          memberships: { where: { role: 'OWNER' }, take: 1, include: { user: { select: { name: true } } } },
+          memberships: {
+            where: { role: 'OWNER' },
+            take: 1,
+            include: { user: { select: { name: true } } },
+          },
           settings: { select: { whatsappNumber: true } },
         },
       }),
@@ -111,21 +122,44 @@ export class SaWhatsappService {
     ]);
 
     type Role = 'Dueño' | 'Cliente';
-    type Row = { id: string; nombres: string[]; telefono: string | null; roles: Role[]; empresas: string[] };
+    type Row = {
+      id: string;
+      nombres: string[];
+      telefono: string | null;
+      roles: Role[];
+      empresas: string[];
+    };
 
     const groups = new Map<string, Row>();
     const withoutPhone: Row[] = [];
     let anonId = 0;
 
-    const addEntry = (rol: Role, nombre: string, telefono: string | null, empresa: string) => {
+    const addEntry = (
+      rol: Role,
+      nombre: string,
+      telefono: string | null,
+      empresa: string,
+    ) => {
       const digits = telefono?.replace(/\D+/g, '') ?? '';
       if (!digits) {
-        withoutPhone.push({ id: `sin-numero-${anonId++}`, nombres: [nombre], telefono, roles: [rol], empresas: [empresa] });
+        withoutPhone.push({
+          id: `sin-numero-${anonId++}`,
+          nombres: [nombre],
+          telefono,
+          roles: [rol],
+          empresas: [empresa],
+        });
         return;
       }
       const existing = groups.get(digits);
       if (!existing) {
-        groups.set(digits, { id: digits, nombres: [nombre], telefono, roles: [rol], empresas: [empresa] });
+        groups.set(digits, {
+          id: digits,
+          nombres: [nombre],
+          telefono,
+          roles: [rol],
+          empresas: [empresa],
+        });
         return;
       }
       if (!existing.nombres.includes(nombre)) existing.nombres.push(nombre);
@@ -134,13 +168,20 @@ export class SaWhatsappService {
     };
 
     for (const c of companies) {
-      addEntry('Dueño', c.memberships[0]?.user.name ?? 'Sin usuario', c.settings?.whatsappNumber ?? null, c.name);
+      addEntry(
+        'Dueño',
+        c.memberships[0]?.user.name ?? 'Sin usuario',
+        c.settings?.whatsappNumber ?? null,
+        c.name,
+      );
     }
     for (const cu of customers) {
       addEntry('Cliente', cu.name, cu.phone, cu.company.name);
     }
 
-    let all = [...groups.values(), ...withoutPhone].sort((a, b) => a.nombres[0].localeCompare(b.nombres[0]));
+    let all = [...groups.values(), ...withoutPhone].sort((a, b) =>
+      a.nombres[0].localeCompare(b.nombres[0]),
+    );
 
     if (opts.role && opts.role !== 'all') {
       all = all.filter((r) => r.roles.includes(opts.role as Role));

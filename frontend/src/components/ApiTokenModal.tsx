@@ -71,7 +71,7 @@ export function CreateApiTokenModal({
             <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Token creado</p>
             <h2 className="mt-1 text-2xl font-black text-slate-950">Cópialo ahora</h2>
             <p className="mt-1 text-sm font-medium text-slate-600">
-              Podrás verlo de nuevo cuando quieras con el botón "Ver y copiar" en la lista.
+              Podrás verlo de nuevo cuando quieras con el botón &ldquo;Ver y copiar&rdquo; en la lista.
             </p>
           </header>
           <div className="flex items-center gap-2">

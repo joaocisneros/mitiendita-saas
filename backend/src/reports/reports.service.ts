@@ -8,7 +8,9 @@ export class ReportsService {
   async summary(companyId: string, fromStr?: string, toStr?: string) {
     const to = toStr ? new Date(toStr) : new Date();
     to.setHours(23, 59, 59, 999);
-    const from = fromStr ? new Date(fromStr) : new Date(Date.now() - 29 * 86_400_000);
+    const from = fromStr
+      ? new Date(fromStr)
+      : new Date(Date.now() - 29 * 86_400_000);
     from.setHours(0, 0, 0, 0);
 
     const approvedRange = {
@@ -55,9 +57,16 @@ export class ReportsService {
     }
     const salesByDay = [...dayMap.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, v]) => ({ date, revenue: v.revenue.toFixed(2), orders: v.orders }));
+      .map(([date, v]) => ({
+        date,
+        revenue: v.revenue.toFixed(2),
+        orders: v.orders,
+      }));
 
-    const totalRevenue = approvedOrders.reduce((s, o) => s + Number(o.total), 0);
+    const totalRevenue = approvedOrders.reduce(
+      (s, o) => s + Number(o.total),
+      0,
+    );
 
     return {
       from: from.toISOString().slice(0, 10),

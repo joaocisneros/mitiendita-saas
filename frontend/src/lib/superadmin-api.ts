@@ -64,7 +64,11 @@ async function sfetch<T>(path: string, init: RequestInit = {}): Promise<T> {
       window.location.assign("/superadmin/login");
     }
     const message = (data as { message?: string | string[] }).message;
-    throw new Error(Array.isArray(message) ? message[0] : (message ?? "Error"));
+    throw new Error(
+      Array.isArray(message)
+        ? message[0]
+        : (message ?? `La solicitud falló (${res.status}).`),
+    );
   }
   return data as T;
 }

@@ -129,7 +129,7 @@ model Company {
 /// Token de API para integraciones externas. Lo crea siempre el superadmin:
 /// companyId presente = token para una tienda puntual (se le avisa por WhatsApp);
 /// companyId null = token de plataforma, para los módulos del propio superadmin.
-/// Solo se guarda el hash del token; el valor real se muestra una sola vez, al crearlo.
+/// El hash valida el token; una copia cifrada permite que el superadmin lo revele.
 model ApiToken {
   id             String    @id @default(uuid())
   companyId      String?   @map("company_id")
@@ -139,7 +139,7 @@ model ApiToken {
   tokenPrefix    String    @map("token_prefix")
   // Copia cifrada (AES-256-GCM, no reversible sin API_TOKEN_ENCRYPTION_KEY) para poder
   // volver a mostrarlo desde el botón "Ver/Copiar". tokenHash sigue siendo lo que valida el login.
-  tokenEncrypted String    @map("token_encrypted") @db.Text
+  tokenEncrypted String?   @map("token_encrypted") @db.Text
   lastUsedAt     DateTime? @map("last_used_at")
   createdAt      DateTime  @default(now()) @map("created_at")
 

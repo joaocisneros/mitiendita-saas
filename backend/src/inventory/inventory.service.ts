@@ -106,7 +106,7 @@ export class InventoryService {
         data: {
           companyId,
           productId: product.id,
-          type: dto.type as StockMovementType,
+          type: dto.type,
           quantity: delta,
           reason: dto.reason ?? null,
           createdByUserId: userId,

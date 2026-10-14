@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import type { SubscriptionStatus } from '../../../generated/prisma/client';
 import {
   SUBSCRIPTION_STATUSES,
   UpdateSubscriptionDto,
@@ -65,7 +64,9 @@ export class SaSubscriptionsService {
       opts.status &&
       (SUBSCRIPTION_STATUSES as readonly string[]).includes(opts.status)
     ) {
-      conditions.push({ subscriptionStatus: opts.status as SubscriptionStatus });
+      conditions.push({
+        subscriptionStatus: opts.status,
+      });
     }
     if (opts.search) {
       conditions.push({
@@ -129,9 +130,7 @@ export class SaSubscriptionsService {
     await this.prisma.company.update({
       where: { id },
       data: {
-        ...(dto.status
-          ? { subscriptionStatus: dto.status as SubscriptionStatus }
-          : {}),
+        ...(dto.status ? { subscriptionStatus: dto.status } : {}),
         ...(dto.notes !== undefined ? { subscriptionNotes: dto.notes } : {}),
         ...(dto.currentPeriodEndsAt
           ? { currentPeriodEndsAt: new Date(dto.currentPeriodEndsAt) }

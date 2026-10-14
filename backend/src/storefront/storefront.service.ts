@@ -60,7 +60,13 @@ export class StorefrontService {
   /** Catálogo público: solo productos activos. */
   async listProducts(
     subdomain: string,
-    opts: { categorySlug?: string; search?: string; page?: number; limit?: number; sort?: string },
+    opts: {
+      categorySlug?: string;
+      search?: string;
+      page?: number;
+      limit?: number;
+      sort?: string;
+    },
   ) {
     const company = await this.resolveActiveCompany(subdomain);
     const page = opts.page ?? 1;
@@ -174,18 +180,18 @@ export class StorefrontService {
     T extends {
       stock: number;
       reserved: number;
-      price: unknown;
-      reservationAdvanceValue?: unknown;
+      price: { toString(): string };
+      reservationAdvanceValue?: { toString(): string } | null;
     },
   >(p: T) {
     const available = Math.max(0, p.stock - p.reserved);
     const { stock: _s, reserved: _r, ...rest } = p;
     return {
       ...rest,
-      price: String(p.price),
+      price: p.price.toString(),
       reservationAdvanceValue:
         p.reservationAdvanceValue != null
-          ? String(p.reservationAdvanceValue)
+          ? p.reservationAdvanceValue.toString()
           : undefined,
       available,
       inStock: available > 0,

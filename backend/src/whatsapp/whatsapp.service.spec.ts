@@ -10,7 +10,9 @@ describe('WhatsappService (Twilio)', () => {
   afterEach(() => jest.restoreAllMocks());
 
   it('no llama a Twilio cuando la integración está desactivada', async () => {
-    const config = { get: jest.fn().mockReturnValue('false') } as unknown as ConfigService;
+    const config = {
+      get: jest.fn().mockReturnValue('false'),
+    } as unknown as ConfigService;
     const fetchSpy = jest.spyOn(global, 'fetch');
     const service = new WhatsappService(config, noSettings);
 
@@ -35,7 +37,9 @@ describe('WhatsappService (Twilio)', () => {
       TWILIO_AUTH_TOKEN: 'token-de-prueba',
       TWILIO_WHATSAPP_FROM: 'whatsapp:+14155238886',
     };
-    const config = { get: jest.fn((key: string) => values[key]) } as unknown as ConfigService;
+    const config = {
+      get: jest.fn((key: string) => values[key]),
+    } as unknown as ConfigService;
     const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
       new Response(JSON.stringify({ sid: 'SM123' }), {
         status: 201,
@@ -59,11 +63,13 @@ describe('WhatsappService (Twilio)', () => {
     expect(fetchSpy.mock.calls[0][0]).toBe(
       'https://api.twilio.com/2010-04-01/Accounts/ACtest/Messages.json',
     );
-    const params = new URLSearchParams(
-      String((fetchSpy.mock.calls[0][1] as RequestInit).body),
-    );
+    const body = (fetchSpy.mock.calls[0][1] as RequestInit).body;
+    if (typeof body !== 'string') throw new Error('Body inesperado');
+    const params = new URLSearchParams(body);
     expect(params.get('To')).toBe('whatsapp:+51987654321');
     expect(params.get('From')).toBe('whatsapp:+14155238886');
-    expect(params.get('MediaUrl')).toBe('https://res.cloudinary.com/demo/proof.jpg');
+    expect(params.get('MediaUrl')).toBe(
+      'https://res.cloudinary.com/demo/proof.jpg',
+    );
   });
 });

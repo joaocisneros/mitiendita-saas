@@ -126,17 +126,21 @@ export class AuthService {
     const email = dto.email.toLowerCase().trim();
     const user = await this.prisma.user.findUnique({
       where: { email },
-      include: { memberships: true },
+      include: { memberships: { include: { company: true } } },
     });
 
     // Mensaje genérico para no revelar si el correo existe.
-    const invalid = new UnauthorizedException('Correo o contraseña incorrectos.');
+    const invalid = new UnauthorizedException(
+      'Correo o contraseña incorrectos.',
+    );
     if (!user || !user.isActive) throw invalid;
 
     const ok = await bcrypt.compare(dto.password, user.passwordHash);
     if (!ok) throw invalid;
 
-    const membership = user.memberships[0];
+    const membership = user.memberships.find(
+      (item) => item.company.status === 'active' && !item.company.deletedAt,
+    );
     if (!membership) {
       throw new UnauthorizedException(
         'El usuario no está asociado a ninguna empresa.',
@@ -165,15 +169,20 @@ export class AuthService {
 
     const stored = await this.prisma.refreshToken.findUnique({
       where: { id: parsed.id },
-      include: { user: { include: { memberships: true } } },
+      include: {
+        user: { include: { memberships: { include: { company: true } } } },
+      },
     });
 
     if (
       !stored ||
       stored.revokedAt ||
-      stored.expiresAt.getTime() < Date.now()
+      stored.expiresAt.getTime() < Date.now() ||
+      !stored.user.isActive
     ) {
-      throw new UnauthorizedException('Sesión expirada. Inicia sesión de nuevo.');
+      throw new UnauthorizedException(
+        'Sesión expirada. Inicia sesión de nuevo.',
+      );
     }
 
     const matches = await bcrypt.compare(parsed.secret, stored.tokenHash);
@@ -181,16 +190,25 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token inválido.');
     }
 
-    const membership = stored.user.memberships[0];
+    const membership = stored.user.memberships.find(
+      (item) => item.company.status === 'active' && !item.company.deletedAt,
+    );
     if (!membership) {
-      throw new UnauthorizedException('El usuario ya no tiene empresa asociada.');
+      throw new UnauthorizedException(
+        'El usuario ya no tiene empresa asociada.',
+      );
     }
 
-    // Rotación: revoca el actual y emite uno nuevo.
-    await this.prisma.refreshToken.update({
-      where: { id: stored.id },
+    // Rotación atómica: una segunda petición concurrente ya no puede reutilizarlo.
+    const revoked = await this.prisma.refreshToken.updateMany({
+      where: { id: stored.id, revokedAt: null, expiresAt: { gt: new Date() } },
       data: { revokedAt: new Date() },
     });
+    if (revoked.count !== 1) {
+      throw new UnauthorizedException(
+        'Sesión expirada. Inicia sesión de nuevo.',
+      );
+    }
 
     return this.issueTokens(
       stored.userId,
@@ -230,16 +248,22 @@ export class AuthService {
     }
     if (dto.newPassword) {
       if (!dto.currentPassword) {
-        throw new BadRequestException('Ingresa tu contraseña actual para cambiarla.');
+        throw new BadRequestException(
+          'Ingresa tu contraseña actual para cambiarla.',
+        );
       }
       const ok = await bcrypt.compare(dto.currentPassword, user.passwordHash);
-      if (!ok) throw new BadRequestException('La contraseña actual no es correcta.');
+      if (!ok)
+        throw new BadRequestException('La contraseña actual no es correcta.');
       data.passwordHash = await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS);
     }
     if (Object.keys(data).length === 0) {
       return { id: user.id, name: user.name, email: user.email };
     }
-    const updated = await this.prisma.user.update({ where: { id: userId }, data });
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data,
+    });
     return { id: updated.id, name: updated.name, email: updated.email };
   }
 

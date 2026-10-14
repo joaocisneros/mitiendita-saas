@@ -61,7 +61,7 @@ export default function SaLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!getSuperToken()) router.replace("/superadmin/login");
     else queueMicrotask(() => setReady(true));
-    setAdmin(getSuperAdmin());
+    queueMicrotask(() => setAdmin(getSuperAdmin()));
   }, [router]);
 
   function logout() {

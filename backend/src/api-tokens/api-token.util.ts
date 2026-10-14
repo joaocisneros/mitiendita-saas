@@ -1,4 +1,9 @@
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  randomBytes,
+} from 'crypto';
 
 /** Módulos que el superadmin puede habilitar en el token de UNA tienda. */
 export const COMPANY_SCOPES = [
@@ -25,7 +30,12 @@ export const PLATFORM_SCOPES = [
 export type PlatformScope = (typeof PLATFORM_SCOPES)[number];
 
 /** Genera un token nuevo: `mt_live_<43 caracteres base64url>`. */
-export function generateApiToken(): { token: string; prefix: string; hash: string; encrypted: string } {
+export function generateApiToken(): {
+  token: string;
+  prefix: string;
+  hash: string;
+  encrypted: string;
+} {
   const token = `mt_live_${randomBytes(32).toString('base64url')}`;
   return {
     token,
@@ -42,7 +52,9 @@ export function hashApiToken(token: string): string {
 function encryptionKey(): Buffer {
   const hex = process.env.API_TOKEN_ENCRYPTION_KEY;
   if (!hex || hex.length !== 64) {
-    throw new Error('API_TOKEN_ENCRYPTION_KEY debe ser una clave de 32 bytes en hex (64 caracteres).');
+    throw new Error(
+      'API_TOKEN_ENCRYPTION_KEY debe ser una clave de 32 bytes en hex (64 caracteres).',
+    );
   }
   return Buffer.from(hex, 'hex');
 }
@@ -51,7 +63,10 @@ function encryptionKey(): Buffer {
 export function encryptApiToken(token: string): string {
   const iv = randomBytes(12);
   const cipher = createCipheriv('aes-256-gcm', encryptionKey(), iv);
-  const ciphertext = Buffer.concat([cipher.update(token, 'utf8'), cipher.final()]);
+  const ciphertext = Buffer.concat([
+    cipher.update(token, 'utf8'),
+    cipher.final(),
+  ]);
   const authTag = cipher.getAuthTag();
   return Buffer.concat([iv, authTag, ciphertext]).toString('base64');
 }
@@ -64,5 +79,8 @@ export function decryptApiToken(payload: string): string {
   const ciphertext = raw.subarray(28);
   const decipher = createDecipheriv('aes-256-gcm', encryptionKey(), iv);
   decipher.setAuthTag(authTag);
-  return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
+  return Buffer.concat([
+    decipher.update(ciphertext),
+    decipher.final(),
+  ]).toString('utf8');
 }

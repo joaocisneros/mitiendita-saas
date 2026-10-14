@@ -30,11 +30,7 @@ export class OrdersService {
    * Todo el cálculo de importes y stock ocurre en el servidor:
    * los precios que envía el navegador NUNCA se consideran confiables.
    */
-  async checkout(
-    subdomain: string,
-    dto: CheckoutDto,
-    idempotencyKey?: string,
-  ) {
+  async checkout(subdomain: string, dto: CheckoutDto, idempotencyKey?: string) {
     const company = await this.prisma.company.findFirst({
       where: { subdomain, deletedAt: null },
       include: { settings: true },
@@ -62,19 +58,28 @@ export class OrdersService {
     // Validar método de entrega.
     const isDelivery = dto.deliveryMethod === 'delivery';
     if (isDelivery && settings && !settings.allowsDelivery) {
-      throw new BadRequestException('Esta tienda no ofrece entrega a domicilio.');
+      throw new BadRequestException(
+        'Esta tienda no ofrece entrega a domicilio.',
+      );
     }
     if (!isDelivery && settings && !settings.allowsPickup) {
       throw new BadRequestException('Esta tienda no ofrece recojo.');
     }
     if (isDelivery && !dto.address) {
-      throw new BadRequestException('La dirección es obligatoria para entrega a domicilio.');
+      throw new BadRequestException(
+        'La dirección es obligatoria para entrega a domicilio.',
+      );
     }
 
     // Releer productos reales desde la BD.
     const ids = dto.items.map((i) => i.productId);
     const products = await this.prisma.product.findMany({
-      where: { id: { in: ids }, companyId: company.id, deletedAt: null, isActive: true },
+      where: {
+        id: { in: ids },
+        companyId: company.id,
+        deletedAt: null,
+        isActive: true,
+      },
     });
     const byId = new Map(products.map((p) => [p.id, p]));
 
@@ -102,7 +107,11 @@ export class OrdersService {
     const subtotal = round2(lines.reduce((s, l) => s + l.lineTotal, 0));
     const deliveryFee = isDelivery ? Number(settings?.deliveryFee ?? 0) : 0;
 
-    if (isDelivery && settings?.minOrder && subtotal < Number(settings.minOrder)) {
+    if (
+      isDelivery &&
+      settings?.minOrder &&
+      subtotal < Number(settings.minOrder)
+    ) {
       throw new BadRequestException(
         `El pedido mínimo para entrega a domicilio es ${Number(settings.minOrder).toFixed(2)}.`,
       );
@@ -276,9 +285,14 @@ export class OrdersService {
       );
     }
     if (proofCheck.operationNumber && process.env.NODE_ENV === 'production') {
-      const isDuplicate = await findDuplicateOperation(this.prisma, company.id, proofCheck.operationNumber, {
-        paymentOrderId: order.id,
-      });
+      const isDuplicate = await findDuplicateOperation(
+        this.prisma,
+        company.id,
+        proofCheck.operationNumber,
+        {
+          paymentOrderId: order.id,
+        },
+      );
       if (isDuplicate) {
         throw new BadRequestException(
           'Este comprobante ya fue usado en otro pedido. Si crees que es un error, contáctanos.',
@@ -311,7 +325,10 @@ export class OrdersService {
       where: { id: order.id },
       include: { items: true, payment: true },
     });
-    const formatted = this.format(updated!, company.settings?.currency ?? 'PEN');
+    const formatted = this.format(
+      updated!,
+      company.settings?.currency ?? 'PEN',
+    );
     const whatsappNotification = await this.whatsapp.sendProofNotification({
       recipient: company.settings?.whatsappNumber,
       storeName: company.settings?.storeName || company.name,

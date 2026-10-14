@@ -1,7 +1,16 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
-import { generateApiToken, decryptApiToken, COMPANY_SCOPES, PLATFORM_SCOPES } from './api-token.util';
+import {
+  generateApiToken,
+  decryptApiToken,
+  COMPANY_SCOPES,
+  PLATFORM_SCOPES,
+} from './api-token.util';
 import { CreateApiTokenDto } from './dto/create-api-token.dto';
 
 const TOKEN_SELECT = {
@@ -25,11 +34,17 @@ export class ApiTokensService {
     private readonly whatsapp: WhatsappService,
   ) {}
 
-  async create(companyId: string | null, dto: CreateApiTokenDto, validScopes: readonly string[]) {
+  async create(
+    companyId: string | null,
+    dto: CreateApiTokenDto,
+    validScopes: readonly string[],
+  ) {
     const scopes = [...new Set(dto.scopes)];
     const invalid = scopes.filter((s) => !validScopes.includes(s));
     if (invalid.length > 0) {
-      throw new BadRequestException(`Módulo(s) inválido(s): ${invalid.join(', ')}`);
+      throw new BadRequestException(
+        `Módulo(s) inválido(s): ${invalid.join(', ')}`,
+      );
     }
     const { token, prefix, hash, encrypted } = generateApiToken();
     await this.prisma.apiToken.create({
@@ -49,7 +64,9 @@ export class ApiTokensService {
   async createForCompany(companyId: string, dto: CreateApiTokenDto) {
     const company = await this.prisma.company.findUnique({
       where: { id: companyId },
-      include: { settings: { select: { whatsappNumber: true, storeName: true } } },
+      include: {
+        settings: { select: { whatsappNumber: true, storeName: true } },
+      },
     });
     if (!company) throw new NotFoundException('Empresa no encontrada.');
 
@@ -77,7 +94,10 @@ export class ApiTokensService {
     const rows = await this.prisma.apiToken.findMany({
       where: { companyId: { not: null } },
       orderBy: { createdAt: 'desc' },
-      select: { ...TOKEN_SELECT, company: { select: { name: true, subdomain: true } } },
+      select: {
+        ...TOKEN_SELECT,
+        company: { select: { name: true, subdomain: true } },
+      },
     });
     return rows.map(({ company, ...row }) => ({
       ...row,
@@ -90,7 +110,9 @@ export class ApiTokensService {
   async updateScopes(id: string, scopes: string[]) {
     const token = await this.prisma.apiToken.findUnique({ where: { id } });
     if (!token) throw new NotFoundException('Token no encontrado.');
-    const validScopes: readonly string[] = token.companyId ? COMPANY_SCOPES : PLATFORM_SCOPES;
+    const validScopes: readonly string[] = token.companyId
+      ? COMPANY_SCOPES
+      : PLATFORM_SCOPES;
 
     const unique = [...new Set(scopes)];
     if (unique.length === 0) {
@@ -98,7 +120,9 @@ export class ApiTokensService {
     }
     const invalid = unique.filter((s) => !validScopes.includes(s));
     if (invalid.length > 0) {
-      throw new BadRequestException(`Módulo(s) inválido(s): ${invalid.join(', ')}`);
+      throw new BadRequestException(
+        `Módulo(s) inválido(s): ${invalid.join(', ')}`,
+      );
     }
     return this.prisma.apiToken.update({
       where: { id },
@@ -111,6 +135,11 @@ export class ApiTokensService {
   async reveal(id: string) {
     const token = await this.prisma.apiToken.findUnique({ where: { id } });
     if (!token) throw new NotFoundException('Token no encontrado.');
+    if (!token.tokenEncrypted) {
+      throw new BadRequestException(
+        'Este token es anterior al sistema de recuperación. Revócalo y crea uno nuevo.',
+      );
+    }
     return { token: decryptApiToken(token.tokenEncrypted) };
   }
 

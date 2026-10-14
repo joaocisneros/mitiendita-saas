@@ -281,8 +281,8 @@ export default function SaApiTokensPage() {
       .catch((e) => setError(e instanceof Error ? e.message : "No se pudo cargar."))
       .finally(() => setLoadingPlatformTokens(false));
   }
-  useEffect(loadCompanyData, []);
-  useEffect(loadPlatformData, []);
+  useEffect(() => queueMicrotask(loadCompanyData), []);
+  useEffect(() => queueMicrotask(loadPlatformData), []);
 
   async function confirmRevoke() {
     if (!revokeTarget) return;

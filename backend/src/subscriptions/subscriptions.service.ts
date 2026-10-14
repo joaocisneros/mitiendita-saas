@@ -52,12 +52,15 @@ type SubRow = {
 
 /** Estado calculado a partir del status y la fecha de vencimiento. */
 function computeState(status: string, endsAt: Date | null) {
-  if (status === 'cancelled') return { state: 'cancelled' as const, daysLeft: null };
-  if (status === 'pending') return { state: 'pending' as const, daysLeft: null };
+  if (status === 'cancelled')
+    return { state: 'cancelled' as const, daysLeft: null };
+  if (status === 'pending')
+    return { state: 'pending' as const, daysLeft: null };
   if (!endsAt) return { state: 'active' as const, daysLeft: null };
   const daysLeft = Math.ceil((endsAt.getTime() - Date.now()) / DAY);
   if (daysLeft < 0) return { state: 'expired' as const, daysLeft };
-  if (daysLeft <= EXPIRING_DAYS) return { state: 'expiring' as const, daysLeft };
+  if (daysLeft <= EXPIRING_DAYS)
+    return { state: 'expiring' as const, daysLeft };
   return { state: 'active' as const, daysLeft };
 }
 
@@ -95,7 +98,9 @@ export class SubscriptionsService {
     // Registrar/actualizar el cliente en la libreta de contactos del negocio (igual que Pedidos).
     const now = new Date();
     await this.prisma.customer.upsert({
-      where: { companyId_phone: { companyId: company.id, phone: customerPhone } },
+      where: {
+        companyId_phone: { companyId: company.id, phone: customerPhone },
+      },
       update: { name: customerName, lastPurchaseAt: now },
       create: {
         companyId: company.id,
@@ -162,11 +167,7 @@ export class SubscriptionsService {
   }
 
   /** El cliente sube su comprobante Yape para una suscripción digital. */
-  async submitProof(
-    subdomain: string,
-    id: string,
-    file: Express.Multer.File,
-  ) {
+  async submitProof(subdomain: string, id: string, file: Express.Multer.File) {
     const company = await this.prisma.company.findFirst({
       where: { subdomain, deletedAt: null },
       include: { settings: true },
@@ -181,7 +182,9 @@ export class SubscriptionsService {
     });
     if (!sub) throw new NotFoundException('Suscripción no encontrada.');
     if (sub.status === 'cancelled') {
-      throw new BadRequestException('Esta suscripción ya no admite comprobantes.');
+      throw new BadRequestException(
+        'Esta suscripción ya no admite comprobantes.',
+      );
     }
 
     const proofCheck = await analyzePaymentProof(file.buffer);
@@ -191,9 +194,14 @@ export class SubscriptionsService {
       );
     }
     if (proofCheck.operationNumber && process.env.NODE_ENV === 'production') {
-      const isDuplicate = await findDuplicateOperation(this.prisma, company.id, proofCheck.operationNumber, {
-        subscriptionId: sub.id,
-      });
+      const isDuplicate = await findDuplicateOperation(
+        this.prisma,
+        company.id,
+        proofCheck.operationNumber,
+        {
+          subscriptionId: sub.id,
+        },
+      );
       if (isDuplicate) {
         throw new BadRequestException(
           'Este comprobante ya fue usado en otro pedido. Si crees que es un error, contáctanos.',
@@ -257,7 +265,9 @@ export class SubscriptionsService {
     });
     if (!sub) throw new NotFoundException('Suscripción no encontrada.');
     if (sub.status !== 'active') {
-      throw new BadRequestException('Esta suscripción todavía no se puede renovar.');
+      throw new BadRequestException(
+        'Esta suscripción todavía no se puede renovar.',
+      );
     }
 
     const proofCheck = await analyzePaymentProof(file.buffer);
@@ -267,9 +277,14 @@ export class SubscriptionsService {
       );
     }
     if (proofCheck.operationNumber && process.env.NODE_ENV === 'production') {
-      const isDuplicate = await findDuplicateOperation(this.prisma, company.id, proofCheck.operationNumber, {
-        subscriptionId: sub.id,
-      });
+      const isDuplicate = await findDuplicateOperation(
+        this.prisma,
+        company.id,
+        proofCheck.operationNumber,
+        {
+          subscriptionId: sub.id,
+        },
+      );
       if (isDuplicate) {
         throw new BadRequestException(
           'Este comprobante ya fue usado en otro pedido. Si crees que es un error, contáctanos.',
@@ -308,10 +323,13 @@ export class SubscriptionsService {
     });
     if (!sub) throw new NotFoundException('Suscripción no encontrada.');
     if (!sub.renewalProofUrl || !sub.renewalMonths) {
-      throw new BadRequestException('No hay una renovación pendiente para aprobar.');
+      throw new BadRequestException(
+        'No hay una renovación pendiente para aprobar.',
+      );
     }
 
-    const base = sub.endsAt && sub.endsAt.getTime() > Date.now() ? sub.endsAt : new Date();
+    const base =
+      sub.endsAt && sub.endsAt.getTime() > Date.now() ? sub.endsAt : new Date();
     const updated = await this.prisma.subscription.update({
       where: { id },
       data: {
@@ -335,7 +353,9 @@ export class SubscriptionsService {
     });
     if (!sub) throw new NotFoundException('Suscripción no encontrada.');
     if (!sub.renewalProofUrl) {
-      throw new BadRequestException('No hay una renovación pendiente para rechazar.');
+      throw new BadRequestException(
+        'No hay una renovación pendiente para rechazar.',
+      );
     }
 
     const updated = await this.prisma.subscription.update({
@@ -389,7 +409,12 @@ export class SubscriptionsService {
     companyId: string,
     id: string,
     action: 'activate' | 'renew' | 'cancel' | 'edit',
-    opts: { months?: number; startsAt?: string; endsAt?: string; price?: number } = {},
+    opts: {
+      months?: number;
+      startsAt?: string;
+      endsAt?: string;
+      price?: number;
+    } = {},
   ) {
     const months = opts.months ?? 1;
     const sub = await this.prisma.subscription.findFirst({
@@ -405,10 +430,14 @@ export class SubscriptionsService {
       if (!opts.endsAt) {
         throw new BadRequestException('Indica la fecha de vencimiento.');
       }
-      const start = opts.startsAt ? new Date(opts.startsAt) : (sub.startsAt ?? new Date());
+      const start = opts.startsAt
+        ? new Date(opts.startsAt)
+        : (sub.startsAt ?? new Date());
       const end = new Date(opts.endsAt);
       if (end.getTime() <= start.getTime()) {
-        throw new BadRequestException('El vencimiento debe ser posterior al inicio.');
+        throw new BadRequestException(
+          'El vencimiento debe ser posterior al inicio.',
+        );
       }
       data = { status: 'active', startsAt: start, endsAt: end };
     } else if (action === 'activate') {
@@ -425,9 +454,14 @@ export class SubscriptionsService {
     } else {
       // renew: extiende desde la fecha de vencimiento actual (o desde hoy si ya venció).
       if (sub.status === 'cancelled') {
-        throw new BadRequestException('No se puede renovar una suscripción cancelada.');
+        throw new BadRequestException(
+          'No se puede renovar una suscripción cancelada.',
+        );
       }
-      const base = sub.endsAt && sub.endsAt.getTime() > Date.now() ? sub.endsAt : new Date();
+      const base =
+        sub.endsAt && sub.endsAt.getTime() > Date.now()
+          ? sub.endsAt
+          : new Date();
       data = {
         status: 'active',
         startsAt: sub.startsAt ?? new Date(),
@@ -435,7 +469,10 @@ export class SubscriptionsService {
       };
     }
 
-    const updated = await this.prisma.subscription.update({ where: { id }, data });
+    const updated = await this.prisma.subscription.update({
+      where: { id },
+      data,
+    });
     return this.format(updated);
   }
 

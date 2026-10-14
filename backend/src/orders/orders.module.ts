@@ -11,7 +11,12 @@ import { WhatsappModule } from '../whatsapp/whatsapp.module';
 
 @Module({
   imports: [MediaModule, WhatsappModule],
-  controllers: [OrdersController, ShortLinkController, OrderReceiptShortLinkController, AdminOrdersController],
+  controllers: [
+    OrdersController,
+    ShortLinkController,
+    OrderReceiptShortLinkController,
+    AdminOrdersController,
+  ],
   providers: [OrdersService, AdminOrdersService, OrderExpirationService],
   exports: [OrdersService, AdminOrdersService],
 })

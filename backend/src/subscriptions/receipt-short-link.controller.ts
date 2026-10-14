@@ -18,9 +18,17 @@ export class SubscriptionReceiptShortLinkController {
   async redirect(@Param('code') code: string, @Res() res: Response) {
     const found = await this.subscriptions.resolveByCode(code);
     if (!found) {
-      res.status(404).type('html').send('<p style="font-family:sans-serif;text-align:center;padding:3rem">Suscripción no encontrada.</p>');
+      res
+        .status(404)
+        .type('html')
+        .send(
+          '<p style="font-family:sans-serif;text-align:center;padding:3rem">Suscripción no encontrada.</p>',
+        );
       return;
     }
-    res.redirect(302, `/tienda/${found.subdomain}/suscripcion/${found.id}/recibo`);
+    res.redirect(
+      302,
+      `/tienda/${found.subdomain}/suscripcion/${found.id}/recibo`,
+    );
   }
 }

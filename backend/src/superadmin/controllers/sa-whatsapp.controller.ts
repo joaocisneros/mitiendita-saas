@@ -1,11 +1,22 @@
-import { Body, Controller, Get, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import {
   CurrentUser,
   type AuthUser,
 } from '../../common/decorators/current-user.decorator';
 import { SuperAdminGuard } from '../../common/guards/super-admin.guard';
-import { SendWhatsappTestDto, UpdateWhatsappSettingsDto } from '../dto/whatsapp.dto';
+import {
+  SendWhatsappTestDto,
+  UpdateWhatsappSettingsDto,
+} from '../dto/whatsapp.dto';
 import { SaWhatsappService } from '../services/sa-whatsapp.service';
 
 @UseGuards(SuperAdminGuard)
@@ -19,7 +30,10 @@ export class SaWhatsappController {
   }
 
   @Patch()
-  update(@CurrentUser() user: AuthUser, @Body() dto: UpdateWhatsappSettingsDto) {
+  update(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: UpdateWhatsappSettingsDto,
+  ) {
     return this.whatsapp.update(user.userId, dto);
   }
 

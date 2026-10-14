@@ -62,7 +62,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (!getAccess()) router.replace("/panel/login");
     else queueMicrotask(() => setReady(true));
-    setSupportMode(localStorage.getItem("mt_impersonating") === "1");
+    queueMicrotask(() =>
+      setSupportMode(localStorage.getItem("mt_impersonating") === "1"),
+    );
   }, [router]);
 
   function exitSupport() {

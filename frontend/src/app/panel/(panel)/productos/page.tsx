@@ -55,6 +55,23 @@ function joinPlanDescription(shortDescription: string, benefits: string) {
   return cleanShort || cleanBenefits;
 }
 
+function categorySupportsSizes(name?: string): boolean {
+  if (!name) return true;
+  return /ropa|zapat|calzado|camiset|pantal|vestid|uniforme/i.test(name);
+}
+
+function categorySupportsColors(name?: string): boolean {
+  if (!name) return true;
+  return /ropa|zapat|calzado|joy|accesor|bols|cartera|reloj/i.test(name);
+}
+
+function productDescriptionPlaceholder(category?: string): string {
+  if (/perfume|fragancia/i.test(category ?? "")) return "Ej: Eau de parfum de 100 ml, aroma floral, ideal para uso diario. Indica marca, presentación y notas principales.";
+  if (/joy|accesor|reloj/i.test(category ?? "")) return "Ej: Material, acabado, medidas, tipo de piedra y cuidados recomendados.";
+  if (/ropa|zapat|calzado/i.test(category ?? "")) return "Ej: Material, tipo de corte, ajuste, ocasión de uso y recomendaciones de cuidado.";
+  return "Describe material, presentación, características y beneficios para que el cliente entienda qué está comprando.";
+}
+
 export default function ProductosPage() {
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [categories, setCategories] = useState<AdminCategory[]>([]);
@@ -79,6 +96,9 @@ export default function ProductosPage() {
 
   const categoryName = (categoryId: string | null) =>
     categories.find((c) => c.id === categoryId)?.name;
+  const selectedCategoryName = categoryName(form.categoryId);
+  const showSizes = categorySupportsSizes(selectedCategoryName);
+  const showColors = categorySupportsColors(selectedCategoryName);
 
   function load() {
     adminApi.products({ search: appliedSearch || undefined }).then((d) => setProducts(d.items));
@@ -135,6 +155,14 @@ export default function ProductosPage() {
       setError(`Nombre, precio y ${isDigital || isService ? "stock interno" : "stock"} son obligatorios.`);
       return;
     }
+    if (Number(form.price) <= 0) {
+      setError("El precio debe ser mayor a cero.");
+      return;
+    }
+    if (!Number.isInteger(Number(form.stock)) || Number(form.stock) < 0) {
+      setError("El stock debe ser un número entero igual o mayor a cero.");
+      return;
+    }
     if (isService && form.reservationPaymentMode !== "none" && Number(form.reservationAdvanceValue) <= 0) {
       setError("El adelanto debe ser mayor a cero o cambia el modo a reservar sin pago.");
       return;
@@ -163,10 +191,20 @@ export default function ProductosPage() {
         isFeatured: form.isFeatured,
         isActive: form.isActive,
       };
-      if (editing === "new") await adminApi.createProduct(body);
-      else if (editing) await adminApi.updateProduct(editing, body);
+      if (editing === "new") {
+        const created = await adminApi.createProduct(body);
+        setProducts((current) => [created, ...current]);
+      } else if (editing) {
+        const updated = await adminApi.updateProduct(editing, body);
+        setProducts((current) =>
+          current.map((product) => (product.id === updated.id ? updated : product)),
+        );
+      }
       setEditing(null);
-      load();
+      // Sincroniza silenciosamente totales/filtros sin retrasar el cambio visible.
+      void adminApi
+        .products({ search: appliedSearch || undefined })
+        .then((result) => setProducts(result.items));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
     } finally {
@@ -204,7 +242,7 @@ export default function ProductosPage() {
   async function remove(product: AdminProduct) {
     if (!confirm(`¿Eliminar "${product.name}"?`)) return;
     await adminApi.deleteProduct(product.id);
-    load();
+    setProducts((current) => current.filter((item) => item.id !== product.id));
   }
 
   return (
@@ -385,23 +423,33 @@ export default function ProductosPage() {
 
           <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
             <div className="space-y-3">
-              <Input label={`Nombre del ${noun} *`} value={form.name} onChange={(value) => setForm({ ...form, name: value })} />
+              <Input label={`Nombre del ${noun} *`} value={form.name} placeholder="Ej: Zapatillas Urbanas" onChange={(value) => setForm({ ...form, name: value })} />
               <div className="grid grid-cols-2 gap-3">
-                <Input label={isDigital ? "Precio mensual *" : "Precio *"} type="number" value={form.price} onChange={(value) => setForm({ ...form, price: value })} />
+                <Input label={isDigital ? "Precio mensual *" : "Precio *"} type="number" min="0.01" step="0.01" placeholder="0.00" value={form.price} onChange={(value) => setForm({ ...form, price: value })} />
                 <Input
                   label={isDigital || isService ? "Stock interno *" : "Stock *"}
                   type="number"
+                  min="0"
+                  step="1"
+                  placeholder="0"
                   value={form.stock}
                   onChange={(value) => setForm({ ...form, stock: value })}
                 />
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <Input label="SKU (opcional)" value={form.sku} onChange={(value) => setForm({ ...form, sku: value })} />
+                <div>
+                  <Input label="SKU (opcional)" placeholder="Ej: ZAP-URB-NEG-42" value={form.sku} onChange={(value) => setForm({ ...form, sku: value.toUpperCase() })} />
+                  <p className="mt-1 text-xs text-slate-500">Código interno único para identificar el producto.</p>
+                </div>
                 <label className="block">
                   <span className="mb-1 block text-sm font-medium text-gray-700">Categoría</span>
                   <select
                     value={form.categoryId}
-                    onChange={(event) => setForm({ ...form, categoryId: event.target.value })}
+                    onChange={(event) => {
+                      const categoryId = event.target.value;
+                      const nextCategory = categoryName(categoryId);
+                      setForm({ ...form, categoryId, sizes: categorySupportsSizes(nextCategory) ? form.sizes : "", colors: categorySupportsColors(nextCategory) ? form.colors : "" });
+                    }}
                     className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-violet-500"
                   >
                     <option value="">Sin categoría</option>
@@ -412,16 +460,16 @@ export default function ProductosPage() {
                 </label>
               </div>
 
-              {!isDigital && !isService && (
+              {!isDigital && !isService && (showSizes || showColors) && (
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <Input label="Tallas (opcional)" value={form.sizes} onChange={(value) => setForm({ ...form, sizes: value })} />
+                  {showSizes && <div>
+                    <Input label="Tallas (opcional)" placeholder="S, M, L, XL" value={form.sizes} onChange={(value) => setForm({ ...form, sizes: value })} />
                     <p className="mt-1 text-xs text-gray-400">Sepáralas con coma. Ej: S, M, L, XL</p>
-                  </div>
-                  <div>
-                    <Input label="Colores (opcional)" value={form.colors} onChange={(value) => setForm({ ...form, colors: value })} />
+                  </div>}
+                  {showColors && <div>
+                    <Input label="Colores (opcional)" placeholder="Negro, Blanco, Azul" value={form.colors} onChange={(value) => setForm({ ...form, colors: value })} />
                     <p className="mt-1 text-xs text-gray-400">Sepáralos con coma. Ej: Negro, Blanco, Azul</p>
-                  </div>
+                  </div>}
                 </div>
               )}
 
@@ -452,7 +500,7 @@ export default function ProductosPage() {
                   value={form.description}
                   onChange={(value) => setForm({ ...form, description: value })}
                   rows={5}
-                  placeholder="Describe el producto para que el cliente entienda qué está comprando."
+                  placeholder={productDescriptionPlaceholder(selectedCategoryName)}
                 />
               )}
             </div>
@@ -619,13 +667,16 @@ export default function ProductosPage() {
   );
 }
 
-function Input({ label, value, onChange, type = "text" }: { label: string; value: string; onChange: (value: string) => void; type?: string }) {
+function Input({ label, value, onChange, type = "text", placeholder, min, step }: { label: string; value: string; onChange: (value: string) => void; type?: string; placeholder?: string; min?: string; step?: string }) {
   return (
     <label className="block">
       <span className="mb-1 block text-sm font-medium text-gray-700">{label}</span>
       <input
         type={type}
         value={value}
+        placeholder={placeholder}
+        min={min}
+        step={step}
         onChange={(event) => onChange(event.target.value)}
         className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-violet-500"
       />

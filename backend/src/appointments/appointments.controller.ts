@@ -65,10 +65,7 @@ export class AppointmentsController {
 
   /** Detalle público de una cita, para la página de recibo (sin login). */
   @Get('appointments/:id')
-  getPublic(
-    @Param('subdomain') subdomain: string,
-    @Param('id') id: string,
-  ) {
+  getPublic(@Param('subdomain') subdomain: string, @Param('id') id: string) {
     return this.appointments.getPublic(subdomain, id);
   }
 }

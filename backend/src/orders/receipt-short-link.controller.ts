@@ -18,7 +18,12 @@ export class OrderReceiptShortLinkController {
   async redirect(@Param('code') code: string, @Res() res: Response) {
     const found = await this.orders.resolveByCode(code);
     if (!found) {
-      res.status(404).type('html').send('<p style="font-family:sans-serif;text-align:center;padding:3rem">Pedido no encontrado.</p>');
+      res
+        .status(404)
+        .type('html')
+        .send(
+          '<p style="font-family:sans-serif;text-align:center;padding:3rem">Pedido no encontrado.</p>',
+        );
       return;
     }
     res.redirect(302, `/tienda/${found.subdomain}/pedido/${code}/recibo`);

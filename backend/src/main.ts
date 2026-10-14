@@ -26,6 +26,12 @@ function assertProductionSecrets(): void {
       );
     }
   }
+  const encryptionKey = process.env.API_TOKEN_ENCRYPTION_KEY ?? '';
+  if (!/^[a-fA-F0-9]{64}$/.test(encryptionKey)) {
+    throw new Error(
+      'Configuración insegura: API_TOKEN_ENCRYPTION_KEY debe contener 32 bytes en hexadecimal.',
+    );
+  }
 }
 
 const FIELD_LABELS: Record<string, string> = {
@@ -125,12 +131,27 @@ function translateConstraint(
       return `El campo ${label} no está permitido.`;
     default:
       return original
-        .replace(`${property} must be longer than or equal to`, `El campo ${label} debe tener al menos`)
-        .replace(`${property} must be shorter than or equal to`, `El campo ${label} no debe superar`)
+        .replace(
+          `${property} must be longer than or equal to`,
+          `El campo ${label} debe tener al menos`,
+        )
+        .replace(
+          `${property} must be shorter than or equal to`,
+          `El campo ${label} no debe superar`,
+        )
         .replace(`${property} must be an email`, 'Ingresa un correo válido')
-        .replace(`${property} should not be empty`, `El campo ${label} es obligatorio`)
-        .replace(`${property} must be a string`, `El campo ${label} debe ser texto`)
-        .replace(`${property} must be a number`, `El campo ${label} debe ser un número`)
+        .replace(
+          `${property} should not be empty`,
+          `El campo ${label} es obligatorio`,
+        )
+        .replace(
+          `${property} must be a string`,
+          `El campo ${label} debe ser texto`,
+        )
+        .replace(
+          `${property} must be a number`,
+          `El campo ${label} debe ser un número`,
+        )
         .replace('characters', 'caracteres');
   }
 }
@@ -190,7 +211,6 @@ async function bootstrap() {
   const port = Number(process.env.PORT ?? 8300);
   const host = process.env.HOST ?? process.env.IP ?? '0.0.0.0';
   await app.listen(port, host);
-  // eslint-disable-next-line no-console
   console.log(`MiTiendita API escuchando en http://${host}:${port}/api`);
 }
 void bootstrap();

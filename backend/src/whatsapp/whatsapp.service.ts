@@ -31,10 +31,18 @@ export class WhatsappService {
       .findUnique({ where: { id: 1 } })
       .catch(() => null);
     return {
-      enabled: settings?.whatsappEnabled ?? this.config.get<string>('TWILIO_ENABLED') === 'true',
-      sid: settings?.twilioAccountSid || this.config.get<string>('TWILIO_ACCOUNT_SID'),
-      token: settings?.twilioAuthToken || this.config.get<string>('TWILIO_AUTH_TOKEN'),
-      from: settings?.twilioWhatsappFrom || this.config.get<string>('TWILIO_WHATSAPP_FROM'),
+      enabled:
+        settings?.whatsappEnabled ??
+        this.config.get<string>('TWILIO_ENABLED') === 'true',
+      sid:
+        settings?.twilioAccountSid ||
+        this.config.get<string>('TWILIO_ACCOUNT_SID'),
+      token:
+        settings?.twilioAuthToken ||
+        this.config.get<string>('TWILIO_AUTH_TOKEN'),
+      from:
+        settings?.twilioWhatsappFrom ||
+        this.config.get<string>('TWILIO_WHATSAPP_FROM'),
     };
   }
 
@@ -45,21 +53,35 @@ export class WhatsappService {
   ): Promise<WhatsappNotificationResult> {
     const { enabled, sid, token, from } = await this.creds();
     if (!enabled) {
-      return { status: 'disabled', reason: 'WhatsApp (Twilio) no está activado.' };
+      return {
+        status: 'disabled',
+        reason: 'WhatsApp (Twilio) no está activado.',
+      };
     }
     const digits = normalizePhone(rawTo ?? '');
     if (digits.length < 8) {
-      return { status: 'skipped', reason: 'La tienda no tiene un WhatsApp válido.' };
+      return {
+        status: 'skipped',
+        reason: 'La tienda no tiene un WhatsApp válido.',
+      };
     }
     if (!sid || !token || !from) {
-      this.logger.warn('Twilio está activado pero su configuración está incompleta.');
-      return { status: 'failed', reason: 'Configuración de Twilio incompleta.' };
+      this.logger.warn(
+        'Twilio está activado pero su configuración está incompleta.',
+      );
+      return {
+        status: 'failed',
+        reason: 'Configuración de Twilio incompleta.',
+      };
     }
 
     try {
       const params = new URLSearchParams();
       params.set('To', `whatsapp:+${digits}`);
-      params.set('From', from.startsWith('whatsapp:') ? from : `whatsapp:${from}`);
+      params.set(
+        'From',
+        from.startsWith('whatsapp:') ? from : `whatsapp:${from}`,
+      );
       params.set('Body', body);
       if (mediaUrl) params.append('MediaUrl', mediaUrl);
 
@@ -77,11 +99,14 @@ export class WhatsappService {
       );
       const data = (await response.json().catch(() => ({}))) as TwilioResponse;
       if (!response.ok || !data.sid) {
-        throw new Error(`Twilio ${response.status}: ${data.message ?? 'respuesta inválida'}`);
+        throw new Error(
+          `Twilio ${response.status}: ${data.message ?? 'respuesta inválida'}`,
+        );
       }
       return { status: 'sent', messageId: data.sid };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error desconocido';
+      const message =
+        error instanceof Error ? error.message : 'Error desconocido';
       this.logger.error(`No se pudo enviar el WhatsApp por Twilio: ${message}`);
       return { status: 'failed', reason: 'No se pudo enviar el WhatsApp.' };
     }

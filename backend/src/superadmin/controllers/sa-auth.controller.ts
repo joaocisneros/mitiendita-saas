@@ -1,4 +1,11 @@
-import { Body, Controller, HttpCode, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '../../common/decorators/public.decorator';
 import { SuperAdminGuard } from '../../common/guards/super-admin.guard';

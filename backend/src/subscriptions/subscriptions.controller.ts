@@ -71,15 +71,17 @@ export class SubscriptionsController {
     )
     file: Express.Multer.File,
   ) {
-    return this.subscriptions.submitRenewalProof(subdomain, id, Number(months), file);
+    return this.subscriptions.submitRenewalProof(
+      subdomain,
+      id,
+      Number(months),
+      file,
+    );
   }
 
   /** Detalle público de una suscripción, para la página de recibo (sin login). */
   @Get('subscriptions/:id')
-  getPublic(
-    @Param('subdomain') subdomain: string,
-    @Param('id') id: string,
-  ) {
+  getPublic(@Param('subdomain') subdomain: string, @Param('id') id: string) {
     return this.subscriptions.getPublic(subdomain, id);
   }
 }

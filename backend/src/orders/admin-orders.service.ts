@@ -68,12 +68,21 @@ export class AdminOrdersService {
   /** Lista de pedidos del panel, paginada y con filtros. */
   async list(
     companyId: string,
-    q: { status?: string; paymentStatus?: string; search?: string; page?: number; limit?: number },
+    q: {
+      status?: string;
+      paymentStatus?: string;
+      search?: string;
+      page?: number;
+      limit?: number;
+    },
   ) {
     const page = q.page ?? 1;
     const limit = q.limit ?? 20;
     // paymentStatus admite varios valores separados por coma (ej. "pending,proof_submitted").
-    const paymentStatuses = q.paymentStatus?.split(',').map((s) => s.trim()).filter(Boolean);
+    const paymentStatuses = q.paymentStatus
+      ?.split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
     const where = {
       companyId,
       ...(q.status ? { status: q.status as OrderStatus } : {}),
@@ -247,30 +256,17 @@ export class AdminOrdersService {
     comment?: string,
   ) {
     const order = await this.get(companyId, id);
-    const allowed = [...(TRANSITIONS[order.status] ?? [])];
-    // Servicios/planes: confirmado → completado directo.
-    if (
-      order.status === 'confirmed' &&
-      newStatus === 'delivered' &&
-      isServiceLikeBusiness(order.businessType)
-    ) {
-      allowed.push('delivered');
-    }
-    // Recojo en tienda: confirmado → recogido directo (flujo corto).
-    if (
-      order.status === 'confirmed' &&
-      newStatus === 'delivered' &&
-      order.deliveryMethod === 'pickup'
-    ) {
-      allowed.push('delivered');
-    }
-    // Entrega a domicilio: confirmado → en camino directo (salta "preparando").
-    if (
-      order.status === 'confirmed' &&
-      newStatus === 'out_for_delivery' &&
-      order.deliveryMethod === 'delivery'
-    ) {
-      allowed.push('out_for_delivery');
+    let allowed = [...(TRANSITIONS[order.status] ?? [])];
+    if (order.status === 'confirmed') {
+      // Los flujos cortos reemplazan al flujo antiguo; no mantienen "preparando".
+      if (
+        isServiceLikeBusiness(order.businessType) ||
+        order.deliveryMethod === 'pickup'
+      ) {
+        allowed = ['delivered', 'cancelled'];
+      } else if (order.deliveryMethod === 'delivery') {
+        allowed = ['out_for_delivery', 'cancelled'];
+      }
     }
     if (!allowed.includes(newStatus)) {
       throw new BadRequestException(
