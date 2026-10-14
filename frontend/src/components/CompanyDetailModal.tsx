@@ -26,6 +26,7 @@ export function CompanyDetailModal({
   const [error, setError] = useState("");
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [tab, setTab] = useState<"summary" | "store" | "orders" | "admin">("summary");
   const [form, setForm] = useState({
     name: "",
     subdomain: "",
@@ -48,6 +49,7 @@ export function CompanyDetailModal({
       allowsDelivery: company.settings?.allowsDelivery ?? true,
     });
     setError("");
+    setTab("store");
     setEditing(true);
   }
 
@@ -121,6 +123,8 @@ export function CompanyDetailModal({
   }
 
   useEffect(() => {
+    setTab("summary");
+    setEditing(false);
     superApi
       .company(companyId)
       .then(setCompany)
@@ -150,6 +154,13 @@ export function CompanyDetailModal({
           </header>
 
           {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+
+          <nav className="flex gap-1 overflow-x-auto border-b border-slate-200" aria-label="Secciones de la empresa">
+            <TabButton active={tab === "summary"} onClick={() => { setTab("summary"); setEditing(false); }}>Resumen</TabButton>
+            <TabButton active={tab === "store"} onClick={() => setTab("store")}>Tienda</TabButton>
+            <TabButton active={tab === "orders"} onClick={() => { setTab("orders"); setEditing(false); }}>Pedidos</TabButton>
+            <TabButton active={tab === "admin"} onClick={() => { setTab("admin"); setEditing(false); }}>Administración</TabButton>
+          </nav>
 
           {editing ? (
             <div className="space-y-3">
@@ -197,51 +208,53 @@ export function CompanyDetailModal({
               </div>
             </div>
           ) : (
-          <>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <Mini label="Pedidos" value={String(company._count.orders)} />
-            <Mini label="Productos" value={String(company._count.products)} />
-            <Mini label="Clientes" value={String(company._count.customers)} />
-            <Mini label="Volumen bruto" value={formatPrice(company.grossVolume)} />
-          </div>
-
-          <div className="grid gap-3 lg:grid-cols-[0.9fr_1.1fr]">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+          <div className="min-h-[310px]">
+          {tab === "summary" && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <Mini label="Pedidos" value={String(company._count.orders)} />
+                <Mini label="Productos" value={String(company._count.products)} />
+                <Mini label="Clientes" value={String(company._count.customers)} />
+                <Mini label="Volumen bruto" value={formatPrice(company.grossVolume)} />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
               <Card title="Propietario">
                 <p className="font-semibold text-slate-900">{owner?.name ?? "—"}</p>
                 <p className="break-all text-sm text-slate-600">{owner?.email ?? "—"}</p>
               </Card>
-
-              <Card title="Plan y tienda">
-                <div className="space-y-1.5">
+              <Card title="Información general">
+                <div className="space-y-2">
                   <Row label="Plan" value={company.plan?.name ?? "Sin plan"} />
                   <Row label="Registrada" value={new Date(company.createdAt).toLocaleDateString("es-PE")} />
-                  {company.settings && (
-                    <>
-                      <Row label="WhatsApp" value={company.settings.whatsappNumber ?? "—"} />
-                      <Row label="Yape" value={company.settings.yapeHolderName ?? "—"} />
-                      <Row
-                        label="Entrega"
-                        value={
-                          [
-                            company.settings.allowsPickup && "Recojo",
-                            company.settings.allowsDelivery && "Entrega a domicilio",
-                          ]
-                            .filter(Boolean)
-                            .join(" · ") || "—"
-                        }
-                      />
-                    </>
-                  )}
+                  <Row label="Estado" value={status.label} />
                 </div>
               </Card>
+              </div>
             </div>
+          )}
 
+          {tab === "store" && (
+            <div className="space-y-4">
+              <Card title="Configuración de la tienda">
+                <div className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
+                  <Row label="Rubro" value={company.settings?.businessType ?? "Sin definir"} />
+                  <Row label="WhatsApp" value={company.settings?.whatsappNumber ?? "—"} />
+                  <Row label="Yape" value={company.settings?.yapeHolderName ?? "—"} />
+                  <Row label="Dirección" value={company.settings?.storeAddress ?? "—"} />
+                  <Row label="Recojo" value={company.settings?.allowsPickup ? "Habilitado" : "Deshabilitado"} />
+                  <Row label="Entrega" value={company.settings?.allowsDelivery ? "Habilitada" : "Deshabilitada"} />
+                </div>
+              </Card>
+              <div className="flex justify-end"><button onClick={startEdit} className="rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-violet-700">Editar datos de la tienda</button></div>
+            </div>
+          )}
+
+          {tab === "orders" && (
             <Card title="Pedidos recientes">
               {company.recentOrders.length === 0 ? (
-                <p className="text-sm text-slate-400">Sin pedidos.</p>
+                <div className="flex min-h-52 items-center justify-center text-sm font-medium text-slate-400">Esta empresa todavía no tiene pedidos.</div>
               ) : (
-                <div className="max-h-52 overflow-y-auto pr-1">
+                <div className="max-h-72 overflow-y-auto pr-1">
                   <ul className="divide-y divide-slate-200 text-sm">
                     {company.recentOrders.map((order) => (
                       <li
@@ -261,35 +274,19 @@ export function CompanyDetailModal({
                 </div>
               )}
             </Card>
-          </div>
+          )}
 
-          <div className="grid grid-cols-1 gap-2 border-t border-slate-200 pt-3 sm:grid-cols-2 lg:grid-cols-4">
-            <button
-              onClick={startEdit}
-              className="rounded-lg bg-violet-50 px-3 py-2 text-sm font-bold text-violet-700 hover:bg-violet-100"
-            >
-              Editar datos
-            </button>
-            <button
-              onClick={impersonate}
-              className="rounded-lg bg-violet-600 px-3 py-2 text-sm font-bold text-white hover:bg-violet-700"
-            >
-              Ingresar como soporte
-            </button>
-            <button
-              onClick={resetOwner}
-              className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-200"
-            >
-              Restablecer contraseña
-            </button>
-            <button
-              onClick={removeCompany}
-              className="rounded-lg bg-red-50 px-3 py-2 text-sm font-bold text-red-700 hover:bg-red-100"
-            >
-              Eliminar empresa
-            </button>
+          {tab === "admin" && (
+            <div className="space-y-3">
+              <ActionRow title="Ingresar como soporte" description="Abre el panel de esta empresa en una pestaña nueva." button="Ingresar" onClick={impersonate} primary />
+              <ActionRow title="Restablecer contraseña" description="Asigna una nueva contraseña al propietario principal." button="Restablecer" onClick={resetOwner} />
+              <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 sm:flex sm:items-center sm:justify-between sm:gap-5">
+                <div><p className="font-bold text-red-900">Eliminar empresa</p><p className="mt-1 text-sm text-red-700">La empresa quedará inactiva y oculta. Esta es una acción sensible.</p></div>
+                <button onClick={removeCompany} className="mt-3 shrink-0 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700 sm:mt-0">Eliminar empresa</button>
+              </div>
+            </div>
+          )}
           </div>
-          </>
           )}
         </div>
       )}
@@ -299,6 +296,14 @@ export function CompanyDetailModal({
 
 const INPUT =
   "h-10 w-full rounded-lg border border-slate-300 px-3 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-400 focus:border-violet-600";
+
+function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return <button type="button" onClick={onClick} className={`whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-bold transition ${active ? "border-violet-600 text-violet-700" : "border-transparent text-slate-500 hover:text-slate-800"}`}>{children}</button>;
+}
+
+function ActionRow({ title, description, button, onClick, primary = false }: { title: string; description: string; button: string; onClick: () => void; primary?: boolean }) {
+  return <div className="rounded-2xl border border-slate-200 p-4 sm:flex sm:items-center sm:justify-between sm:gap-5"><div><p className="font-bold text-slate-900">{title}</p><p className="mt-1 text-sm text-slate-500">{description}</p></div><button onClick={onClick} className={`mt-3 shrink-0 rounded-lg px-4 py-2.5 text-sm font-bold sm:mt-0 ${primary ? "bg-violet-600 text-white hover:bg-violet-700" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}>{button}</button></div>;
+}
 
 function FormField({
   label,
