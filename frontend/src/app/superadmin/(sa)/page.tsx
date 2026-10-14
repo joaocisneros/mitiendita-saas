@@ -135,24 +135,6 @@ export default function SuperDashboard() {
         </p>
       )}
 
-      <section aria-labelledby="urgent-title" className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-white p-4">
-        <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-700">Prioridad de hoy</p>
-            <h2 id="urgent-title" className="mt-0.5 text-lg font-black text-slate-950">Acciones urgentes</h2>
-          </div>
-          <Link href="/superadmin/suscripciones" className="text-sm font-bold text-amber-800 hover:underline">Resolver en suscripciones →</Link>
-        </div>
-        {stats ? (
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <AlertCard count={stats.alerts.expiringSoon} title="Vencen en 3 días" text="Contactar o renovar antes del vencimiento." tone="amber" alert="expiringSoon" />
-            <AlertCard count={stats.alerts.pastDue} title="Pagos pendientes" text="Suscripciones marcadas como vencidas." tone="red" alert="pastDue" />
-            <AlertCard count={stats.alerts.suspendedForDebt} title="Suspendidas por deuda" text="Requieren pago o revisión manual." tone="violet" alert="suspendedForDebt" />
-            <AlertCard count={stats.alerts.atRisk} title="Empresas en riesgo" text="Vencidas o sin fecha de renovación." tone="slate" alert="atRisk" />
-          </div>
-        ) : <div className="h-28 animate-pulse rounded-xl bg-white/70" />}
-      </section>
-
       {stats ? (
         <section aria-label="Indicadores principales" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Stat icon="plans" label="Ingreso mensual recurrente" value={formatPrice(stats.mrr)} accent hint="MRR de planes activos y al día" />
@@ -163,25 +145,39 @@ export default function SuperDashboard() {
       ) : <div className="h-56 animate-pulse rounded-2xl bg-white ring-1 ring-slate-200" />}
 
       {stats && (
-        <section className="grid gap-3 xl:grid-cols-12">
-          <ChartCard title="Crecimiento" subtitle="Altas de los últimos seis meses." className="xl:col-span-4">
-            <BarChart height={130} data={stats.companiesByMonth.map((item) => ({ label: monthLabel(item.month), value: item.count }))} />
+        <section className="grid gap-5 xl:grid-cols-12">
+          <ChartCard title="Evolución de la plataforma" subtitle="Crecimiento comercial y ventas de los últimos seis meses." className="xl:col-span-8">
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="rounded-xl bg-slate-50 p-4">
+                <div className="mb-3 flex items-center justify-between"><p className="text-sm font-black text-slate-800">Nuevas empresas</p><span className="text-xs font-bold text-violet-700">{stats.newCompaniesInRange} en {rangeDays} días</span></div>
+                <BarChart height={170} data={stats.companiesByMonth.map((item) => ({ label: monthLabel(item.month), value: item.count }))} />
+              </div>
+              <div className="rounded-xl bg-slate-50 p-4">
+                <div className="mb-3 flex items-center justify-between"><p className="text-sm font-black text-slate-800">Ventas procesadas</p><span className="text-xs font-bold text-emerald-700">{formatPrice(stats.grossVolume)}</span></div>
+                <BarChart height={170} data={stats.gmvByMonth.map((item) => ({ label: monthLabel(item.month), value: item.total }))} color="#0f766e" format={(value) => formatPrice(value)} />
+              </div>
+            </div>
           </ChartCard>
-          <ChartCard title="Ventas procesadas" subtitle="GMV aprobado por mes." className="xl:col-span-4" trailing={formatPrice(stats.grossVolume)}>
-            <BarChart height={130} data={stats.gmvByMonth.map((item) => ({ label: monthLabel(item.month), value: item.total }))} color="#0f766e" format={(value) => formatPrice(value)} />
-          </ChartCard>
-          <ChartCard title="Distribución por plan" subtitle="Composición de la cartera." className="xl:col-span-4">
-            <DonutChart size={126} data={stats.planDistribution.map((item, index) => ({ label: item.plan, value: item.count, color: ["#7c3aed", "#6366f1", "#0ea5e9", "#10b981", "#f59e0b", "#94a3b8"][index % 6] }))} />
+          <ChartCard title="Cartera por plan" subtitle="Distribución actual de empresas." className="xl:col-span-4">
+            <div className="flex min-h-56 items-center justify-center">
+              <DonutChart size={160} data={stats.planDistribution.map((item, index) => ({ label: item.plan, value: item.count, color: ["#7c3aed", "#6366f1", "#0ea5e9", "#10b981", "#f59e0b", "#94a3b8"][index % 6] }))} />
+            </div>
           </ChartCard>
         </section>
       )}
 
       {stats && (
-        <section aria-label="Salud del negocio" className="grid overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 sm:grid-cols-2 xl:grid-cols-4">
-          <CompactMetric label="Retención" value={`${stats.retentionRate}%`} detail={`Últimos ${rangeDays} días`} tone="emerald" />
-          <CompactMetric label="Churn" value={`${stats.churnRate}%`} detail="Bajas sobre base inicial" tone={stats.churnRate > 5 ? "red" : "violet"} />
-          <CompactMetric label="Cancelaciones" value={String(stats.cancelledCompaniesInRange)} detail={`Últimos ${rangeDays} días`} tone="slate" />
-          <CompactMetric label="En riesgo" value={String(stats.atRiskCompanies)} detail="Requieren seguimiento" tone="amber" />
+        <section aria-labelledby="urgent-title" className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
+          <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div><p className="text-xs font-black uppercase tracking-[0.16em] text-amber-700">Requieren atención</p><h2 id="urgent-title" className="mt-1 text-xl font-black text-slate-950">Estado de suscripciones</h2><p className="mt-1 text-sm font-medium text-slate-500">Prioridades ordenadas para resolver sin revisar toda la plataforma.</p></div>
+            <Link href="/superadmin/suscripciones" className="text-sm font-bold text-violet-700 hover:underline">Ver todas las suscripciones →</Link>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <AlertCard count={stats.alerts.expiringSoon} title="Vencen en 3 días" text="Contactar o renovar antes del vencimiento." tone="amber" alert="expiringSoon" />
+            <AlertCard count={stats.alerts.pastDue} title="Pagos pendientes" text="Suscripciones marcadas como vencidas." tone="red" alert="pastDue" />
+            <AlertCard count={stats.alerts.suspendedForDebt} title="Suspendidas por deuda" text="Requieren pago o revisión manual." tone="violet" alert="suspendedForDebt" />
+            <AlertCard count={stats.alerts.atRisk} title="Empresas en riesgo" text="Vencidas o sin fecha de renovación." tone="slate" alert="atRisk" />
+          </div>
         </section>
       )}
 
@@ -222,8 +218,6 @@ export default function SuperDashboard() {
         </div>
       </section>
 
-      <section><h2 className="mb-3 text-lg font-black text-slate-950">Acciones rápidas</h2><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><QuickLink href="/registro" icon="store" title="Registrar empresa" text="Dar de alta una tienda nueva." /><QuickLink href="/superadmin/suscripciones" icon="plans" title="Ver suscripciones" text="Resolver pagos y vencimientos." /><QuickLink href="/superadmin/planes" icon="settings" title="Configurar planes" text="Cambiar precios y límites." /><QuickLink href="/superadmin/actividad" icon="activity" title="Auditar actividad" text="Revisar acciones sensibles." /></div></section>
-
       {selectedId && <CompanyDetailModal companyId={selectedId} onClose={() => setSelectedId(null)} onChanged={reloadCompanies} />}
     </div>
   );
@@ -231,7 +225,7 @@ export default function SuperDashboard() {
 
 function AlertCard({ count, title, text, tone, alert }: { count: number; title: string; text: string; tone: "amber" | "red" | "violet" | "slate"; alert: string }) {
   const colors = { amber: "border-amber-200 bg-white text-amber-700", red: "border-red-200 bg-red-50 text-red-700", violet: "border-violet-200 bg-violet-50 text-violet-700", slate: "border-slate-200 bg-slate-50 text-slate-700" };
-  return <Link href={`/superadmin/suscripciones?alert=${alert}`} className={`rounded-xl border p-3 transition hover:-translate-y-0.5 hover:shadow-sm ${colors[tone]}`}><div className="flex items-center gap-3"><span className="text-2xl font-black">{count}</span><div className="min-w-0"><h3 className="text-sm font-black text-slate-950">{title}</h3><p className="truncate text-[11px] font-medium text-slate-500">{count === 0 ? "Sin pendientes" : text}</p></div><span className="ml-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-current/10 text-xs font-black">!</span></div></Link>;
+  return <Link href={`/superadmin/suscripciones?alert=${alert}`} className={`rounded-2xl border p-5 transition hover:-translate-y-0.5 hover:shadow-md ${colors[tone]}`}><div className="flex items-start justify-between"><span className="text-3xl font-black">{count}</span><span className="flex h-9 w-9 items-center justify-center rounded-full bg-current/10 text-sm font-black">!</span></div><h3 className="mt-4 text-sm font-black text-slate-950">{title}</h3><p className="mt-1 min-h-10 text-xs font-medium leading-5 text-slate-500">{count === 0 ? "No hay pendientes por ahora." : text}</p></Link>;
 }
 
 type StatIcon = "companies" | "store" | "settings" | "orders" | "plans" | "activity" | "reports" | "customers";
@@ -241,15 +235,6 @@ function Stat({ icon, label, value, hint, accent, positive, warning, trend }: { 
 
 function ChartCard({ title, subtitle, trailing, className = "", children }: { title: string; subtitle: string; trailing?: string; className?: string; children: React.ReactNode }) {
   return <div className={`rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 ${className}`}><div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="font-black text-slate-950">{title}</h2><p className="text-xs font-medium text-slate-500">{subtitle}</p></div>{trailing && <p className="text-sm font-black text-violet-700">{trailing}</p>}</div>{children}</div>;
-}
-
-function CompactMetric({ label, value, detail, tone }: { label: string; value: string; detail: string; tone: "emerald" | "red" | "violet" | "slate" | "amber" }) {
-  const colors = { emerald: "bg-emerald-500", red: "bg-red-500", violet: "bg-violet-500", slate: "bg-slate-500", amber: "bg-amber-500" };
-  return <div className="flex items-center gap-3 border-b border-slate-100 p-4 last:border-0 sm:border-b-0 sm:border-r sm:last:border-r-0"><span className={`h-10 w-1.5 rounded-full ${colors[tone]}`} /><div><p className="text-[10px] font-black uppercase tracking-wide text-slate-500">{label}</p><p className="text-xl font-black text-slate-950">{value}</p></div><p className="ml-auto max-w-28 text-right text-[11px] font-medium text-slate-500">{detail}</p></div>;
-}
-
-function QuickLink({ href, icon, title, text }: { href: string; icon: StatIcon; title: string; text: string }) {
-  return <Link href={href} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-100 text-violet-700"><DashboardIcon name={icon} /></span><h3 className="mt-3 font-black text-slate-950">{title}</h3><p className="mt-1 text-sm font-medium text-slate-600">{text}</p></Link>;
 }
 
 function daysRemaining(value: string | null) {
