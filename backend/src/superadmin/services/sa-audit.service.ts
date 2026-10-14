@@ -26,20 +26,10 @@ export class SaAuditService {
     });
   }
 
-  async list(opts: { action?: string; module?: string; search?: string; company?: string; responsible?: string; from?: string; to?: string; page?: number; limit?: number }) {
+  async list(opts: { action?: string; page?: number; limit?: number }) {
     const page = Math.max(1, opts.page ?? 1);
     const limit = Math.min(100, Math.max(1, opts.limit ?? 30));
-    const conditions: Prisma.SuperAdminAuditWhereInput[] = [];
-    if (opts.action) conditions.push({ action: opts.action });
-    if (opts.module) conditions.push({ action: { startsWith: `${opts.module}.` } });
-    if (opts.search) conditions.push({ OR: [{ action: { contains: opts.search } }, { superAdmin: { OR: [{ name: { contains: opts.search } }, { email: { contains: opts.search } }] } }] });
-    if (opts.responsible) conditions.push({ superAdmin: { OR: [{ name: { contains: opts.responsible } }, { email: { contains: opts.responsible } }] } });
-    if (opts.company) {
-      const companies = await this.prisma.company.findMany({ where: { OR: [{ name: { contains: opts.company } }, { subdomain: { contains: opts.company } }] }, select: { id: true } });
-      conditions.push({ companyId: { in: companies.map((company) => company.id) } });
-    }
-    if (opts.from || opts.to) conditions.push({ createdAt: { ...(opts.from ? { gte: new Date(`${opts.from}T00:00:00`) } : {}), ...(opts.to ? { lte: new Date(`${opts.to}T23:59:59.999`) } : {}) } });
-    const where: Prisma.SuperAdminAuditWhereInput = conditions.length ? { AND: conditions } : {};
+    const where = opts.action ? { action: opts.action } : {};
     const [rows, total] = await Promise.all([
       this.prisma.superAdminAudit.findMany({
         where,

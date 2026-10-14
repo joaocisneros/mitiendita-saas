@@ -306,7 +306,8 @@ export const superApi = {
   audits: (page = 1, filters?: { action?: string; module?: string; search?: string; company?: string; responsible?: string; from?: string; to?: string }) => {
     const q = new URLSearchParams();
     q.set("page", String(page));
-    Object.entries(filters ?? {}).forEach(([key, value]) => value && q.set(key, value));
+    q.set("limit", "100");
+    if (filters?.action) q.set("action", filters.action);
     return sfetch<PageResult<AuditRow>>(`/superadmin/audits?${q.toString()}`);
   },
   auditActions: () => sfetch<string[]>("/superadmin/audit-actions"),

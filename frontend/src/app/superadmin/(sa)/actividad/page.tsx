@@ -94,11 +94,24 @@ export default function ActivityPage() {
       superApi
         .audits(target, filters)
         .then((result) => {
+          const normalizedSearch = filters.search.trim().toLowerCase();
+          const normalizedCompany = filters.company.trim().toLowerCase();
+          const normalizedResponsible = filters.responsible.trim().toLowerCase();
+          const filtered = result.items.filter((row) => {
+            const created = new Date(row.createdAt);
+            if (filters.module && !row.action.startsWith(`${filters.module}.`)) return false;
+            if (normalizedSearch && !`${actionLabel(row.action)} ${row.superAdmin.name} ${row.superAdmin.email}`.toLowerCase().includes(normalizedSearch)) return false;
+            if (normalizedCompany && !`${row.companyName ?? ""}`.toLowerCase().includes(normalizedCompany)) return false;
+            if (normalizedResponsible && !`${row.superAdmin.name} ${row.superAdmin.email}`.toLowerCase().includes(normalizedResponsible)) return false;
+            if (filters.from && created < new Date(`${filters.from}T00:00:00`)) return false;
+            if (filters.to && created > new Date(`${filters.to}T23:59:59.999`)) return false;
+            return true;
+          });
           setError("");
-          setRows(result.items);
-          setPage(result.page);
-          setPages(result.pages || 1);
-          setTotal(result.total);
+          setRows(filtered);
+          setPage(1);
+          setPages(1);
+          setTotal(filtered.length);
         })
         .catch((reason) =>
           setError(

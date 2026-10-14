@@ -10,23 +10,11 @@ export class SaAuditsController {
   @Get('audits')
   list(
     @Query('action') action?: string,
-    @Query('module') module?: string,
-    @Query('search') search?: string,
-    @Query('company') company?: string,
-    @Query('responsible') responsible?: string,
-    @Query('from') from?: string,
-    @Query('to') to?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
     return this.audit.list({
       action: action || undefined,
-      module: module || undefined,
-      search: search || undefined,
-      company: company || undefined,
-      responsible: responsible || undefined,
-      from: from || undefined,
-      to: to || undefined,
       page: page ? Number(page) : 1,
       limit: limit ? Number(limit) : 30,
     });
