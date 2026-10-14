@@ -8,6 +8,7 @@ const TABS = [
   { id: "marca", label: "Marca", icon: "🏪" },
   { id: "pago", label: "Pago y contacto", icon: "💳" },
   { id: "entrega", label: "Entrega", icon: "🚚" },
+  { id: "seo", label: "Google", icon: "🔎" },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
@@ -39,6 +40,10 @@ export default function ConfigPage() {
     const { url } = await adminApi.uploadImage(file, "general");
     set("logoUrl", url);
   }
+  async function uploadSocialImage(file: File) {
+    const { url } = await adminApi.uploadImage(file, "general");
+    set("socialImageUrl", url);
+  }
 
   async function save() {
     if (!s) return;
@@ -69,6 +74,10 @@ export default function ConfigPage() {
         instagramUrl: s.instagramUrl ?? undefined,
         facebookUrl: s.facebookUrl ?? undefined,
         tiktokUrl: s.tiktokUrl ?? undefined,
+        searchVisible: s.searchVisible,
+        seoTitle: s.seoTitle ?? "",
+        seoDescription: s.seoDescription ?? "",
+        socialImageUrl: s.socialImageUrl ?? undefined,
       });
       setOk(true);
     } catch (e) {
@@ -204,6 +213,41 @@ export default function ConfigPage() {
               <Input label="Pedido mínimo" type="number" value={s.minOrder ?? ""} onChange={(v) => set("minOrder", v)} />
             </div>
             <Input label="Dirección del local" value={s.storeAddress ?? ""} onChange={(v) => set("storeAddress", v)} />
+          </div>
+        )}
+
+        {tab === "seo" && (
+          <div className="space-y-4">
+            <div className="rounded-2xl bg-violet-50 p-4 ring-1 ring-violet-100">
+              <Check label="Quiero que mi tienda pueda aparecer en Google" checked={s.searchVisible} onChange={(v) => set("searchVisible", v)} />
+              <p className="mt-2 text-xs font-medium leading-5 text-violet-700">Al activarlo, incluiremos tu tienda en el mapa que revisa Google. Google decide cuándo mostrarla y puede tardar varios días.</p>
+            </div>
+
+            <Input label="Título que verá Google" value={s.seoTitle ?? ""} onChange={(v) => set("seoTitle", v)} placeholder={`${s.storeName} | Tienda online`} />
+            <div>
+              <Textarea label="Descripción para Google" value={s.seoDescription ?? ""} onChange={(v) => set("seoDescription", v)} />
+              <p className="mt-1 text-xs text-slate-400">Explica qué vendes y en qué ciudad atiendes. Recomendado: entre 120 y 160 caracteres.</p>
+            </div>
+
+            <div>
+              <span className="mb-1.5 block text-sm font-bold text-slate-800">Imagen para Google y redes</span>
+              <div className="flex items-center gap-3">
+                <div className="relative h-24 w-40 overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-200">
+                  {s.socialImageUrl || s.logoUrl ? <Image src={s.socialImageUrl || s.logoUrl || ""} alt="Vista previa" fill sizes="160px" className="object-cover" /> : <div className="flex h-full items-center justify-center text-xs font-bold text-slate-400">Sin imagen</div>}
+                </div>
+                <label className="cursor-pointer rounded-lg bg-violet-50 px-3 py-2 text-sm font-bold text-violet-700 hover:bg-violet-100">
+                  Subir imagen
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadSocialImage(f); }} />
+                </label>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-xs uppercase tracking-wide text-slate-400">Vista previa en Google</p>
+              <p className="mt-2 text-lg font-medium text-blue-700">{s.seoTitle || `${s.storeName} | Tienda online`}</p>
+              <p className="text-sm text-emerald-700">mitiendita-saas.vercel.app/tienda/{s.subdomain}</p>
+              <p className="mt-1 text-sm leading-5 text-slate-600">{s.seoDescription || s.description || `Conoce ${s.storeName} y compra por internet.`}</p>
+            </div>
           </div>
         )}
       </div>

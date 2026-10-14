@@ -27,22 +27,23 @@ export async function generateMetadata({
   const { subdomain } = await params;
   try {
     const { store } = await storefrontApi.getStore(subdomain);
-    const title = store.name;
+    const title = store.seoTitle?.trim() || `${store.name} | Tienda online`;
     const description =
-      store.description || `Conoce ${store.name}: haz tu pedido o reserva por internet, fácil y rápido.`;
-    const images = store.logoUrl ? [{ url: store.logoUrl }] : undefined;
+      store.seoDescription?.trim() || store.description || `Conoce ${store.name}: haz tu pedido o reserva por internet, fácil y rápido.`;
+    const socialImage = store.socialImageUrl || store.logoUrl;
+    const images = socialImage ? [{ url: socialImage, alt: store.name }] : undefined;
     const canonical = `${SITE_URL}/tienda/${encodeURIComponent(subdomain)}`;
     return {
-      title: `${title} | Tienda online`,
+      title,
       description,
       alternates: { canonical },
-      robots: { index: true, follow: true },
+      robots: { index: store.searchVisible, follow: store.searchVisible },
       openGraph: { title, description, images, type: "website", url: canonical, siteName: title, locale: "es_PE" },
       twitter: {
         card: "summary",
         title,
         description,
-        images: store.logoUrl ? [store.logoUrl] : undefined,
+        images: socialImage ? [socialImage] : undefined,
       },
     };
   } catch {

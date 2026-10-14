@@ -127,4 +127,23 @@ export class UpdateSettingsDto {
   @IsString()
   @MaxLength(300)
   tiktokUrl?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  searchVisible?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  seoTitle?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(320)
+  seoDescription?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  socialImageUrl?: string;
 }

@@ -14,6 +14,27 @@ import { PrismaService } from '../prisma/prisma.service';
 export class StorefrontService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async seoIndex() {
+    const rows = await this.prisma.company.findMany({
+      where: {
+        status: 'active',
+        deletedAt: null,
+        settings: { searchVisible: true },
+        NOT: [
+          { subdomain: { startsWith: 'demo-' } },
+          { subdomain: { startsWith: 'tienda-a-' } },
+          { subdomain: { startsWith: 'tienda-b-' } },
+          { subdomain: { startsWith: 'tienda-ord-' } },
+          { subdomain: { startsWith: 'adm-' } },
+          { subdomain: { startsWith: 'sa-' } },
+        ],
+      },
+      orderBy: { updatedAt: 'desc' },
+      select: { subdomain: true, updatedAt: true },
+    });
+    return rows.map((row) => ({ subdomain: row.subdomain, updatedAt: row.updatedAt }));
+  }
+
   /** Información de marca + categorías activas de la tienda. */
   async getStore(subdomain: string) {
     const company = await this.resolveActiveCompany(subdomain);
@@ -52,6 +73,10 @@ export class StorefrontService {
         instagramUrl: s?.instagramUrl ?? null,
         facebookUrl: s?.facebookUrl ?? null,
         tiktokUrl: s?.tiktokUrl ?? null,
+        searchVisible: s?.searchVisible ?? true,
+        seoTitle: s?.seoTitle ?? null,
+        seoDescription: s?.seoDescription ?? null,
+        socialImageUrl: s?.socialImageUrl ?? null,
       },
       categories,
     };

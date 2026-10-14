@@ -575,6 +575,10 @@ export interface StoreSettings {
   instagramUrl: string | null;
   facebookUrl: string | null;
   tiktokUrl: string | null;
+  searchVisible: boolean;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  socialImageUrl: string | null;
   whatsappMessage: string | null;
   allowsPickup: boolean;
   allowsDelivery: boolean;

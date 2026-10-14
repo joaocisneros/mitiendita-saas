@@ -11,6 +11,11 @@ import { Public } from '../common/decorators/public.decorator';
 export class StorefrontController {
   constructor(private readonly storefront: StorefrontService) {}
 
+  @Get('seo/index')
+  seoIndex() {
+    return this.storefront.seoIndex();
+  }
+
   @Get(':subdomain')
   getStore(@Param('subdomain') subdomain: string) {
     return this.storefront.getStore(subdomain);

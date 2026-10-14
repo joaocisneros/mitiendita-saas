@@ -270,10 +270,14 @@ model CompanySettings {
   deliveryNotes  String?  @map("delivery_notes") @db.Text
 
   // Presencia / confianza
-  hours        String? @db.Text // horario de atención (texto libre, ej. "Lun-Sáb 9am-8pm")
-  instagramUrl String? @map("instagram_url")
-  facebookUrl  String? @map("facebook_url")
-  tiktokUrl    String? @map("tiktok_url")
+  hours          String? @db.Text // horario de atención (texto libre, ej. "Lun-Sáb 9am-8pm")
+  instagramUrl   String? @map("instagram_url")
+  facebookUrl    String? @map("facebook_url")
+  tiktokUrl      String? @map("tiktok_url")
+  searchVisible  Boolean @default(true) @map("search_visible")
+  seoTitle       String? @map("seo_title") @db.VarChar(120)
+  seoDescription String? @map("seo_description") @db.VarChar(320)
+  socialImageUrl String? @map("social_image_url")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

@@ -39,7 +39,7 @@ export async function generateMetadata({
       title,
       description,
       alternates: { canonical },
-      robots: { index: true, follow: true },
+      robots: { index: storeData.store.searchVisible, follow: storeData.store.searchVisible },
       openGraph: { title, description, images, type: "website", url: canonical, siteName: storeData.store.name, locale: "es_PE" },
       twitter: {
         card: "summary_large_image",

@@ -164,6 +164,7 @@ export async function getPublicPlans(): Promise<PublicPlan[]> {
 }
 
 export const storefrontApi = {
+  seoIndex: () => get<Array<{ subdomain: string; updatedAt: string }>>("/public/stores/seo/index", 300),
   getStore: (subdomain: string) =>
     get<StoreResponse>(`/public/stores/${subdomain}`),
 
