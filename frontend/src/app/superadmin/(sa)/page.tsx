@@ -106,7 +106,7 @@ export default function SuperDashboard() {
   }
 
   return (
-    <div className="space-y-7 pb-20 md:pb-0">
+    <div className="space-y-5 pb-20 md:pb-0">
       <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <p className="text-sm font-bold text-violet-700">Centro de control</p>
@@ -135,11 +135,11 @@ export default function SuperDashboard() {
         </p>
       )}
 
-      <section aria-labelledby="urgent-title" className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 sm:p-5">
-        <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+      <section aria-labelledby="urgent-title" className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-white p-4">
+        <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-700">Prioridad de hoy</p>
-            <h2 id="urgent-title" className="mt-1 text-xl font-black text-slate-950">Acciones urgentes</h2>
+            <h2 id="urgent-title" className="mt-0.5 text-lg font-black text-slate-950">Acciones urgentes</h2>
           </div>
           <Link href="/superadmin/suscripciones" className="text-sm font-bold text-amber-800 hover:underline">Resolver en suscripciones →</Link>
         </div>
@@ -158,25 +158,30 @@ export default function SuperDashboard() {
           <Stat icon="plans" label="Ingreso mensual recurrente" value={formatPrice(stats.mrr)} accent hint="MRR de planes activos y al día" />
           <Stat icon="store" label="Empresas activas" value={String(stats.activeCompanies)} positive hint={`${stats.totalCompanies} registradas`} />
           <Stat icon="activity" label={`Nuevas · ${rangeDays} días`} value={String(stats.newCompaniesInRange)} trend={stats.growthRate} hint="vs. periodo anterior" />
-          <Stat icon="settings" label="Empresas en riesgo" value={String(stats.atRiskCompanies)} warning hint="Requieren seguimiento" />
-          <Stat icon="companies" label="Cancelaciones" value={String(stats.cancelledCompaniesInRange)} hint={`Últimos ${rangeDays} días`} />
-          <Stat icon="reports" label="Churn" value={`${stats.churnRate}%`} warning={stats.churnRate > 5} hint="Sobre la base inicial" />
-          <Stat icon="customers" label="Retención" value={`${stats.retentionRate}%`} positive hint={`Últimos ${rangeDays} días`} />
           <Stat icon="orders" label="Pedidos globales" value={String(stats.totalOrders)} hint={`GMV ${formatPrice(stats.grossVolume)}`} />
         </section>
       ) : <div className="h-56 animate-pulse rounded-2xl bg-white ring-1 ring-slate-200" />}
 
       {stats && (
-        <section className="grid gap-4 lg:grid-cols-3">
-          <ChartCard title="Crecimiento de empresas" subtitle="Altas registradas durante los últimos seis meses." className="lg:col-span-2">
-            <BarChart data={stats.companiesByMonth.map((item) => ({ label: monthLabel(item.month), value: item.count }))} />
+        <section className="grid gap-3 xl:grid-cols-12">
+          <ChartCard title="Crecimiento" subtitle="Altas de los últimos seis meses." className="xl:col-span-4">
+            <BarChart height={130} data={stats.companiesByMonth.map((item) => ({ label: monthLabel(item.month), value: item.count }))} />
           </ChartCard>
-          <ChartCard title="Distribución por plan" subtitle="Composición actual de la cartera.">
-            <DonutChart data={stats.planDistribution.map((item, index) => ({ label: item.plan, value: item.count, color: ["#7c3aed", "#6366f1", "#0ea5e9", "#10b981", "#f59e0b", "#94a3b8"][index % 6] }))} />
+          <ChartCard title="Ventas procesadas" subtitle="GMV aprobado por mes." className="xl:col-span-4" trailing={formatPrice(stats.grossVolume)}>
+            <BarChart height={130} data={stats.gmvByMonth.map((item) => ({ label: monthLabel(item.month), value: item.total }))} color="#0f766e" format={(value) => formatPrice(value)} />
           </ChartCard>
-          <ChartCard title="Volumen de ventas procesado" subtitle="Pedidos aprobados; no representa ingresos por suscripción." className="lg:col-span-3" trailing={`Acumulado: ${formatPrice(stats.grossVolume)}`}>
-            <BarChart data={stats.gmvByMonth.map((item) => ({ label: monthLabel(item.month), value: item.total }))} color="#0f766e" format={(value) => formatPrice(value)} />
+          <ChartCard title="Distribución por plan" subtitle="Composición de la cartera." className="xl:col-span-4">
+            <DonutChart size={126} data={stats.planDistribution.map((item, index) => ({ label: item.plan, value: item.count, color: ["#7c3aed", "#6366f1", "#0ea5e9", "#10b981", "#f59e0b", "#94a3b8"][index % 6] }))} />
           </ChartCard>
+        </section>
+      )}
+
+      {stats && (
+        <section aria-label="Salud del negocio" className="grid overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 sm:grid-cols-2 xl:grid-cols-4">
+          <CompactMetric label="Retención" value={`${stats.retentionRate}%`} detail={`Últimos ${rangeDays} días`} tone="emerald" />
+          <CompactMetric label="Churn" value={`${stats.churnRate}%`} detail="Bajas sobre base inicial" tone={stats.churnRate > 5 ? "red" : "violet"} />
+          <CompactMetric label="Cancelaciones" value={String(stats.cancelledCompaniesInRange)} detail={`Últimos ${rangeDays} días`} tone="slate" />
+          <CompactMetric label="En riesgo" value={String(stats.atRiskCompanies)} detail="Requieren seguimiento" tone="amber" />
         </section>
       )}
 
@@ -191,7 +196,7 @@ export default function SuperDashboard() {
               <tr><th className="px-4 py-3">Empresa</th><th className="px-4 py-3">Plan</th><th className="px-4 py-3">Estado</th><th className="px-4 py-3">Días restantes</th><th className="px-4 py-3">Último pago</th><th className="px-4 py-3 text-right">Control rápido</th></tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {companies.map((company) => {
+              {companies.slice(0, 4).map((company) => {
                 const subscription = SUBSCRIPTION_STATUS[company.subscriptionStatus];
                 const isBusy = busyCompanyId === company.id;
                 const remaining = daysRemaining(company.currentPeriodEndsAt);
@@ -226,16 +231,21 @@ export default function SuperDashboard() {
 
 function AlertCard({ count, title, text, tone, alert }: { count: number; title: string; text: string; tone: "amber" | "red" | "violet" | "slate"; alert: string }) {
   const colors = { amber: "border-amber-200 bg-white text-amber-700", red: "border-red-200 bg-red-50 text-red-700", violet: "border-violet-200 bg-violet-50 text-violet-700", slate: "border-slate-200 bg-slate-50 text-slate-700" };
-  return <Link href={`/superadmin/suscripciones?alert=${alert}`} className={`rounded-xl border p-4 transition hover:-translate-y-0.5 hover:shadow-sm ${colors[tone]}`}><div className="flex items-start justify-between gap-3"><div><p className="text-2xl font-black">{count}</p><h3 className="mt-1 text-sm font-black text-slate-950">{title}</h3></div><span className="flex h-8 w-8 items-center justify-center rounded-full bg-current/10 text-sm font-black">!</span></div><p className="mt-2 text-xs font-medium leading-5 text-slate-600">{count === 0 ? "Sin pendientes por ahora." : text}</p></Link>;
+  return <Link href={`/superadmin/suscripciones?alert=${alert}`} className={`rounded-xl border p-3 transition hover:-translate-y-0.5 hover:shadow-sm ${colors[tone]}`}><div className="flex items-center gap-3"><span className="text-2xl font-black">{count}</span><div className="min-w-0"><h3 className="text-sm font-black text-slate-950">{title}</h3><p className="truncate text-[11px] font-medium text-slate-500">{count === 0 ? "Sin pendientes" : text}</p></div><span className="ml-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-current/10 text-xs font-black">!</span></div></Link>;
 }
 
 type StatIcon = "companies" | "store" | "settings" | "orders" | "plans" | "activity" | "reports" | "customers";
 function Stat({ icon, label, value, hint, accent, positive, warning, trend }: { icon: StatIcon; label: string; value: string; hint: string; accent?: boolean; positive?: boolean; warning?: boolean; trend?: number }) {
-  return <div className={`rounded-2xl p-5 shadow-sm ring-1 ${accent ? "bg-violet-600 text-white ring-violet-600" : "bg-white text-slate-950 ring-slate-200"}`}><div className="flex items-start justify-between gap-3"><span className={`flex h-10 w-10 items-center justify-center rounded-xl ${accent ? "bg-white/15" : warning ? "bg-amber-100 text-amber-800" : positive ? "bg-emerald-100 text-emerald-800" : "bg-violet-100 text-violet-700"}`}><DashboardIcon name={icon} /></span>{trend !== undefined && <span className={`rounded-full px-2 py-1 text-[11px] font-black ${trend >= 0 ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-700"}`}>{trend >= 0 ? "+" : ""}{trend}%</span>}</div><p className={`mt-4 text-[11px] font-bold uppercase tracking-wide ${accent ? "text-violet-100" : "text-slate-600"}`}>{label}</p><p className="mt-1 text-2xl font-black">{value}</p><p className={`mt-1 text-xs font-medium ${accent ? "text-violet-100" : "text-slate-500"}`}>{hint}</p></div>;
+  return <div className={`rounded-2xl p-4 shadow-sm ring-1 ${accent ? "bg-gradient-to-br from-violet-600 to-indigo-600 text-white ring-violet-600" : "bg-white text-slate-950 ring-slate-200"}`}><div className="flex items-start justify-between gap-3"><span className={`flex h-9 w-9 items-center justify-center rounded-xl ${accent ? "bg-white/15" : warning ? "bg-amber-100 text-amber-800" : positive ? "bg-emerald-100 text-emerald-800" : "bg-violet-100 text-violet-700"}`}><DashboardIcon name={icon} /></span>{trend !== undefined && <span className={`rounded-full px-2 py-1 text-[11px] font-black ${trend >= 0 ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-700"}`}>{trend >= 0 ? "+" : ""}{trend}%</span>}</div><p className={`mt-3 text-[10px] font-bold uppercase tracking-wide ${accent ? "text-violet-100" : "text-slate-600"}`}>{label}</p><p className="mt-0.5 text-2xl font-black">{value}</p><p className={`mt-0.5 text-xs font-medium ${accent ? "text-violet-100" : "text-slate-500"}`}>{hint}</p></div>;
 }
 
 function ChartCard({ title, subtitle, trailing, className = "", children }: { title: string; subtitle: string; trailing?: string; className?: string; children: React.ReactNode }) {
-  return <div className={`rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 ${className}`}><div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="font-black text-slate-950">{title}</h2><p className="mt-1 text-xs font-medium text-slate-500">{subtitle}</p></div>{trailing && <p className="text-sm font-black text-violet-700">{trailing}</p>}</div>{children}</div>;
+  return <div className={`rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 ${className}`}><div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="font-black text-slate-950">{title}</h2><p className="text-xs font-medium text-slate-500">{subtitle}</p></div>{trailing && <p className="text-sm font-black text-violet-700">{trailing}</p>}</div>{children}</div>;
+}
+
+function CompactMetric({ label, value, detail, tone }: { label: string; value: string; detail: string; tone: "emerald" | "red" | "violet" | "slate" | "amber" }) {
+  const colors = { emerald: "bg-emerald-500", red: "bg-red-500", violet: "bg-violet-500", slate: "bg-slate-500", amber: "bg-amber-500" };
+  return <div className="flex items-center gap-3 border-b border-slate-100 p-4 last:border-0 sm:border-b-0 sm:border-r sm:last:border-r-0"><span className={`h-10 w-1.5 rounded-full ${colors[tone]}`} /><div><p className="text-[10px] font-black uppercase tracking-wide text-slate-500">{label}</p><p className="text-xl font-black text-slate-950">{value}</p></div><p className="ml-auto max-w-28 text-right text-[11px] font-medium text-slate-500">{detail}</p></div>;
 }
 
 function QuickLink({ href, icon, title, text }: { href: string; icon: StatIcon; title: string; text: string }) {
