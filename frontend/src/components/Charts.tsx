@@ -24,21 +24,21 @@ export function BarChart({
     );
   const max = Math.max(...data.map((d) => d.value), 1);
   return (
-    <div className="flex items-end justify-center gap-3" style={{ height }}>
+    <div className="flex items-end justify-center gap-4 rounded-xl bg-[linear-gradient(to_bottom,transparent_24%,#e2e8f0_25%,transparent_26%,transparent_49%,#e2e8f0_50%,transparent_51%,transparent_74%,#e2e8f0_75%,transparent_76%)] px-3 pt-2" style={{ height }}>
       {data.map((d, i) => (
         <div key={i} className="group flex flex-1 flex-col items-center justify-end gap-1" style={{ maxWidth: 64 }}>
-          <span className="text-[10px] font-bold text-slate-700 opacity-0 group-hover:opacity-100">
+          <span className="text-[10px] font-bold text-slate-700">
             {format(d.value)}
           </span>
           <div
-            className="w-full rounded-t transition-all"
+            className="w-full rounded-t-md shadow-sm transition-all group-hover:brightness-95"
             style={{
               height: `${Math.max((d.value / max) * (height - 24), d.value > 0 ? 4 : 2)}px`,
               backgroundColor: d.value > 0 ? color : "#e2e8f0",
             }}
             title={`${d.label}: ${format(d.value)}`}
           />
-          <span className="truncate text-[9px] text-slate-400">{d.label}</span>
+          <span className="w-full truncate text-center text-[10px] font-medium text-slate-500">{d.label}</span>
         </div>
       ))}
     </div>
