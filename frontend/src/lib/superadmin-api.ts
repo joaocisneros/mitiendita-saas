@@ -168,6 +168,9 @@ export interface AuditRow {
   details: Record<string, unknown> | null;
   createdAt: string;
   superAdmin: { name: string; email: string };
+  actorRole?: string;
+  module?: string;
+  result?: "success" | "error";
 }
 export interface PageResult<T> {
   items: T[];
@@ -300,10 +303,10 @@ export const superApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ planId }),
     }),
-  audits: (page = 1, action?: string) => {
+  audits: (page = 1, filters?: { action?: string; module?: string; search?: string; company?: string; responsible?: string; from?: string; to?: string }) => {
     const q = new URLSearchParams();
     q.set("page", String(page));
-    if (action) q.set("action", action);
+    Object.entries(filters ?? {}).forEach(([key, value]) => value && q.set(key, value));
     return sfetch<PageResult<AuditRow>>(`/superadmin/audits?${q.toString()}`);
   },
   auditActions: () => sfetch<string[]>("/superadmin/audit-actions"),

@@ -76,25 +76,29 @@ function detailSummary(entries: [string, unknown][], planNames: Record<number, s
 }
 
 export default function ActivityPage() {
+  const emptyFilters = { action: "", module: "", search: "", company: "", responsible: "", from: "", to: "" };
   const [rows, setRows] = useState<AuditRow[]>([]);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [action, setAction] = useState("");
   const [actions, setActions] = useState<string[]>([]);
   const [planNames, setPlanNames] = useState<Record<number, string>>({});
+  const [draft, setDraft] = useState(emptyFilters);
+  const [filters, setFilters] = useState(emptyFilters);
 
   const load = useCallback(
     (target = 1) => {
       superApi
-        .audits(target, action || undefined)
+        .audits(target, filters)
         .then((result) => {
           setError("");
           setRows(result.items);
           setPage(result.page);
           setPages(result.pages || 1);
+          setTotal(result.total);
         })
         .catch((reason) =>
           setError(
@@ -105,7 +109,7 @@ export default function ActivityPage() {
         )
         .finally(() => setLoading(false));
     },
-    [action],
+    [filters],
   );
   useEffect(() => {
     load(1);
@@ -131,21 +135,19 @@ export default function ActivityPage() {
           Trazabilidad de acciones sensibles realizadas en toda la plataforma.
         </p>
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-        <div><p className="text-sm font-bold text-slate-900">Filtrar registros</p><p className="mt-0.5 text-xs font-medium text-slate-500">Selecciona un evento específico para encontrarlo rápidamente.</p></div>
-        <select
-          value={action}
-          onChange={(e) => setAction(e.target.value)}
-          className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800"
-        >
-          <option value="">Todas las acciones</option>
-          {actions.map((a) => (
-            <option key={a} value={a}>
-              {actionLabel(a)}
-            </option>
-          ))}
-        </select>
-      </div>
+      <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+        <div className="mb-4"><p className="text-sm font-bold text-slate-900">Buscar en la auditoría</p><p className="mt-0.5 text-xs font-medium text-slate-500">Combina filtros para localizar una operación específica.</p></div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <input value={draft.search} onChange={(e) => setDraft({ ...draft, search: e.target.value })} placeholder="Buscar acción o responsable" className="h-10 rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-violet-600" />
+          <input value={draft.company} onChange={(e) => setDraft({ ...draft, company: e.target.value })} placeholder="Empresa o subdominio" className="h-10 rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-violet-600" />
+          <select value={draft.module} onChange={(e) => setDraft({ ...draft, module: e.target.value })} className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700"><option value="">Todos los módulos</option><option value="company">Empresas</option><option value="subscription">Suscripciones</option><option value="user">Usuarios</option><option value="plan">Planes</option><option value="platform">Plataforma</option><option value="api_token">API</option></select>
+          <select value={draft.action} onChange={(e) => setDraft({ ...draft, action: e.target.value })} className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700"><option value="">Todas las acciones</option>{actions.map((a) => <option key={a} value={a}>{actionLabel(a)}</option>)}</select>
+          <input value={draft.responsible} onChange={(e) => setDraft({ ...draft, responsible: e.target.value })} placeholder="Nombre o correo responsable" className="h-10 rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-violet-600" />
+          <label className="flex h-10 items-center gap-2 rounded-xl border border-slate-300 px-3 text-xs font-bold text-slate-500">Desde<input type="date" value={draft.from} onChange={(e) => setDraft({ ...draft, from: e.target.value })} className="min-w-0 flex-1 bg-transparent text-sm text-slate-700 outline-none" /></label>
+          <label className="flex h-10 items-center gap-2 rounded-xl border border-slate-300 px-3 text-xs font-bold text-slate-500">Hasta<input type="date" value={draft.to} onChange={(e) => setDraft({ ...draft, to: e.target.value })} className="min-w-0 flex-1 bg-transparent text-sm text-slate-700 outline-none" /></label>
+          <div className="flex gap-2"><button onClick={() => setFilters(draft)} className="h-10 flex-1 rounded-xl bg-violet-600 px-4 text-sm font-bold text-white hover:bg-violet-700">Aplicar filtros</button><button onClick={() => { setDraft(emptyFilters); setFilters(emptyFilters); }} className="h-10 rounded-xl bg-slate-100 px-4 text-sm font-bold text-slate-700 hover:bg-slate-200">Limpiar</button></div>
+        </div>
+      </section>
       {error && (
         <p className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">
           {error}
@@ -153,9 +155,9 @@ export default function ActivityPage() {
       )}
       <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
         <div className="overflow-x-auto">
-          <table className="w-full table-fixed min-w-[1120px] text-sm">
+          <table className="w-full table-fixed min-w-[1500px] text-sm">
             <thead className="bg-slate-50 text-left text-[11px] font-black uppercase tracking-wide text-slate-600">
-              <tr><th className="w-40 px-4 py-3">Fecha y hora</th><th className="w-64 px-4 py-3">Administrador</th><th className="w-64 px-4 py-3">Acción</th><th className="w-48 px-4 py-3">Empresa</th><th className="w-28 px-4 py-3">Tipo</th><th className="w-64 px-4 py-3">Detalles</th></tr>
+              <tr><th className="w-40 px-4 py-3">Fecha y hora</th><th className="w-64 px-4 py-3">Responsable</th><th className="w-48 px-4 py-3">Empresa</th><th className="w-32 px-4 py-3">Módulo</th><th className="w-64 px-4 py-3">Acción</th><th className="w-44 px-4 py-3">Elemento afectado</th><th className="w-28 px-4 py-3">Resultado</th><th className="w-72 px-4 py-3">Detalles</th></tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
           {rows.map((row) => {
@@ -164,15 +166,17 @@ export default function ActivityPage() {
             return (
             <tr key={row.id} className="align-top transition hover:bg-slate-50/70">
               <td className="whitespace-nowrap px-4 py-4"><time dateTime={row.createdAt} className="text-xs font-semibold text-slate-600">{friendlyDate(row.createdAt)}</time></td>
-              <td className="px-4 py-4"><p className="truncate font-bold text-slate-800">{row.superAdmin.name}</p><p className="mt-0.5 truncate text-xs text-slate-500">{row.superAdmin.email}</p></td>
-              <td className="px-4 py-4"><div className="flex items-center gap-3"><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${meta.box}`}><DashboardIcon name={meta.icon} className="h-4 w-4" /></span><span className="font-bold text-slate-950">{actionLabel(row.action)}</span></div></td>
+              <td className="px-4 py-4"><p className="truncate font-bold text-slate-800">{row.superAdmin.name}</p><p className="mt-0.5 truncate text-xs text-slate-500">{row.superAdmin.email}</p><span className="mt-1 inline-flex rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">{row.actorRole ?? "Superadministrador"}</span></td>
               <td className="px-4 py-4">{row.companyId ? <button onClick={() => setSelectedId(row.companyId)} className="font-bold text-violet-700 hover:underline">{row.companyName ?? "Ver empresa"} →</button> : <span className="text-slate-400">No aplica</span>}</td>
               <td className="px-4 py-4"><span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-wide ${meta.badge}`}>{meta.category}</span></td>
+              <td className="px-4 py-4"><div className="flex items-center gap-2"><span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${meta.box}`}><DashboardIcon name={meta.icon} className="h-4 w-4" /></span><span className="font-bold text-slate-950">{actionLabel(row.action)}</span></div></td>
+              <td className="px-4 py-4 text-xs font-semibold text-slate-700">{row.companyName ?? meta.category}</td>
+              <td className="px-4 py-4"><span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black uppercase text-emerald-800">Correcto</span></td>
               <td className="px-4 py-4"><span className={details.length > 0 ? "text-xs font-semibold text-slate-700" : "text-xs text-slate-400"}>{details.length > 0 ? detailSummary(details, planNames) : "Sin cambios adicionales"}</span></td>
             </tr>
           )})}
           {!loading && rows.length === 0 && (
-            <tr><td colSpan={6}><div className="p-12 text-center">
+            <tr><td colSpan={8}><div className="p-12 text-center">
               <DashboardIcon
                 name="activity"
                 className="mx-auto h-10 w-10 text-slate-400"
@@ -186,7 +190,7 @@ export default function ActivityPage() {
             </div></td></tr>
           )}
           {loading && (
-            <tr><td colSpan={6} className="p-12 text-center font-semibold text-slate-600">
+            <tr><td colSpan={8} className="p-12 text-center font-semibold text-slate-600">
               Cargando auditoría...
             </td></tr>
           )}
@@ -195,7 +199,7 @@ export default function ActivityPage() {
         </div>
         <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3">
           <p className="text-sm font-medium text-slate-600">
-            Página {page} de {pages}
+            {total} registros · Página {page} de {pages}
           </p>
           <div className="flex gap-2">
             <button
