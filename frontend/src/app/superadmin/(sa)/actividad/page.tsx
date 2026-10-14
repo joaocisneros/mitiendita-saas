@@ -49,6 +49,7 @@ function friendlyDate(value: string) {
 
 const DETAIL_LABELS: Record<string, string> = { months: "Meses registrados", status: "Estado", planId: "Plan asignado", oldPlanId: "Plan anterior", previousPlanId: "Plan anterior", newPlanId: "Plan nuevo", userId: "Usuario", active: "Estado activo", newStatus: "Nuevo estado", previousStatus: "Estado anterior" };
 const DETAIL_VALUES: Record<string, string> = { active: "Activo", suspended: "Suspendido", inactive: "Inactivo", trial: "Prueba", past_due: "Vencido", cancelled: "Cancelado", true: "Sí", false: "No" };
+const COMPANY_STATUS_WORDS: Record<string, string> = { active: "activa", suspended: "suspendida", inactive: "inactiva" };
 
 function detailValue(value: unknown) {
   const raw = String(value);
@@ -57,12 +58,16 @@ function detailValue(value: unknown) {
 
 function detailSummary(entries: [string, unknown][], planNames: Record<number, string>) {
   const values = Object.fromEntries(entries);
-  if (values.previousStatus !== undefined && values.newStatus !== undefined) return `Estado: ${detailValue(values.previousStatus)} → ${detailValue(values.newStatus)}`;
+  if (values.previousStatus !== undefined && values.newStatus !== undefined) {
+    const previous = COMPANY_STATUS_WORDS[String(values.previousStatus)] ?? detailValue(values.previousStatus).toLowerCase();
+    const next = COMPANY_STATUS_WORDS[String(values.newStatus)] ?? detailValue(values.newStatus).toLowerCase();
+    return `La empresa pasó de ${previous} a ${next}.`;
+  }
   const previousPlanId = values.previousPlanId ?? values.oldPlanId;
   if (previousPlanId !== undefined && values.newPlanId !== undefined) {
     const previous = previousPlanId === null ? "Sin plan" : (planNames[Number(previousPlanId)] ?? `Plan #${previousPlanId}`);
     const next = planNames[Number(values.newPlanId)] ?? `Plan #${values.newPlanId}`;
-    return `Plan: ${previous} → ${next}`;
+    return `Cambió del plan ${previous} al plan ${next}.`;
   }
   if (values.months !== undefined) return `${detailValue(values.months)} ${Number(values.months) === 1 ? "mes registrado" : "meses registrados"}`;
   if (values.active !== undefined) return `Usuario: ${detailValue(values.active) === "Sí" ? "Activado" : "Desactivado"}`;
