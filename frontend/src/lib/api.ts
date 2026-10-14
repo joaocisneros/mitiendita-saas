@@ -7,10 +7,13 @@ import type {
 // En el servidor (SSR) llamamos directo al backend.
 // En el navegador usamos "/api" (mismo origen): Next lo reenvía al backend
 // mediante un rewrite. Así el celular por https no tiene "contenido mixto".
-const API =
-  typeof window === "undefined"
-    ? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8300/api"
-    : "/api";
+const serverApiUrl =
+  process.env.NEXT_PUBLIC_API_URL ??
+  (process.env.BACKEND_URL
+    ? `${process.env.BACKEND_URL.replace(/\/$/, "")}/api`
+    : "http://localhost:8300/api");
+
+const API = typeof window === "undefined" ? serverApiUrl : "/api";
 
 /** fetch que convierte errores de red en un mensaje claro en español. */
 function safeFetch(url: string, init?: RequestInit): Promise<Response> {
