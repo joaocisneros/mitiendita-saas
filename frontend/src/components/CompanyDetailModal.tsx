@@ -26,7 +26,7 @@ export function CompanyDetailModal({
   const [error, setError] = useState("");
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<"summary" | "store" | "orders" | "admin">("summary");
+  const [tab, setTab] = useState<"summary" | "store" | "orders">("summary");
   const [form, setForm] = useState({
     name: "",
     subdomain: "",
@@ -76,52 +76,6 @@ export function CompanyDetailModal({
     }
   }
 
-  async function impersonate() {
-    setError("");
-    // Abrimos la pestaña YA, durante el clic. Si la abriéramos después del
-    // await, el navegador la bloquea como popup (pierde el gesto del usuario)
-    // y "no entra" nada. Luego solo le cambiamos la dirección al /panel.
-    const tab = window.open("about:blank", "_blank");
-    try {
-      const { accessToken } = await superApi.impersonate(companyId);
-      localStorage.setItem("mt_access", accessToken);
-      // Marca "modo soporte" para mostrar el aviso y el botón de volver en el panel.
-      localStorage.setItem("mt_impersonating", "1");
-      if (tab && !tab.closed) tab.location.href = "/panel";
-      else window.location.assign("/panel"); // fallback si el popup fue bloqueado
-    } catch (cause) {
-      if (tab && !tab.closed) tab.close();
-      setError(cause instanceof Error ? cause.message : "Error");
-    }
-  }
-
-  async function resetOwner() {
-    const password = prompt("Nueva contraseña para el dueño (mínimo 8 caracteres):");
-    if (!password || password.length < 8) {
-      if (password) alert("La contraseña debe tener al menos 8 caracteres.");
-      return;
-    }
-
-    try {
-      await superApi.resetOwnerPassword(companyId, password);
-      alert("Contraseña del dueño actualizada.");
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Error");
-    }
-  }
-
-  async function removeCompany() {
-    if (!confirm("¿Eliminar esta empresa? Quedará inactiva y oculta.")) return;
-
-    try {
-      await superApi.deleteCompany(companyId);
-      onChanged?.();
-      onClose();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Error");
-    }
-  }
-
   useEffect(() => {
     setTab("summary");
     setEditing(false);
@@ -159,7 +113,6 @@ export function CompanyDetailModal({
             <TabButton active={tab === "summary"} onClick={() => { setTab("summary"); setEditing(false); }}>Resumen</TabButton>
             <TabButton active={tab === "store"} onClick={() => setTab("store")}>Tienda</TabButton>
             <TabButton active={tab === "orders"} onClick={() => { setTab("orders"); setEditing(false); }}>Pedidos</TabButton>
-            <TabButton active={tab === "admin"} onClick={() => { setTab("admin"); setEditing(false); }}>Administración</TabButton>
           </nav>
 
           {editing ? (
@@ -276,16 +229,6 @@ export function CompanyDetailModal({
             </Card>
           )}
 
-          {tab === "admin" && (
-            <div className="space-y-3">
-              <ActionRow title="Ingresar como soporte" description="Abre el panel de esta empresa en una pestaña nueva." button="Ingresar" onClick={impersonate} primary />
-              <ActionRow title="Restablecer contraseña" description="Asigna una nueva contraseña al propietario principal." button="Restablecer" onClick={resetOwner} />
-              <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 sm:flex sm:items-center sm:justify-between sm:gap-5">
-                <div><p className="font-bold text-red-900">Eliminar empresa</p><p className="mt-1 text-sm text-red-700">La empresa quedará inactiva y oculta. Esta es una acción sensible.</p></div>
-                <button onClick={removeCompany} className="mt-3 shrink-0 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700 sm:mt-0">Eliminar empresa</button>
-              </div>
-            </div>
-          )}
           </div>
           )}
         </div>
@@ -299,10 +242,6 @@ const INPUT =
 
 function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return <button type="button" onClick={onClick} className={`whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-bold transition ${active ? "border-violet-600 text-violet-700" : "border-transparent text-slate-500 hover:text-slate-800"}`}>{children}</button>;
-}
-
-function ActionRow({ title, description, button, onClick, primary = false }: { title: string; description: string; button: string; onClick: () => void; primary?: boolean }) {
-  return <div className="rounded-2xl border border-slate-200 p-4 sm:flex sm:items-center sm:justify-between sm:gap-5"><div><p className="font-bold text-slate-900">{title}</p><p className="mt-1 text-sm text-slate-500">{description}</p></div><button onClick={onClick} className={`mt-3 shrink-0 rounded-lg px-4 py-2.5 text-sm font-bold sm:mt-0 ${primary ? "bg-violet-600 text-white hover:bg-violet-700" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}>{button}</button></div>;
 }
 
 function FormField({

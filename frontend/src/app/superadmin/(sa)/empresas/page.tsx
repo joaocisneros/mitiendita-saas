@@ -19,6 +19,7 @@ export default function CompaniesPage() {
   const [error, setError] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(
     (targetPage = page) => {
@@ -72,6 +73,52 @@ export default function CompaniesPage() {
   async function assign(company: SaCompany, value: number) {
     await superApi.assignPlan(company.id, value);
     load();
+  }
+
+  async function enterSupport(company: SaCompany) {
+    const tab = window.open("about:blank", "_blank");
+    setBusyId(company.id);
+    setError("");
+    try {
+      const { accessToken } = await superApi.impersonate(company.id);
+      localStorage.setItem("mt_access", accessToken);
+      localStorage.setItem("mt_impersonating", "1");
+      if (tab && !tab.closed) tab.location.href = "/panel";
+      else window.location.assign("/panel");
+    } catch (reason) {
+      if (tab && !tab.closed) tab.close();
+      setError(reason instanceof Error ? reason.message : "No se pudo ingresar como soporte.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function resetPassword(company: SaCompany) {
+    const password = prompt(`Nueva contraseña para ${company.owner?.name ?? company.name} (mínimo 8 caracteres):`);
+    if (!password) return;
+    if (password.length < 8) return alert("La contraseña debe tener al menos 8 caracteres.");
+    setBusyId(company.id);
+    try {
+      await superApi.resetOwnerPassword(company.id, password);
+      alert("Contraseña actualizada correctamente.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "No se pudo actualizar la contraseña.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function remove(company: SaCompany) {
+    if (!confirm(`¿Eliminar ${company.name}? La empresa quedará inactiva y oculta.`)) return;
+    setBusyId(company.id);
+    try {
+      await superApi.deleteCompany(company.id);
+      load();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "No se pudo eliminar la empresa.");
+    } finally {
+      setBusyId(null);
+    }
   }
 
   return (
@@ -132,7 +179,7 @@ export default function CompaniesPage() {
       )}
       <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1050px] text-sm">
+          <table className="w-full min-w-[1320px] text-sm">
             <thead className="bg-slate-50 text-left text-xs font-black uppercase tracking-wide text-slate-700">
               <tr>
                 <th className="p-4">Empresa</th>
@@ -209,18 +256,28 @@ export default function CompaniesPage() {
                     {company.customers}
                   </td>
                   <td className="p-4 text-right">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-1.5">
                       <button
                         onClick={() => setSelectedId(company.id)}
                         className="rounded-lg bg-violet-50 px-3 py-1.5 text-xs font-bold text-violet-700 hover:bg-violet-100"
                       >
                         Ver detalle
                       </button>
+                      <button disabled={busyId === company.id} onClick={() => enterSupport(company)} className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-200 disabled:opacity-50">
+                        Soporte
+                      </button>
+                      <button disabled={busyId === company.id} onClick={() => resetPassword(company)} className="rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-800 hover:bg-amber-100 disabled:opacity-50">
+                        Contraseña
+                      </button>
                       <button
+                        disabled={busyId === company.id}
                         onClick={() => toggle(company)}
-                        className={`rounded-lg px-3 py-1.5 text-xs font-bold ${company.status === "active" ? "bg-red-50 text-red-700 hover:bg-red-100" : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"}`}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-bold disabled:opacity-50 ${company.status === "active" ? "bg-red-50 text-red-700 hover:bg-red-100" : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"}`}
                       >
                         {company.status === "active" ? "Suspender" : "Activar"}
+                      </button>
+                      <button disabled={busyId === company.id} onClick={() => remove(company)} className="rounded-lg px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-50 disabled:opacity-50">
+                        Eliminar
                       </button>
                     </div>
                   </td>
