@@ -263,22 +263,10 @@ export default function CompaniesPage() {
                       >
                         Ver detalle
                       </button>
-                      <button disabled={busyId === company.id} onClick={() => enterSupport(company)} className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-200 disabled:opacity-50">
-                        Soporte
-                      </button>
-                      <button disabled={busyId === company.id} onClick={() => resetPassword(company)} className="rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-800 hover:bg-amber-100 disabled:opacity-50">
-                        Contraseña
-                      </button>
-                      <button
-                        disabled={busyId === company.id}
-                        onClick={() => toggle(company)}
-                        className={`rounded-lg px-3 py-1.5 text-xs font-bold disabled:opacity-50 ${company.status === "active" ? "bg-red-50 text-red-700 hover:bg-red-100" : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"}`}
-                      >
-                        {company.status === "active" ? "Suspender" : "Activar"}
-                      </button>
-                      <button disabled={busyId === company.id} onClick={() => remove(company)} className="rounded-lg px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-50 disabled:opacity-50">
-                        Eliminar
-                      </button>
+                      <RowAction icon="support" label="Ingresar como soporte" disabled={busyId === company.id} onClick={() => enterSupport(company)} />
+                      <RowAction icon="key" label="Restablecer contraseña" tone="amber" disabled={busyId === company.id} onClick={() => resetPassword(company)} />
+                      <RowAction icon={company.status === "active" ? "pause" : "play"} label={company.status === "active" ? "Suspender empresa" : "Activar empresa"} tone={company.status === "active" ? "red" : "emerald"} disabled={busyId === company.id} onClick={() => toggle(company)} />
+                      <RowAction icon="trash" label="Eliminar empresa" tone="red" disabled={busyId === company.id} onClick={() => remove(company)} />
                     </div>
                   </td>
                 </tr>
@@ -349,4 +337,18 @@ export default function CompaniesPage() {
       )}
     </div>
   );
+}
+
+type ActionIcon = "support" | "key" | "pause" | "play" | "trash";
+
+function RowAction({ icon, label, onClick, disabled, tone = "slate" }: { icon: ActionIcon; label: string; onClick: () => void; disabled?: boolean; tone?: "slate" | "amber" | "red" | "emerald" }) {
+  const colors = { slate: "bg-slate-100 text-slate-700 hover:bg-slate-200", amber: "bg-amber-50 text-amber-800 hover:bg-amber-100", red: "bg-red-50 text-red-700 hover:bg-red-100", emerald: "bg-emerald-50 text-emerald-800 hover:bg-emerald-100" };
+  const paths: Record<ActionIcon, React.ReactNode> = {
+    support: <><circle cx="12" cy="8" r="3" /><path d="M6 19v-1a6 6 0 0 1 12 0v1M4 12v3M20 12v3" /></>,
+    key: <><circle cx="8" cy="12" r="3" /><path d="m11 12 8-8M16 7l2 2M14 9l2 2" /></>,
+    pause: <><rect x="7" y="5" width="3" height="14" rx="1" /><rect x="14" y="5" width="3" height="14" rx="1" /></>,
+    play: <path d="m8 5 11 7-11 7Z" />,
+    trash: <><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5" /></>,
+  };
+  return <button type="button" title={label} aria-label={label} disabled={disabled} onClick={onClick} className={`inline-flex h-8 w-8 items-center justify-center rounded-lg transition disabled:cursor-wait disabled:opacity-40 ${colors[tone]}`}><svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-none stroke-current stroke-2" strokeLinecap="round" strokeLinejoin="round">{paths[icon]}</svg></button>;
 }
