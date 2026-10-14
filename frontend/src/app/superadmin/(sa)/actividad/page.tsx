@@ -100,7 +100,7 @@ export default function ActivityPage() {
           setError(
             reason instanceof Error
               ? reason.message
-              : "No se pudo cargar la actividad.",
+              : "No se pudo cargar la auditoría.",
           ),
         )
         .finally(() => setLoading(false));
@@ -125,10 +125,10 @@ export default function ActivityPage() {
       <div>
         <p className="text-sm font-bold text-violet-700">Seguridad</p>
         <h1 className="mt-1 text-xl font-black text-slate-950">
-          Actividad administrativa
+          Auditoría global
         </h1>
         <p className="mt-2 text-sm font-medium text-slate-600">
-          Historial de acciones sensibles realizadas en la plataforma.
+          Trazabilidad de acciones sensibles realizadas en toda la plataforma.
         </p>
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
@@ -178,16 +178,16 @@ export default function ActivityPage() {
                 className="mx-auto h-10 w-10 text-slate-400"
               />
               <p className="mt-3 font-bold text-slate-800">
-                Aún no hay actividad registrada
+                Aún no hay registros de auditoría
               </p>
               <p className="mt-1 text-sm font-medium text-slate-600">
-                Las nuevas acciones aparecerán aquí.
+                Las nuevas acciones auditadas aparecerán aquí.
               </p>
             </div></td></tr>
           )}
           {loading && (
             <tr><td colSpan={6} className="p-12 text-center font-semibold text-slate-600">
-              Cargando actividad...
+              Cargando auditoría...
             </td></tr>
           )}
             </tbody>

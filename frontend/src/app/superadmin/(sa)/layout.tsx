@@ -24,7 +24,7 @@ const NAV = [
   },
   {
     href: "/superadmin/actividad",
-    label: "Actividad",
+    label: "Auditoría",
     icon: "activity" as const,
   },
   {

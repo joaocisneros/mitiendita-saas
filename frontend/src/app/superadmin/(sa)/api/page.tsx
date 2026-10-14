@@ -12,7 +12,7 @@ const PLATFORM_SCOPE_LABEL: Record<string, string> = {
   usuarios: "Usuarios",
   planes: "Planes",
   suscripciones: "Suscripciones",
-  actividad: "Actividad",
+  actividad: "Auditoría",
   whatsapp: "WhatsApp",
   configuracion: "Configuración",
 };
