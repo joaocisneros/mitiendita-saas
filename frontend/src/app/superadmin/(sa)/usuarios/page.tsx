@@ -17,6 +17,7 @@ export default function UsersPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(
     (targetPage = 1) => {
@@ -44,12 +45,26 @@ export default function UsersPage() {
       if (pwd) alert("La contraseña debe tener al menos 8 caracteres.");
       return;
     }
-    await superApi.resetUserPassword(u.id, pwd);
-    alert("Contraseña actualizada.");
+    setBusyId(u.id);
+    try {
+      await superApi.resetUserPassword(u.id, pwd);
+      alert("Contraseña actualizada.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No se pudo actualizar la contraseña.");
+    } finally {
+      setBusyId(null);
+    }
   }
   async function toggle(u: GlobalUser) {
-    await superApi.toggleUser(u.id);
-    load(page);
+    setBusyId(u.id);
+    try {
+      await superApi.toggleUser(u.id);
+      load(page);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No se pudo cambiar el estado del usuario.");
+    } finally {
+      setBusyId(null);
+    }
   }
 
   return (
@@ -86,11 +101,9 @@ export default function UsersPage() {
                     </span>
                   </td>
                   <td className="p-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button onClick={() => resetPwd(u)} className="rounded-lg bg-violet-50 px-3 py-1.5 text-xs font-bold text-violet-700 hover:bg-violet-100">Restablecer contraseña</button>
-                      <button onClick={() => toggle(u)} className={`rounded-lg px-3 py-1.5 text-xs font-bold ${u.isActive ? "bg-red-50 text-red-700 hover:bg-red-100" : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"}`}>
-                        {u.isActive ? "Desactivar" : "Activar"}
-                      </button>
+                    <div className="flex justify-end gap-1.5">
+                      <UserAction icon="key" label="Restablecer contraseña" tone="violet" disabled={busyId === u.id} onClick={() => resetPwd(u)} />
+                      <UserAction icon={u.isActive ? "pause" : "play"} label={u.isActive ? "Desactivar usuario" : "Activar usuario"} tone={u.isActive ? "red" : "emerald"} disabled={busyId === u.id} onClick={() => toggle(u)} />
                     </div>
                   </td>
                 </tr>
@@ -110,4 +123,14 @@ export default function UsersPage() {
       </section>
     </div>
   );
+}
+
+function UserAction({ icon, label, onClick, disabled, tone }: { icon: "key" | "pause" | "play"; label: string; onClick: () => void; disabled?: boolean; tone: "violet" | "red" | "emerald" }) {
+  const colors = { violet: "bg-violet-50 text-violet-700 hover:bg-violet-100", red: "bg-red-50 text-red-700 hover:bg-red-100", emerald: "bg-emerald-50 text-emerald-800 hover:bg-emerald-100" };
+  const paths: Record<"key" | "pause" | "play", React.ReactNode> = {
+    key: <><circle cx="8" cy="12" r="3" /><path d="m11 12 8-8M16 7l2 2M14 9l2 2" /></>,
+    pause: <><rect x="7" y="5" width="3" height="14" rx="1" /><rect x="14" y="5" width="3" height="14" rx="1" /></>,
+    play: <path d="m8 5 11 7-11 7Z" />,
+  };
+  return <button type="button" title={label} aria-label={label} disabled={disabled} onClick={onClick} className={`inline-flex h-8 w-8 items-center justify-center rounded-lg transition disabled:cursor-wait disabled:opacity-40 ${colors[tone]}`}><svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-none stroke-current stroke-2" strokeLinecap="round" strokeLinejoin="round">{paths[icon]}</svg></button>;
 }
