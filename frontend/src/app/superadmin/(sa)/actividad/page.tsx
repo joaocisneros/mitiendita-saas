@@ -122,39 +122,27 @@ export default function ActivityPage() {
         </p>
       )}
       <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
-        <div className="divide-y divide-slate-200">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[1100px] text-sm">
+            <thead className="bg-slate-50 text-left text-[11px] font-black uppercase tracking-wide text-slate-600">
+              <tr><th className="px-4 py-3">Acción</th><th className="px-4 py-3">Tipo</th><th className="px-4 py-3">Administrador</th><th className="px-4 py-3">Empresa</th><th className="px-4 py-3">Fecha y hora</th><th className="px-4 py-3 text-right">Detalles</th></tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
           {rows.map((row) => {
             const meta = actionMeta(row.action);
             const details = row.details ? Object.entries(row.details).filter(([, value]) => value !== undefined && value !== null) : [];
             return (
-            <article key={row.id} className="flex gap-4 p-4 transition hover:bg-slate-50/70 sm:p-5">
-              <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${meta.box}`}>
-                <DashboardIcon name={meta.icon} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2"><p className="font-bold text-slate-950">{actionLabel(row.action)}</p><span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide ${meta.badge}`}>{meta.category}</span></div>
-                <p className="mt-1 text-sm font-medium text-slate-600">
-                  <span className="font-bold text-slate-700">{row.superAdmin.name}</span> · {row.superAdmin.email}
-                </p>
-                {row.companyId && (
-                  <p className="mt-2 text-sm">
-                    <button
-                      onClick={() => setSelectedId(row.companyId)}
-                      className="font-bold text-violet-700 hover:underline"
-                    >
-                      Empresa: {row.companyName ?? "Ver empresa"} →
-                    </button>
-                  </p>
-                )}
-                {details.length > 0 && <details className="mt-3 text-xs"><summary className="cursor-pointer font-bold text-slate-500 hover:text-violet-700">Ver datos del cambio</summary><dl className="mt-2 grid max-w-xl gap-1.5 rounded-lg bg-slate-50 p-3 sm:grid-cols-2">{details.map(([key, value]) => <div key={key} className="flex justify-between gap-3"><dt className="text-slate-500">{DETAIL_LABELS[key] ?? key}</dt><dd className="font-bold text-slate-700">{typeof value === "boolean" ? (value ? "Sí" : "No") : String(value)}</dd></div>)}</dl></details>}
-              </div>
-              <time dateTime={row.createdAt} className="shrink-0 text-right text-xs font-semibold text-slate-500">
-                {friendlyDate(row.createdAt)}
-              </time>
-            </article>
+            <tr key={row.id} className="align-top transition hover:bg-slate-50/70">
+              <td className="px-4 py-4"><div className="flex items-center gap-3"><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${meta.box}`}><DashboardIcon name={meta.icon} className="h-4 w-4" /></span><span className="font-bold text-slate-950">{actionLabel(row.action)}</span></div></td>
+              <td className="px-4 py-4"><span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-wide ${meta.badge}`}>{meta.category}</span></td>
+              <td className="px-4 py-4"><p className="font-bold text-slate-800">{row.superAdmin.name}</p><p className="mt-0.5 text-xs text-slate-500">{row.superAdmin.email}</p></td>
+              <td className="px-4 py-4">{row.companyId ? <button onClick={() => setSelectedId(row.companyId)} className="font-bold text-violet-700 hover:underline">{row.companyName ?? "Ver empresa"} →</button> : <span className="text-slate-400">No aplica</span>}</td>
+              <td className="whitespace-nowrap px-4 py-4"><time dateTime={row.createdAt} className="text-xs font-semibold text-slate-600">{friendlyDate(row.createdAt)}</time></td>
+              <td className="px-4 py-4 text-right">{details.length > 0 ? <details className="relative inline-block text-left"><summary className="cursor-pointer list-none rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-200">Ver datos</summary><dl className="mt-2 min-w-64 space-y-2 rounded-lg border border-slate-200 bg-white p-3 text-xs shadow-lg">{details.map(([key, value]) => <div key={key} className="flex justify-between gap-4"><dt className="text-slate-500">{DETAIL_LABELS[key] ?? key}</dt><dd className="font-bold text-slate-700">{typeof value === "boolean" ? (value ? "Sí" : "No") : String(value)}</dd></div>)}</dl></details> : <span className="text-xs text-slate-400">Sin datos</span>}</td>
+            </tr>
           )})}
           {!loading && rows.length === 0 && (
-            <div className="p-12 text-center">
+            <tr><td colSpan={6}><div className="p-12 text-center">
               <DashboardIcon
                 name="activity"
                 className="mx-auto h-10 w-10 text-slate-400"
@@ -165,13 +153,15 @@ export default function ActivityPage() {
               <p className="mt-1 text-sm font-medium text-slate-600">
                 Las nuevas acciones aparecerán aquí.
               </p>
-            </div>
+            </div></td></tr>
           )}
           {loading && (
-            <p className="p-12 text-center font-semibold text-slate-600">
+            <tr><td colSpan={6} className="p-12 text-center font-semibold text-slate-600">
               Cargando actividad...
-            </p>
+            </td></tr>
           )}
+            </tbody>
+          </table>
         </div>
         <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3">
           <p className="text-sm font-medium text-slate-600">
