@@ -3,29 +3,15 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { BarChart, DonutChart } from "@/components/Charts";
-import { CompanyDetailModal } from "@/components/CompanyDetailModal";
 import { DashboardIcon } from "@/components/DashboardIcon";
 import { formatPrice } from "@/lib/format";
-import { superApi, type GlobalStats, type Plan, type SaCompany } from "@/lib/superadmin-api";
+import { superApi, type GlobalStats } from "@/lib/superadmin-api";
 
 const PERIODS = [7, 30, 90] as const;
-const SUBSCRIPTION_STATUS = {
-  trial: { label: "Prueba", className: "bg-blue-100 text-blue-800" },
-  active: { label: "Al día", className: "bg-emerald-100 text-emerald-800" },
-  past_due: { label: "Pago vencido", className: "bg-red-100 text-red-800" },
-  cancelled: { label: "Cancelada", className: "bg-slate-200 text-slate-700" },
-};
-
 export default function SuperDashboard() {
   const [rangeDays, setRangeDays] = useState<(typeof PERIODS)[number]>(30);
   const [stats, setStats] = useState<GlobalStats | null>(null);
-  const [companies, setCompanies] = useState<SaCompany[]>([]);
-  const [plans, setPlans] = useState<Plan[]>([]);
-  const [error, setError] = useState("");
   const [statsError, setStatsError] = useState("");
-  const [catalogError, setCatalogError] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [busyCompanyId, setBusyCompanyId] = useState<string | null>(null);
 
   useEffect(() => {
     setStatsError("");
@@ -42,68 +28,6 @@ export default function SuperDashboard() {
         ),
       );
   }, [rangeDays]);
-
-  useEffect(() => {
-    setCatalogError("");
-    Promise.all([superApi.companies({ limit: 6 }), superApi.plans()])
-      .then(([result, planRows]) => {
-        setCompanies(result.items);
-        setPlans(planRows);
-        setCatalogError("");
-      })
-      .catch((reason) =>
-        setCatalogError(
-          reason instanceof Error
-            ? `Empresas y planes: ${reason.message}`
-            : "No se pudieron cargar las empresas y los planes.",
-        ),
-      );
-  }, []);
-
-  async function reloadCompanies() {
-    const [result, summary] = await Promise.all([
-      superApi.companies({ limit: 6 }),
-      superApi.stats(rangeDays),
-    ]);
-    setCompanies(result.items);
-    setStats(summary);
-  }
-
-  async function runCompanyAction(companyId: string, action: () => Promise<unknown>) {
-    setBusyCompanyId(companyId);
-    setError("");
-    try {
-      await action();
-      await reloadCompanies();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "No se pudo completar la acción.");
-    } finally {
-      setBusyCompanyId(null);
-    }
-  }
-
-  async function enterAsSupport(companyId: string) {
-    setBusyCompanyId(companyId);
-    setError("");
-    try {
-      const { accessToken } = await superApi.impersonate(companyId);
-      localStorage.setItem("mt_access", accessToken);
-      window.open("/panel", "_blank", "noopener,noreferrer");
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "No se pudo iniciar el modo soporte.");
-    } finally {
-      setBusyCompanyId(null);
-    }
-  }
-
-  async function extendTrial(company: SaCompany) {
-    const currentEnd = company.currentPeriodEndsAt ? new Date(company.currentPeriodEndsAt) : new Date();
-    const base = currentEnd > new Date() ? currentEnd : new Date();
-    base.setDate(base.getDate() + 7);
-    await runCompanyAction(company.id, () =>
-      superApi.updateSubscription(company.id, { status: "trial", currentPeriodEndsAt: base.toISOString() }),
-    );
-  }
 
   return (
     <div className="space-y-5 pb-20 md:pb-0">
@@ -129,9 +53,9 @@ export default function SuperDashboard() {
         </div>
       </header>
 
-      {(error || statsError || catalogError) && (
+      {statsError && (
         <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">
-          {error || statsError || catalogError}
+          {statsError}
         </p>
       )}
 
@@ -181,44 +105,6 @@ export default function SuperDashboard() {
         </section>
       )}
 
-      <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
-        <div className="flex flex-col gap-3 border-b border-slate-200 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div><h2 className="text-lg font-black text-slate-950">Atajo · últimas empresas</h2><p className="mt-1 text-sm font-medium text-slate-600">Acciones rápidas sin salir del panel. La gestión completa está en el módulo Empresas.</p></div>
-          <Link href="/superadmin/empresas" className="text-sm font-bold text-violet-700 hover:underline">Ir a Empresas →</Link>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1120px] text-sm">
-            <thead className="bg-slate-50 text-left text-[11px] font-black uppercase tracking-wide text-slate-600">
-              <tr><th className="px-4 py-3">Empresa</th><th className="px-4 py-3">Plan</th><th className="px-4 py-3">Estado</th><th className="px-4 py-3">Días restantes</th><th className="px-4 py-3">Último pago</th><th className="px-4 py-3 text-right">Control rápido</th></tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
-              {companies.slice(0, 4).map((company) => {
-                const subscription = SUBSCRIPTION_STATUS[company.subscriptionStatus];
-                const isBusy = busyCompanyId === company.id;
-                const remaining = daysRemaining(company.currentPeriodEndsAt);
-                return (
-                  <tr key={company.id} className="hover:bg-slate-50/80">
-                    <td className="px-4 py-3"><button onClick={() => setSelectedId(company.id)} className="font-black text-slate-950 hover:text-violet-700">{company.name}</button><p className="mt-0.5 max-w-56 truncate text-xs text-slate-500">{company.subdomain} · {company.owner?.email ?? "Sin propietario"}</p></td>
-                    <td className="px-4 py-3">
-                      <select value={company.plan?.id ?? ""} disabled={isBusy} onChange={(event) => runCompanyAction(company.id, () => superApi.assignPlan(company.id, Number(event.target.value)))} className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs font-bold text-slate-800 disabled:opacity-50">
-                        <option value="" disabled>Sin plan</option>
-                        {plans.filter((plan) => plan.isActive || plan.id === company.plan?.id).map((plan) => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
-                      </select>
-                    </td>
-                    <td className="px-4 py-3"><div className="flex flex-col items-start gap-1"><span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${company.status === "active" ? "bg-emerald-100 text-emerald-800" : company.status === "suspended" ? "bg-red-100 text-red-800" : "bg-slate-200 text-slate-700"}`}>{company.status === "active" ? "Tienda activa" : company.status === "suspended" ? "Suspendida" : "Inactiva"}</span><span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${subscription.className}`}>{subscription.label}</span></div></td>
-                    <td className="px-4 py-3"><p className={`font-bold ${remaining.tone}`}>{remaining.label}</p>{company.subscriptionStatus === "trial" && <button disabled={isBusy} onClick={() => extendTrial(company)} className="mt-1 text-xs font-bold text-violet-700 hover:underline disabled:opacity-50">Extender 7 días</button>}</td>
-                    <td className="px-4 py-3 font-medium text-slate-600">{company.lastPaymentAt ? new Date(company.lastPaymentAt).toLocaleDateString("es-PE") : "Sin registro"}</td>
-                    <td className="px-4 py-3"><div className="flex justify-end gap-1.5"><button disabled={isBusy} onClick={() => setSelectedId(company.id)} className="rounded-lg bg-violet-50 px-2.5 py-1.5 text-xs font-bold text-violet-700 hover:bg-violet-100 disabled:opacity-50">Ver</button><button disabled={isBusy} onClick={() => enterAsSupport(company.id)} className="rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-200 disabled:opacity-50">Soporte</button><button disabled={isBusy} onClick={() => runCompanyAction(company.id, () => company.status === "active" ? superApi.suspend(company.id) : superApi.activate(company.id))} className={`rounded-lg px-2.5 py-1.5 text-xs font-bold disabled:opacity-50 ${company.status === "active" ? "bg-red-50 text-red-700 hover:bg-red-100" : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"}`}>{isBusy ? "Procesando…" : company.status === "active" ? "Suspender" : "Activar"}</button></div></td>
-                  </tr>
-                );
-              })}
-              {companies.length === 0 && <tr><td colSpan={6} className="p-10 text-center font-medium text-slate-500">No hay empresas registradas.</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {selectedId && <CompanyDetailModal companyId={selectedId} onClose={() => setSelectedId(null)} onChanged={reloadCompanies} />}
     </div>
   );
 }
@@ -235,15 +121,6 @@ function Stat({ icon, label, value, hint, accent, positive, warning, trend }: { 
 
 function ChartCard({ title, subtitle, trailing, className = "", children }: { title: string; subtitle: string; trailing?: string; className?: string; children: React.ReactNode }) {
   return <div className={`rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 ${className}`}><div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="font-black text-slate-950">{title}</h2><p className="text-xs font-medium text-slate-500">{subtitle}</p></div>{trailing && <p className="text-sm font-black text-violet-700">{trailing}</p>}</div>{children}</div>;
-}
-
-function daysRemaining(value: string | null) {
-  if (!value) return { label: "Sin fecha", tone: "text-slate-500" };
-  const days = Math.ceil((new Date(value).getTime() - Date.now()) / 86_400_000);
-  if (days < 0) return { label: `Venció hace ${Math.abs(days)} d`, tone: "text-red-700" };
-  if (days === 0) return { label: "Vence hoy", tone: "text-red-700" };
-  if (days <= 3) return { label: `${days} días`, tone: "text-amber-700" };
-  return { label: `${days} días`, tone: "text-slate-700" };
 }
 
 function monthLabel(value: string) {
