@@ -47,7 +47,7 @@ function friendlyDate(value: string) {
   return `${prefix}, ${date.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" })}`;
 }
 
-const DETAIL_LABELS: Record<string, string> = { months: "Meses registrados", status: "Estado", planId: "Plan asignado", oldPlanId: "Plan anterior", newPlanId: "Plan nuevo", userId: "Usuario", active: "Estado activo", newStatus: "Nuevo estado", previousStatus: "Estado anterior" };
+const DETAIL_LABELS: Record<string, string> = { months: "Meses registrados", status: "Estado", planId: "Plan asignado", oldPlanId: "Plan anterior", previousPlanId: "Plan anterior", newPlanId: "Plan nuevo", userId: "Usuario", active: "Estado activo", newStatus: "Nuevo estado", previousStatus: "Estado anterior" };
 const DETAIL_VALUES: Record<string, string> = { active: "Activo", suspended: "Suspendido", inactive: "Inactivo", trial: "Prueba", past_due: "Vencido", cancelled: "Cancelado", true: "Sí", false: "No" };
 
 function detailValue(value: unknown) {
@@ -55,10 +55,15 @@ function detailValue(value: unknown) {
   return DETAIL_VALUES[raw] ?? raw;
 }
 
-function detailSummary(entries: [string, unknown][]) {
+function detailSummary(entries: [string, unknown][], planNames: Record<number, string>) {
   const values = Object.fromEntries(entries);
   if (values.previousStatus !== undefined && values.newStatus !== undefined) return `Estado: ${detailValue(values.previousStatus)} → ${detailValue(values.newStatus)}`;
-  if (values.oldPlanId !== undefined && values.newPlanId !== undefined) return `Plan anterior: ${detailValue(values.oldPlanId)} · Plan nuevo: ${detailValue(values.newPlanId)}`;
+  const previousPlanId = values.previousPlanId ?? values.oldPlanId;
+  if (previousPlanId !== undefined && values.newPlanId !== undefined) {
+    const previous = previousPlanId === null ? "Sin plan" : (planNames[Number(previousPlanId)] ?? `Plan #${previousPlanId}`);
+    const next = planNames[Number(values.newPlanId)] ?? `Plan #${values.newPlanId}`;
+    return `Plan: ${previous} → ${next}`;
+  }
   if (values.months !== undefined) return `${detailValue(values.months)} ${Number(values.months) === 1 ? "mes registrado" : "meses registrados"}`;
   if (values.active !== undefined) return `Usuario: ${detailValue(values.active) === "Sí" ? "Activado" : "Desactivado"}`;
   if (values.status !== undefined) return `Estado: ${detailValue(values.status)}`;
@@ -74,6 +79,7 @@ export default function ActivityPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [action, setAction] = useState("");
   const [actions, setActions] = useState<string[]>([]);
+  const [planNames, setPlanNames] = useState<Record<number, string>>({});
 
   const load = useCallback(
     (target = 1) => {
@@ -104,6 +110,9 @@ export default function ActivityPage() {
       .auditActions()
       .then(setActions)
       .catch(() => setActions([]));
+  }, []);
+  useEffect(() => {
+    superApi.plans().then((plans) => setPlanNames(Object.fromEntries(plans.map((plan) => [plan.id, plan.name])))).catch(() => setPlanNames({}));
   }, []);
 
   return (
@@ -154,7 +163,7 @@ export default function ActivityPage() {
               <td className="px-4 py-4"><div className="flex items-center gap-3"><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${meta.box}`}><DashboardIcon name={meta.icon} className="h-4 w-4" /></span><span className="font-bold text-slate-950">{actionLabel(row.action)}</span></div></td>
               <td className="px-4 py-4">{row.companyId ? <button onClick={() => setSelectedId(row.companyId)} className="font-bold text-violet-700 hover:underline">{row.companyName ?? "Ver empresa"} →</button> : <span className="text-slate-400">No aplica</span>}</td>
               <td className="px-4 py-4"><span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-wide ${meta.badge}`}>{meta.category}</span></td>
-              <td className="px-4 py-4"><span className={details.length > 0 ? "text-xs font-semibold text-slate-700" : "text-xs text-slate-400"}>{details.length > 0 ? detailSummary(details) : "Sin cambios adicionales"}</span></td>
+              <td className="px-4 py-4"><span className={details.length > 0 ? "text-xs font-semibold text-slate-700" : "text-xs text-slate-400"}>{details.length > 0 ? detailSummary(details, planNames) : "Sin cambios adicionales"}</span></td>
             </tr>
           )})}
           {!loading && rows.length === 0 && (
