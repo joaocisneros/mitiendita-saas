@@ -16,6 +16,9 @@ export const metadata: Metadata = {
   title: "MiTiendita — Tu tienda online en minutos",
   description:
     "Crea tu tienda online, vende por WhatsApp y cobra con Yape. Para bodegas, farmacias y negocios locales.",
+  verification: {
+    google: "PQJGhBISnxCqLIyALY1N_qb9cQvZYIDzP00_aYhu804",
+  },
 };
 
 export default function RootLayout({
