@@ -29,6 +29,26 @@ function actionLabel(action: string) {
   return LABELS[action] ?? action;
 }
 
+function actionMeta(action: string) {
+  if (action.startsWith("subscription.")) return { category: "Suscripción", icon: "plans" as const, box: "bg-emerald-100 text-emerald-700", badge: "bg-emerald-50 text-emerald-700" };
+  if (action.startsWith("user.")) return { category: "Usuario", icon: "customers" as const, box: "bg-blue-100 text-blue-700", badge: "bg-blue-50 text-blue-700" };
+  if (action.startsWith("plan.")) return { category: "Plan", icon: "reports" as const, box: "bg-amber-100 text-amber-700", badge: "bg-amber-50 text-amber-700" };
+  if (action.startsWith("platform.") || action.startsWith("api_token.")) return { category: "Plataforma", icon: "settings" as const, box: "bg-slate-200 text-slate-700", badge: "bg-slate-100 text-slate-700" };
+  return { category: "Empresa", icon: "companies" as const, box: "bg-violet-100 text-violet-700", badge: "bg-violet-50 text-violet-700" };
+}
+
+function friendlyDate(value: string) {
+  const date = new Date(value);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+  const prefix = sameDay(date, today) ? "Hoy" : sameDay(date, yesterday) ? "Ayer" : date.toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" });
+  return `${prefix}, ${date.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" })}`;
+}
+
+const DETAIL_LABELS: Record<string, string> = { months: "Meses registrados", status: "Nuevo estado", planId: "Plan asignado", userId: "Usuario", active: "Estado activo" };
+
 export default function ActivityPage() {
   const [rows, setRows] = useState<AuditRow[]>([]);
   const [page, setPage] = useState(1);
@@ -81,7 +101,8 @@ export default function ActivityPage() {
           Historial de acciones sensibles realizadas en la plataforma.
         </p>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+        <div><p className="text-sm font-bold text-slate-900">Filtrar registros</p><p className="mt-0.5 text-xs font-medium text-slate-500">Selecciona un evento específico para encontrarlo rápidamente.</p></div>
         <select
           value={action}
           onChange={(e) => setAction(e.target.value)}
@@ -102,40 +123,36 @@ export default function ActivityPage() {
       )}
       <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
         <div className="divide-y divide-slate-200">
-          {rows.map((row) => (
-            <div key={row.id} className="flex gap-4 p-4 sm:p-5">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
-                <DashboardIcon name="activity" />
+          {rows.map((row) => {
+            const meta = actionMeta(row.action);
+            const details = row.details ? Object.entries(row.details).filter(([, value]) => value !== undefined && value !== null) : [];
+            return (
+            <article key={row.id} className="flex gap-4 p-4 transition hover:bg-slate-50/70 sm:p-5">
+              <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${meta.box}`}>
+                <DashboardIcon name={meta.icon} />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="font-bold text-slate-950">
-                  {actionLabel(row.action)}
-                </p>
+                <div className="flex flex-wrap items-center gap-2"><p className="font-bold text-slate-950">{actionLabel(row.action)}</p><span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide ${meta.badge}`}>{meta.category}</span></div>
                 <p className="mt-1 text-sm font-medium text-slate-600">
-                  Por {row.superAdmin.name} · {row.superAdmin.email}
+                  <span className="font-bold text-slate-700">{row.superAdmin.name}</span> · {row.superAdmin.email}
                 </p>
                 {row.companyId && (
-                  <p className="mt-1 text-sm">
+                  <p className="mt-2 text-sm">
                     <button
                       onClick={() => setSelectedId(row.companyId)}
                       className="font-bold text-violet-700 hover:underline"
                     >
-                      {row.companyName ?? "Ver empresa"}
+                      Empresa: {row.companyName ?? "Ver empresa"} →
                     </button>
                   </p>
                 )}
+                {details.length > 0 && <details className="mt-3 text-xs"><summary className="cursor-pointer font-bold text-slate-500 hover:text-violet-700">Ver datos del cambio</summary><dl className="mt-2 grid max-w-xl gap-1.5 rounded-lg bg-slate-50 p-3 sm:grid-cols-2">{details.map(([key, value]) => <div key={key} className="flex justify-between gap-3"><dt className="text-slate-500">{DETAIL_LABELS[key] ?? key}</dt><dd className="font-bold text-slate-700">{typeof value === "boolean" ? (value ? "Sí" : "No") : String(value)}</dd></div>)}</dl></details>}
               </div>
-              <time className="shrink-0 text-right text-xs font-semibold text-slate-600">
-                {new Date(row.createdAt).toLocaleString("es-PE", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+              <time dateTime={row.createdAt} className="shrink-0 text-right text-xs font-semibold text-slate-500">
+                {friendlyDate(row.createdAt)}
               </time>
-            </div>
-          ))}
+            </article>
+          )})}
           {!loading && rows.length === 0 && (
             <div className="p-12 text-center">
               <DashboardIcon
