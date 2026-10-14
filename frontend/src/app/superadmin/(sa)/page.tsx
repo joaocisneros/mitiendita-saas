@@ -90,28 +90,8 @@ export default function SuperDashboard() {
         </section>
       )}
 
-      {stats && (
-        <section aria-labelledby="urgent-title" className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
-          <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div><p className="text-xs font-black uppercase tracking-[0.16em] text-amber-700">Requieren atención</p><h2 id="urgent-title" className="mt-1 text-xl font-black text-slate-950">Estado de suscripciones</h2><p className="mt-1 text-sm font-medium text-slate-500">Prioridades ordenadas para resolver sin revisar toda la plataforma.</p></div>
-            <Link href="/superadmin/suscripciones" className="text-sm font-bold text-violet-700 hover:underline">Ver todas las suscripciones →</Link>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <AlertCard count={stats.alerts.expiringSoon} title="Vencen en 3 días" text="Contactar o renovar antes del vencimiento." tone="amber" alert="expiringSoon" />
-            <AlertCard count={stats.alerts.pastDue} title="Pagos pendientes" text="Suscripciones marcadas como vencidas." tone="red" alert="pastDue" />
-            <AlertCard count={stats.alerts.suspendedForDebt} title="Suspendidas por deuda" text="Requieren pago o revisión manual." tone="violet" alert="suspendedForDebt" />
-            <AlertCard count={stats.alerts.atRisk} title="Empresas en riesgo" text="Vencidas o sin fecha de renovación." tone="slate" alert="atRisk" />
-          </div>
-        </section>
-      )}
-
     </div>
   );
-}
-
-function AlertCard({ count, title, text, tone, alert }: { count: number; title: string; text: string; tone: "amber" | "red" | "violet" | "slate"; alert: string }) {
-  const colors = { amber: "border-amber-200 bg-white text-amber-700", red: "border-red-200 bg-red-50 text-red-700", violet: "border-violet-200 bg-violet-50 text-violet-700", slate: "border-slate-200 bg-slate-50 text-slate-700" };
-  return <Link href={`/superadmin/suscripciones?alert=${alert}`} className={`rounded-2xl border p-5 transition hover:-translate-y-0.5 hover:shadow-md ${colors[tone]}`}><div className="flex items-start justify-between"><span className="text-3xl font-black">{count}</span><span className="flex h-9 w-9 items-center justify-center rounded-full bg-current/10 text-sm font-black">!</span></div><h3 className="mt-4 text-sm font-black text-slate-950">{title}</h3><p className="mt-1 min-h-10 text-xs font-medium leading-5 text-slate-500">{count === 0 ? "No hay pendientes por ahora." : text}</p></Link>;
 }
 
 type StatIcon = "companies" | "store" | "settings" | "orders" | "plans" | "activity" | "reports" | "customers";
