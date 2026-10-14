@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { superApi, type AuditRow } from "@/lib/superadmin-api";
 import { DashboardIcon } from "@/components/DashboardIcon";
 import { CompanyDetailModal } from "@/components/CompanyDetailModal";
+import { Overlay } from "@/components/OrderDetailModal";
 
 const LABELS: Record<string, string> = {
   "company.created": "Creó una empresa",
@@ -47,7 +48,13 @@ function friendlyDate(value: string) {
   return `${prefix}, ${date.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" })}`;
 }
 
-const DETAIL_LABELS: Record<string, string> = { months: "Meses registrados", status: "Nuevo estado", planId: "Plan asignado", userId: "Usuario", active: "Estado activo" };
+const DETAIL_LABELS: Record<string, string> = { months: "Meses registrados", status: "Estado", planId: "Plan asignado", oldPlanId: "Plan anterior", newPlanId: "Plan nuevo", userId: "Usuario", active: "Estado activo", newStatus: "Nuevo estado", previousStatus: "Estado anterior" };
+const DETAIL_VALUES: Record<string, string> = { active: "Activo", suspended: "Suspendido", inactive: "Inactivo", trial: "Prueba", past_due: "Vencido", cancelled: "Cancelado", true: "Sí", false: "No" };
+
+function detailValue(value: unknown) {
+  const raw = String(value);
+  return DETAIL_VALUES[raw] ?? raw;
+}
 
 export default function ActivityPage() {
   const [rows, setRows] = useState<AuditRow[]>([]);
@@ -58,6 +65,7 @@ export default function ActivityPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [action, setAction] = useState("");
   const [actions, setActions] = useState<string[]>([]);
+  const [detailModal, setDetailModal] = useState<{ title: string; entries: [string, unknown][] } | null>(null);
 
   const load = useCallback(
     (target = 1) => {
@@ -123,9 +131,9 @@ export default function ActivityPage() {
       )}
       <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1100px] text-sm">
+          <table className="w-full table-fixed min-w-[1120px] text-sm">
             <thead className="bg-slate-50 text-left text-[11px] font-black uppercase tracking-wide text-slate-600">
-              <tr><th className="px-4 py-3">Acción</th><th className="px-4 py-3">Tipo</th><th className="px-4 py-3">Administrador</th><th className="px-4 py-3">Empresa</th><th className="px-4 py-3">Fecha y hora</th><th className="px-4 py-3 text-right">Detalles</th></tr>
+              <tr><th className="w-40 px-4 py-3">Fecha y hora</th><th className="w-72 px-4 py-3">Acción</th><th className="w-52 px-4 py-3">Empresa</th><th className="w-64 px-4 py-3">Administrador</th><th className="w-32 px-4 py-3">Tipo</th><th className="w-28 px-4 py-3 text-center">Detalles</th></tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
           {rows.map((row) => {
@@ -133,12 +141,12 @@ export default function ActivityPage() {
             const details = row.details ? Object.entries(row.details).filter(([, value]) => value !== undefined && value !== null) : [];
             return (
             <tr key={row.id} className="align-top transition hover:bg-slate-50/70">
-              <td className="px-4 py-4"><div className="flex items-center gap-3"><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${meta.box}`}><DashboardIcon name={meta.icon} className="h-4 w-4" /></span><span className="font-bold text-slate-950">{actionLabel(row.action)}</span></div></td>
-              <td className="px-4 py-4"><span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-wide ${meta.badge}`}>{meta.category}</span></td>
-              <td className="px-4 py-4"><p className="font-bold text-slate-800">{row.superAdmin.name}</p><p className="mt-0.5 text-xs text-slate-500">{row.superAdmin.email}</p></td>
-              <td className="px-4 py-4">{row.companyId ? <button onClick={() => setSelectedId(row.companyId)} className="font-bold text-violet-700 hover:underline">{row.companyName ?? "Ver empresa"} →</button> : <span className="text-slate-400">No aplica</span>}</td>
               <td className="whitespace-nowrap px-4 py-4"><time dateTime={row.createdAt} className="text-xs font-semibold text-slate-600">{friendlyDate(row.createdAt)}</time></td>
-              <td className="px-4 py-4 text-right">{details.length > 0 ? <details className="relative inline-block text-left"><summary className="cursor-pointer list-none rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-200">Ver datos</summary><dl className="mt-2 min-w-64 space-y-2 rounded-lg border border-slate-200 bg-white p-3 text-xs shadow-lg">{details.map(([key, value]) => <div key={key} className="flex justify-between gap-4"><dt className="text-slate-500">{DETAIL_LABELS[key] ?? key}</dt><dd className="font-bold text-slate-700">{typeof value === "boolean" ? (value ? "Sí" : "No") : String(value)}</dd></div>)}</dl></details> : <span className="text-xs text-slate-400">Sin datos</span>}</td>
+              <td className="px-4 py-4"><div className="flex items-center gap-3"><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${meta.box}`}><DashboardIcon name={meta.icon} className="h-4 w-4" /></span><span className="font-bold text-slate-950">{actionLabel(row.action)}</span></div></td>
+              <td className="px-4 py-4">{row.companyId ? <button onClick={() => setSelectedId(row.companyId)} className="font-bold text-violet-700 hover:underline">{row.companyName ?? "Ver empresa"} →</button> : <span className="text-slate-400">No aplica</span>}</td>
+              <td className="px-4 py-4"><p className="truncate font-bold text-slate-800">{row.superAdmin.name}</p><p className="mt-0.5 truncate text-xs text-slate-500">{row.superAdmin.email}</p></td>
+              <td className="px-4 py-4"><span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-wide ${meta.badge}`}>{meta.category}</span></td>
+              <td className="px-4 py-4 text-center">{details.length > 0 ? <button onClick={() => setDetailModal({ title: actionLabel(row.action), entries: details })} className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-200">Ver datos</button> : <span className="text-xs text-slate-400">Sin datos</span>}</td>
             </tr>
           )})}
           {!loading && rows.length === 0 && (
@@ -191,6 +199,13 @@ export default function ActivityPage() {
           companyId={selectedId}
           onClose={() => setSelectedId(null)}
         />
+      )}
+      {detailModal && (
+        <Overlay onClose={() => setDetailModal(null)}>
+          <div className="pr-8"><p className="text-xs font-black uppercase tracking-wide text-violet-700">Detalle de auditoría</p><h2 className="mt-1 text-xl font-black text-slate-950">{detailModal.title}</h2><p className="mt-1 text-sm text-slate-500">Información registrada automáticamente durante la acción.</p></div>
+          <dl className="mt-5 divide-y divide-slate-200 rounded-xl border border-slate-200 bg-slate-50 px-4">{detailModal.entries.map(([key, value]) => <div key={key} className="flex items-center justify-between gap-6 py-3"><dt className="text-sm font-medium text-slate-600">{DETAIL_LABELS[key] ?? "Dato adicional"}</dt><dd className="text-right text-sm font-black text-slate-900">{detailValue(value)}</dd></div>)}</dl>
+          <button onClick={() => setDetailModal(null)} className="mt-5 w-full rounded-xl bg-violet-600 py-2.5 text-sm font-bold text-white hover:bg-violet-700">Cerrar</button>
+        </Overlay>
       )}
     </div>
   );
