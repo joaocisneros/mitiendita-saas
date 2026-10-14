@@ -11,7 +11,25 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class ProductVariantStockDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  size?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  color?: string;
+
+  @IsInt()
+  @Min(0)
+  stock!: number;
+}
 
 export class CreateProductDto {
   @IsString()
@@ -51,9 +69,24 @@ export class CreateProductDto {
 
   @IsOptional()
   @IsArray()
-  @ArrayMaxSize(4, { message: 'Máximo 4 fotos por producto.' })
+  @ArrayMaxSize(6, { message: 'Máximo 6 fotos por producto.' })
   @IsString({ each: true })
   images?: string[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  brand?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  material?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  sizeGuide?: string;
 
   @IsOptional()
   @IsString()
@@ -64,6 +97,13 @@ export class CreateProductDto {
   @IsString()
   @MaxLength(300)
   colors?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(100)
+  @ValidateNested({ each: true })
+  @Type(() => ProductVariantStockDto)
+  variantStocks?: ProductVariantStockDto[];
 
   @IsOptional()
   @IsIn(['none', 'optional', 'required'])

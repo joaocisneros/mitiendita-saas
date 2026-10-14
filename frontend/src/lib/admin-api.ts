@@ -488,8 +488,12 @@ export interface AdminProduct {
   sku: string | null;
   imageUrl: string | null;
   images: string[] | null;
+  brand: string | null;
+  material: string | null;
+  sizeGuide: string | null;
   sizes: string | null;
   colors: string | null;
+  variantStocks: ProductVariantStock[] | null;
   reservationPaymentMode?: "none" | "optional" | "required";
   reservationAdvanceType?: "fixed" | "percent";
   reservationAdvanceValue?: string;
@@ -506,13 +510,23 @@ export interface ProductInput {
   categoryId?: string | null;
   imageUrl?: string;
   images?: string[];
+  brand?: string;
+  material?: string;
+  sizeGuide?: string;
   sizes?: string;
   colors?: string;
+  variantStocks?: Array<{ size?: string; color?: string; stock: number }>;
   reservationPaymentMode?: "none" | "optional" | "required";
   reservationAdvanceType?: "fixed" | "percent";
   reservationAdvanceValue?: number;
   isFeatured?: boolean;
   isActive?: boolean;
+}
+export interface ProductVariantStock {
+  size: string | null;
+  color: string | null;
+  stock: number;
+  reserved: number;
 }
 export interface AdminCategory {
   id: string;

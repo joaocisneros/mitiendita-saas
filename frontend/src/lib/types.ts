@@ -43,6 +43,9 @@ export interface PublicProduct {
   price: string;
   imageUrl: string | null;
   images?: string[] | null;
+  brand?: string | null;
+  material?: string | null;
+  sizeGuide?: string | null;
   reservationPaymentMode?: "none" | "optional" | "required" | null;
   reservationAdvanceType?: "fixed" | "percent" | null;
   reservationAdvanceValue?: string | null;
@@ -53,6 +56,7 @@ export interface PublicProduct {
   category?: { name: string; slug: string } | null;
   sizes?: string | null;
   colors?: string | null;
+  variantStocks?: Array<{ size: string | null; color: string | null; stock: number; reserved: number }> | null;
 }
 
 export interface ProductListResponse {

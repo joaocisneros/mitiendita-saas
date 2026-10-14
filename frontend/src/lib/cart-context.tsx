@@ -17,6 +17,7 @@ export interface CartItem {
   quantity: number;
   sizes?: string | null;
   colors?: string | null;
+  variantStocks?: Array<{ size: string | null; color: string | null; stock: number; reserved: number }> | null;
 }
 
 interface CartContextValue {

@@ -22,14 +22,40 @@ const EMPTY = {
   description: "",
   imageUrl: "",
   images: [] as string[],
+  brand: "",
+  material: "",
+  sizeGuide: "",
   sizes: "",
   colors: "",
+  variantStocks: [] as Array<{ size: string | null; color: string | null; stock: number; reserved: number }>,
   reservationPaymentMode: "optional" as "none" | "optional" | "required",
   reservationAdvanceType: "percent" as "fixed" | "percent",
   reservationAdvanceValue: "30",
   isFeatured: false,
   isActive: true,
 };
+
+function optionList(value: string) {
+  return [...new Set(value.split(",").map((item) => item.trim()).filter(Boolean))];
+}
+
+function rebuildVariants(
+  sizesText: string,
+  colorsText: string,
+  current: Array<{ size: string | null; color: string | null; stock: number; reserved: number }>,
+) {
+  const sizes = optionList(sizesText);
+  const colors = optionList(colorsText);
+  const combinations = sizes.length && colors.length
+    ? sizes.flatMap((size) => colors.map((color) => ({ size, color })))
+    : sizes.length
+      ? sizes.map((size) => ({ size, color: null }))
+      : colors.map((color) => ({ size: null, color }));
+  return combinations.map(({ size, color }) => {
+    const previous = current.find((row) => row.size === size && row.color === color);
+    return { size, color, stock: previous?.stock ?? 0, reserved: previous?.reserved ?? 0 };
+  });
+}
 
 function splitDescription(description?: string | null) {
   const raw = description ?? "";
@@ -137,8 +163,12 @@ export default function ProductosPage() {
       description: parsed.description,
       imageUrl: product.imageUrl ?? "",
       images: product.images?.length ? product.images : product.imageUrl ? [product.imageUrl] : [],
+      brand: product.brand ?? "",
+      material: product.material ?? "",
+      sizeGuide: product.sizeGuide ?? "",
       sizes: product.sizes ?? "",
       colors: product.colors ?? "",
+      variantStocks: product.variantStocks ?? [],
       reservationPaymentMode: product.reservationPaymentMode ?? "optional",
       reservationAdvanceType: product.reservationAdvanceType ?? "percent",
       reservationAdvanceValue: String(product.reservationAdvanceValue ?? "30"),
@@ -151,7 +181,7 @@ export default function ProductosPage() {
 
   async function save() {
     setError("");
-    if (!form.name || !form.price || form.stock === "") {
+    if (!form.name || !form.price || (form.stock === "" && form.variantStocks.length === 0)) {
       setError(`Nombre, precio y ${isDigital || isService ? "stock interno" : "stock"} son obligatorios.`);
       return;
     }
@@ -159,7 +189,7 @@ export default function ProductosPage() {
       setError("El precio debe ser mayor a cero.");
       return;
     }
-    if (!Number.isInteger(Number(form.stock)) || Number(form.stock) < 0) {
+    if (form.variantStocks.length === 0 && (!Number.isInteger(Number(form.stock)) || Number(form.stock) < 0)) {
       setError("El stock debe ser un número entero igual o mayor a cero.");
       return;
     }
@@ -173,13 +203,20 @@ export default function ProductosPage() {
       const body = {
         name: form.name,
         price: Number(form.price),
-        stock: Number(form.stock),
+        stock: form.variantStocks.length ? form.variantStocks.reduce((sum, row) => sum + row.stock, 0) : Number(form.stock),
         sku: form.sku || undefined,
         categoryId: form.categoryId || null,
         description: description || undefined,
         images: form.images,
+        brand: form.brand.trim() || undefined,
+        material: form.material.trim() || undefined,
+        sizeGuide: form.sizeGuide.trim() || undefined,
         ...(!isDigital && !isService
-          ? { sizes: form.sizes.trim() || undefined, colors: form.colors.trim() || undefined }
+          ? {
+              sizes: form.sizes.trim() || undefined,
+              colors: form.colors.trim() || undefined,
+              variantStocks: form.variantStocks.map(({ size, color, stock }) => ({ size: size ?? undefined, color: color ?? undefined, stock })),
+            }
           : {}),
         ...(isService
           ? {
@@ -213,7 +250,7 @@ export default function ProductosPage() {
   }
 
   async function onImages(files: FileList | File[]) {
-    const remaining = Math.max(0, 4 - form.images.length);
+    const remaining = Math.max(0, 6 - form.images.length);
     const list = Array.from(files)
       .filter((file) => file.type.startsWith("image/"))
       .slice(0, remaining);
@@ -424,16 +461,23 @@ export default function ProductosPage() {
           <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
             <div className="space-y-3">
               <Input label={`Nombre del ${noun} *`} value={form.name} placeholder="Ej: Zapatillas Urbanas" onChange={(value) => setForm({ ...form, name: value })} />
+              {!isDigital && !isService && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Input label="Marca (opcional)" value={form.brand} placeholder="Ej: Nike, Adidas o marca propia" onChange={(value) => setForm({ ...form, brand: value })} />
+                  <Input label="Material o presentación" value={form.material} placeholder="Ej: Cuero sintético / Frasco de 100 ml" onChange={(value) => setForm({ ...form, material: value })} />
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <Input label={isDigital ? "Precio mensual *" : "Precio *"} type="number" min="0.01" step="0.01" placeholder="0.00" value={form.price} onChange={(value) => setForm({ ...form, price: value })} />
                 <Input
-                  label={isDigital || isService ? "Stock interno *" : "Stock *"}
+                  label={isDigital || isService ? "Stock interno *" : form.variantStocks.length ? "Cantidad total (automática)" : "Cantidad disponible *"}
                   type="number"
                   min="0"
                   step="1"
                   placeholder="0"
                   value={form.stock}
                   onChange={(value) => setForm({ ...form, stock: value })}
+                  disabled={form.variantStocks.length > 0}
                 />
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -448,7 +492,9 @@ export default function ProductosPage() {
                     onChange={(event) => {
                       const categoryId = event.target.value;
                       const nextCategory = categoryName(categoryId);
-                      setForm({ ...form, categoryId, sizes: categorySupportsSizes(nextCategory) ? form.sizes : "", colors: categorySupportsColors(nextCategory) ? form.colors : "" });
+                      const sizes = categorySupportsSizes(nextCategory) ? form.sizes : "";
+                      const colors = categorySupportsColors(nextCategory) ? form.colors : "";
+                      setForm({ ...form, categoryId, sizes, colors, variantStocks: rebuildVariants(sizes, colors, form.variantStocks) });
                     }}
                     className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-violet-500"
                   >
@@ -463,13 +509,59 @@ export default function ProductosPage() {
               {!isDigital && !isService && (showSizes || showColors) && (
                 <div className="grid gap-3 sm:grid-cols-2">
                   {showSizes && <div>
-                    <Input label="Tallas (opcional)" placeholder="S, M, L, XL" value={form.sizes} onChange={(value) => setForm({ ...form, sizes: value })} />
+                    <Input label="Tallas disponibles (opcional)" placeholder="S, M, L, XL" value={form.sizes} onChange={(value) => setForm({ ...form, sizes: value, variantStocks: rebuildVariants(value, form.colors, form.variantStocks) })} />
                     <p className="mt-1 text-xs text-gray-400">Sepáralas con coma. Ej: S, M, L, XL</p>
                   </div>}
                   {showColors && <div>
-                    <Input label="Colores (opcional)" placeholder="Negro, Blanco, Azul" value={form.colors} onChange={(value) => setForm({ ...form, colors: value })} />
+                    <Input label="Colores disponibles (opcional)" placeholder="Negro, Blanco, Azul" value={form.colors} onChange={(value) => setForm({ ...form, colors: value, variantStocks: rebuildVariants(form.sizes, value, form.variantStocks) })} />
                     <p className="mt-1 text-xs text-gray-400">Sepáralos con coma. Ej: Negro, Blanco, Azul</p>
                   </div>}
+                </div>
+              )}
+
+              {!isDigital && !isService && showSizes && (
+                <Textarea
+                  label="Guía de tallas (opcional)"
+                  value={form.sizeGuide}
+                  onChange={(value) => setForm({ ...form, sizeGuide: value })}
+                  rows={3}
+                  placeholder={"Ej: S: pecho 88–92 cm\nM: pecho 93–98 cm\nL: pecho 99–104 cm"}
+                />
+              )}
+
+              {!isDigital && !isService && form.variantStocks.length > 0 && (
+                <div className="rounded-2xl border border-violet-100 bg-violet-50/60 p-3">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-black text-slate-900">Cantidad por opción</p>
+                      <p className="text-xs text-slate-500">Indica cuántas unidades tienes de cada talla y color.</p>
+                    </div>
+                    <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-violet-700">
+                      Total: {form.variantStocks.reduce((sum, row) => sum + row.stock, 0)}
+                    </span>
+                  </div>
+                  <div className="grid max-h-52 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+                    {form.variantStocks.map((row, index) => (
+                      <label key={`${row.size ?? ""}-${row.color ?? ""}`} className="flex items-center gap-2 rounded-xl bg-white p-2 ring-1 ring-slate-200">
+                        <span className="min-w-0 flex-1 truncate text-xs font-bold text-slate-700">
+                          {[row.size && `Talla ${row.size}`, row.color].filter(Boolean).join(" · ")}
+                        </span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={row.stock}
+                          onChange={(event) => {
+                            const next = [...form.variantStocks];
+                            next[index] = { ...row, stock: Math.max(0, Math.trunc(Number(event.target.value) || 0)) };
+                            setForm({ ...form, variantStocks: next, stock: String(next.reduce((sum, item) => sum + item.stock, 0)) });
+                          }}
+                          className="h-9 w-20 rounded-lg border border-slate-200 px-2 text-right text-sm font-bold outline-none focus:border-violet-500"
+                          aria-label={`Cantidad de ${[row.size, row.color].filter(Boolean).join(" ")}`}
+                        />
+                      </label>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -508,13 +600,13 @@ export default function ProductosPage() {
             <aside className="space-y-3 rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200">
               <div>
                 <span className="mb-2 block text-sm font-bold text-gray-700">
-                  Fotos {form.images.length > 0 && <span className="font-normal text-slate-400">({form.images.length}/4)</span>}
+                  Fotos {form.images.length > 0 && <span className="font-normal text-slate-400">({form.images.length}/6)</span>}
                 </span>
                 <div
                   className={`grid grid-cols-2 gap-2 sm:grid-cols-4 ${dragOver ? "rounded-2xl ring-2 ring-violet-400" : ""}`}
                   onDragOver={(event) => {
                     event.preventDefault();
-                    if (form.images.length < 4) setDragOver(true);
+                    if (form.images.length < 6) setDragOver(true);
                   }}
                   onDragLeave={() => setDragOver(false)}
                   onDrop={(event) => {
@@ -555,7 +647,7 @@ export default function ProductosPage() {
                       </button>
                     </div>
                   ))}
-                  {form.images.length < 4 && (
+                  {form.images.length < 6 && (
                     <label className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-gray-200 text-center text-xs font-semibold text-violet-700 hover:border-violet-300 hover:bg-violet-50">
                       <span className="text-xl">{uploading ? "…" : "+"}</span>
                       {uploading ? "Subiendo..." : "Agregar"}
@@ -575,7 +667,7 @@ export default function ProductosPage() {
                   )}
                 </div>
                 <p className="mt-2 text-xs font-medium text-slate-500">
-                  La primera foto es la portada. Hasta 4 fotos por {noun}.
+                  La primera foto es la portada. Hasta 6 fotos por {noun}.
                 </p>
               </div>
 
@@ -667,7 +759,7 @@ export default function ProductosPage() {
   );
 }
 
-function Input({ label, value, onChange, type = "text", placeholder, min, step }: { label: string; value: string; onChange: (value: string) => void; type?: string; placeholder?: string; min?: string; step?: string }) {
+function Input({ label, value, onChange, type = "text", placeholder, min, step, disabled = false }: { label: string; value: string; onChange: (value: string) => void; type?: string; placeholder?: string; min?: string; step?: string; disabled?: boolean }) {
   return (
     <label className="block">
       <span className="mb-1 block text-sm font-medium text-gray-700">{label}</span>
@@ -677,8 +769,9 @@ function Input({ label, value, onChange, type = "text", placeholder, min, step }
         placeholder={placeholder}
         min={min}
         step={step}
+        disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-violet-500"
+        className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-violet-500 disabled:bg-slate-100 disabled:text-slate-500"
       />
     </label>
   );

@@ -78,6 +78,7 @@ export function ProductDetailModal({
             <h2 id={`product-title-${product.id}`} className="mt-2 pr-8 text-3xl font-black tracking-tight text-slate-950">
               {product.name}
             </h2>
+            {product.brand && <p className="mt-1 text-sm font-bold text-slate-500">Marca: {product.brand}</p>}
             <p className="mt-3 text-3xl font-black" style={{ color: accent }}>
               {formatPrice(product.price, currency)}
             </p>
@@ -87,11 +88,23 @@ export function ProductDetailModal({
             <p className="mt-5 whitespace-pre-line text-sm font-medium leading-6 text-slate-700">
               {product.description || "Sin descripción adicional."}
             </p>
+            {product.material && (
+              <div className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-700 ring-1 ring-slate-200">
+                <span className="font-black">Material o presentación:</span> {product.material}
+              </div>
+            )}
+            {product.sizeGuide && (
+              <details className="mt-3 rounded-xl bg-violet-50 px-4 py-3 ring-1 ring-violet-100">
+                <summary className="cursor-pointer text-sm font-black" style={{ color: accent }}>Ver guía de tallas</summary>
+                <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-700">{product.sizeGuide}</p>
+              </details>
+            )}
 
             <div className="mt-7">
               <AddToCart product={product} accent={accent} label={actionLabel} />
               <ShareButton
                 title={product.name}
+                description={product.description ?? "Mira este producto"}
                 accent={accent}
                 url={`/tienda/${subdomain}/producto/${product.slug}`}
               />

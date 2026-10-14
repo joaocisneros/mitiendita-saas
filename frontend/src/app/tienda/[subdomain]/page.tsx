@@ -16,6 +16,7 @@ import { StoreFooter } from "@/components/store/StoreFooter";
 import { StoreBenefits } from "@/components/store/StoreBenefits";
 
 const DEFAULT_PRIMARY = "#2563eb";
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://mitiendita-saas.vercel.app").replace(/\/$/, "");
 
 /** Vista previa al compartir el link de la tienda (WhatsApp, redes). */
 export async function generateMetadata({
@@ -30,10 +31,13 @@ export async function generateMetadata({
     const description =
       store.description || `Conoce ${store.name}: haz tu pedido o reserva por internet, fácil y rápido.`;
     const images = store.logoUrl ? [{ url: store.logoUrl }] : undefined;
+    const canonical = `${SITE_URL}/tienda/${encodeURIComponent(subdomain)}`;
     return {
-      title,
+      title: `${title} | Tienda online`,
       description,
-      openGraph: { title, description, images, type: "website" },
+      alternates: { canonical },
+      robots: { index: true, follow: true },
+      openGraph: { title, description, images, type: "website", url: canonical, siteName: title, locale: "es_PE" },
       twitter: {
         card: "summary",
         title,
@@ -63,6 +67,18 @@ export default async function StorePage({
     notFound();
   }
   const { store, categories } = data;
+  const storeUrl = `${SITE_URL}/tienda/${encodeURIComponent(subdomain)}`;
+  const storeStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "Store",
+    name: store.name,
+    description: store.description || undefined,
+    url: storeUrl,
+    image: store.logoUrl || undefined,
+    telephone: store.whatsappNumber || undefined,
+    address: store.storeAddress || undefined,
+    sameAs: [store.instagramUrl, store.facebookUrl, store.tiktokUrl].filter(Boolean),
+  };
 
   const businessCategory = resolveCategory(store.businessType);
   const archetype = archetypeOf(businessCategory);
@@ -96,6 +112,7 @@ export default async function StorePage({
 
   return (
     <div className="flex-1" style={{ backgroundColor: surface }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(storeStructuredData).replace(/</g, "\\u003c") }} />
       <header
         className="relative overflow-hidden text-white"
         style={{ backgroundImage: `linear-gradient(135deg, ${accent}, ${accent}dd 55%, ${businessCategory.theme.secondary})` }}
@@ -104,7 +121,7 @@ export default async function StorePage({
         <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-white/15 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-28 left-1/4 h-72 w-72 rounded-full bg-black/10 blur-3xl" />
 
-        <div className="relative mx-auto max-w-[1440px] px-4 pb-12 pt-7 sm:px-6 lg:px-8">
+        <div className="relative mx-auto max-w-[1280px] px-4 pb-14 pt-8 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4">
             <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-3xl bg-white/20 text-3xl font-black shadow-xl ring-1 ring-white/30 backdrop-blur">
               {store.logoUrl ? (
@@ -155,13 +172,14 @@ export default async function StorePage({
           </div>
 
           {/* Llamada a la acción propia del tipo de negocio */}
-          <p className="mt-5 inline-flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-sm font-extrabold shadow-md" style={{ color: accent }}>
+          <a href="#catalogo" className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-extrabold shadow-lg transition hover:-translate-y-0.5" style={{ color: accent }}>
             {hero.cta}
-          </p>
+            <span aria-hidden>↓</span>
+          </a>
         </div>
       </header>
 
-      <main className="mx-auto -mt-6 max-w-[1440px] rounded-t-[2rem] px-4 pb-32 pt-8 sm:px-6 lg:px-8" style={{ backgroundColor: surface }}>
+      <main className="mx-auto -mt-6 max-w-[1280px] rounded-t-[2rem] px-4 pb-16 pt-8 sm:px-6 lg:px-8" style={{ backgroundColor: surface }}>
         {archetype === "catalogo" && (
           <CatalogTemplate
             subdomain={subdomain}

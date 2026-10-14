@@ -42,6 +42,8 @@ export interface CheckoutItem {
   productId: string;
   quantity: number;
   variant?: string;
+  size?: string;
+  color?: string;
 }
 export interface CheckoutBody {
   customerName: string;

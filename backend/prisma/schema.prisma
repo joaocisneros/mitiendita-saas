@@ -81,7 +81,7 @@ model Plan {
   id          Int      @id @default(autoincrement())
   name        String
   slug        String   @unique
-  priceMonth  Decimal  @default(0) @db.Decimal(10, 2) @map("price_month")
+  priceMonth  Decimal  @default(0) @map("price_month") @db.Decimal(10, 2)
   maxProducts Int?     @map("max_products") // null = ilimitado
   isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at")
@@ -101,26 +101,26 @@ model Company {
   planId    Int?          @map("plan_id")
 
   // Suscripción comercial (gestionada por el superadmin).
-  subscriptionStatus   SubscriptionStatus @default(trial) @map("subscription_status")
-  currentPeriodEndsAt  DateTime?          @map("current_period_ends_at")
-  subscriptionNotes    String?            @map("subscription_notes") @db.Text
+  subscriptionStatus  SubscriptionStatus @default(trial) @map("subscription_status")
+  currentPeriodEndsAt DateTime?          @map("current_period_ends_at")
+  subscriptionNotes   String?            @map("subscription_notes") @db.Text
 
-  createdAt DateTime      @default(now()) @map("created_at")
-  updatedAt DateTime      @updatedAt @map("updated_at")
-  deletedAt DateTime?     @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
 
-  plan        Plan?            @relation(fields: [planId], references: [id])
-  settings    CompanySettings?
-  memberships Membership[]
-  categories  Category[]
-  products    Product[]
-  customers   Customer[]
-  orders      Order[]
-  payments    Payment[]
+  plan           Plan?            @relation(fields: [planId], references: [id])
+  settings       CompanySettings?
+  memberships    Membership[]
+  categories     Category[]
+  products       Product[]
+  customers      Customer[]
+  orders         Order[]
+  payments       Payment[]
   stockMovements StockMovement[]
-  appointments Appointment[]
-  subscriptions Subscription[]
-  apiTokens    ApiToken[]
+  appointments   Appointment[]
+  subscriptions  Subscription[]
+  apiTokens      ApiToken[]
 
   @@index([status])
   @@map("companies")
@@ -242,38 +242,38 @@ model RefreshToken {
 
 /// Configuración de marca, pago Yape y entrega de cada tienda.
 model CompanySettings {
-  id              String   @id @default(uuid())
-  companyId       String   @unique @map("company_id")
-  storeName       String   @map("store_name")
-  businessType    String?  @map("business_type") // informativo: Bodega, Farmacia, Ropa... (no bloquea nada)
-  description     String?  @db.Text
-  logoUrl         String?  @map("logo_url")
-  primaryColor    String   @default("#2563eb") @map("primary_color")
-  secondaryColor  String   @default("#f59e0b") @map("secondary_color")
-  whatsappNumber  String?  @map("whatsapp_number")
-  yapeQrUrl       String?  @map("yape_qr_url")
-  yapeHolderName  String?  @map("yape_holder_name")
-  yapeNumber      String?  @map("yape_number")
-  plinQrUrl       String?  @map("plin_qr_url")
-  plinHolderName  String?  @map("plin_holder_name")
-  plinNumber      String?  @map("plin_number")
-  currency        String   @default("PEN")
-  timezone        String   @default("America/Lima")
-  whatsappMessage String?  @map("whatsapp_message") @db.Text
+  id              String  @id @default(uuid())
+  companyId       String  @unique @map("company_id")
+  storeName       String  @map("store_name")
+  businessType    String? @map("business_type") // informativo: Bodega, Farmacia, Ropa... (no bloquea nada)
+  description     String? @db.Text
+  logoUrl         String? @map("logo_url")
+  primaryColor    String  @default("#2563eb") @map("primary_color")
+  secondaryColor  String  @default("#f59e0b") @map("secondary_color")
+  whatsappNumber  String? @map("whatsapp_number")
+  yapeQrUrl       String? @map("yape_qr_url")
+  yapeHolderName  String? @map("yape_holder_name")
+  yapeNumber      String? @map("yape_number")
+  plinQrUrl       String? @map("plin_qr_url")
+  plinHolderName  String? @map("plin_holder_name")
+  plinNumber      String? @map("plin_number")
+  currency        String  @default("PEN")
+  timezone        String  @default("America/Lima")
+  whatsappMessage String? @map("whatsapp_message") @db.Text
 
   // Entrega
   allowsPickup   Boolean  @default(true) @map("allows_pickup")
   allowsDelivery Boolean  @default(true) @map("allows_delivery")
-  deliveryFee    Decimal  @default(0) @db.Decimal(10, 2) @map("delivery_fee")
-  minOrder       Decimal? @db.Decimal(10, 2) @map("min_order")
+  deliveryFee    Decimal  @default(0) @map("delivery_fee") @db.Decimal(10, 2)
+  minOrder       Decimal? @map("min_order") @db.Decimal(10, 2)
   storeAddress   String?  @map("store_address")
   deliveryNotes  String?  @map("delivery_notes") @db.Text
 
   // Presencia / confianza
-  hours        String?  @db.Text // horario de atención (texto libre, ej. "Lun-Sáb 9am-8pm")
-  instagramUrl String?  @map("instagram_url")
-  facebookUrl  String?  @map("facebook_url")
-  tiktokUrl    String?  @map("tiktok_url")
+  hours        String? @db.Text // horario de atención (texto libre, ej. "Lun-Sáb 9am-8pm")
+  instagramUrl String? @map("instagram_url")
+  facebookUrl  String? @map("facebook_url")
+  tiktokUrl    String? @map("tiktok_url")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -310,35 +310,39 @@ model Category {
 
 /// Producto físico. Una imagen principal, sin variantes en el MVP.
 model Product {
-  id          String    @id @default(uuid())
-  companyId   String    @map("company_id")
-  categoryId  String?   @map("category_id")
-  name        String
-  slug        String
-  description String?   @db.Text
-  price       Decimal   @db.Decimal(12, 2) // dinero exacto, nunca float
-  stock       Int       @default(0) // unidades físicas totales
-  reserved    Int       @default(0) // unidades comprometidas por pedidos pendientes
-  sku         String?
-  imageUrl    String?   @map("image_url") // portada: siempre igual a images[0]
-  images      Json?     // galería, hasta 4 URLs: ["https://...", ...]
-  sizes       String?   @db.Text // opciones de talla separadas por coma (ej. "S,M,L,XL"). Vacío = sin tallas.
-  colors      String?   @db.Text // opciones de color separadas por coma (ej. "Negro,Blanco"). Vacío = sin colores.
-  reservationPaymentMode String  @default("optional") @map("reservation_payment_mode") @db.VarChar(20) // none | optional | required
-  reservationAdvanceType String  @default("percent") @map("reservation_advance_type") @db.VarChar(20) // fixed | percent
-  reservationAdvanceValue Decimal @default(30.00) @map("reservation_advance_value") @db.Decimal(10, 2)
-  isFeatured  Boolean   @default(false) @map("is_featured")
-  isActive    Boolean   @default(true) @map("is_active")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  deletedAt   DateTime? @map("deleted_at")
+  id                      String    @id @default(uuid())
+  companyId               String    @map("company_id")
+  categoryId              String?   @map("category_id")
+  name                    String
+  slug                    String
+  description             String?   @db.Text
+  price                   Decimal   @db.Decimal(12, 2) // dinero exacto, nunca float
+  stock                   Int       @default(0) // unidades físicas totales
+  reserved                Int       @default(0) // unidades comprometidas por pedidos pendientes
+  sku                     String?
+  imageUrl                String?   @map("image_url") // portada: siempre igual a images[0]
+  images                  Json? // galería, hasta 6 URLs: ["https://...", ...]
+  brand                   String?   @db.VarChar(120)
+  material                String?   @db.Text
+  sizeGuide               String?   @map("size_guide") @db.Text
+  sizes                   String?   @db.Text // opciones de talla separadas por coma (ej. "S,M,L,XL"). Vacío = sin tallas.
+  colors                  String?   @db.Text // opciones de color separadas por coma (ej. "Negro,Blanco"). Vacío = sin colores.
+  variantStocks           Json?     @map("variant_stocks") // [{size,color,stock,reserved}]
+  reservationPaymentMode  String    @default("optional") @map("reservation_payment_mode") @db.VarChar(20) // none | optional | required
+  reservationAdvanceType  String    @default("percent") @map("reservation_advance_type") @db.VarChar(20) // fixed | percent
+  reservationAdvanceValue Decimal   @default(30.00) @map("reservation_advance_value") @db.Decimal(10, 2)
+  isFeatured              Boolean   @default(false) @map("is_featured")
+  isActive                Boolean   @default(true) @map("is_active")
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @updatedAt @map("updated_at")
+  deletedAt               DateTime? @map("deleted_at")
 
-  company    Company     @relation(fields: [companyId], references: [id])
-  category   Category?   @relation(fields: [categoryId], references: [id])
-  orderItems OrderItem[]
+  company        Company         @relation(fields: [companyId], references: [id])
+  category       Category?       @relation(fields: [categoryId], references: [id])
+  orderItems     OrderItem[]
   stockMovements StockMovement[]
-  appointments Appointment[]
-  subscriptions Subscription[]
+  appointments   Appointment[]
+  subscriptions  Subscription[]
 
   // slug y SKU únicos por empresa. SKU es opcional (varios NULL permitidos).
   @@unique([companyId, slug])
@@ -504,28 +508,28 @@ model StockMovement {
 /// Cita/reserva de un servicio (rubros de Servicios: belleza, salud, etc.).
 /// Puede reservarse sin pago o con adelanto por Yape; el negocio confirma y coordina la atención.
 model Appointment {
-  id            String            @id @default(uuid())
-  companyId     String            @map("company_id")
-  productId     String?           @map("product_id") // servicio relacionado (opcional)
-  publicCode    String?           @unique @map("public_code") // código corto para el recibo/seguimiento
-  serviceName   String            @map("service_name") // copia histórica del nombre
-  customerName  String            @map("customer_name")
-  customerPhone String            @map("customer_phone")
-  preferredAt   DateTime          @map("preferred_at") // día/hora deseado por el cliente
-  note          String?           @db.Text
-  status        AppointmentStatus @default(pending)
-  paymentMode   String?           @map("payment_mode") @db.VarChar(20) // none | advance
-  advanceAmount Decimal?          @map("advance_amount") @db.Decimal(12, 2)
-  paymentStatus PaymentStatus     @default(pending) @map("payment_status")
-  proofUrl      String?           @map("proof_url")
-  proofSubmittedAt DateTime?      @map("proof_submitted_at")
-  operationNumber   String?       @map("operation_number") // N° de operación leído del comprobante, para detectar reuso
-  detectedMethod    String?       @map("detected_method") // yape | plin, leído del comprobante por OCR
-  validatedAt       DateTime?     @map("validated_at") // cuándo el dueño aprobó/rechazó el adelanto
-  validatedByUserId String?       @map("validated_by_user_id")
-  rejectionComment  String?       @map("rejection_comment")
-  createdAt     DateTime          @default(now()) @map("created_at")
-  updatedAt     DateTime          @updatedAt @map("updated_at")
+  id                String            @id @default(uuid())
+  companyId         String            @map("company_id")
+  productId         String?           @map("product_id") // servicio relacionado (opcional)
+  publicCode        String?           @unique @map("public_code") // código corto para el recibo/seguimiento
+  serviceName       String            @map("service_name") // copia histórica del nombre
+  customerName      String            @map("customer_name")
+  customerPhone     String            @map("customer_phone")
+  preferredAt       DateTime          @map("preferred_at") // día/hora deseado por el cliente
+  note              String?           @db.Text
+  status            AppointmentStatus @default(pending)
+  paymentMode       String?           @map("payment_mode") @db.VarChar(20) // none | advance
+  advanceAmount     Decimal?          @map("advance_amount") @db.Decimal(12, 2)
+  paymentStatus     PaymentStatus     @default(pending) @map("payment_status")
+  proofUrl          String?           @map("proof_url")
+  proofSubmittedAt  DateTime?         @map("proof_submitted_at")
+  operationNumber   String?           @map("operation_number") // N° de operación leído del comprobante, para detectar reuso
+  detectedMethod    String?           @map("detected_method") // yape | plin, leído del comprobante por OCR
+  validatedAt       DateTime?         @map("validated_at") // cuándo el dueño aprobó/rechazó el adelanto
+  validatedByUserId String?           @map("validated_by_user_id")
+  rejectionComment  String?           @map("rejection_comment")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
 
   company Company  @relation(fields: [companyId], references: [id])
   product Product? @relation(fields: [productId], references: [id])
@@ -538,30 +542,30 @@ model Appointment {
 /// Suscripción de un cliente a un plan digital (streaming, membresías, cursos).
 /// Tiene período: el dueño la activa y controla su vencimiento para renovar.
 model Subscription {
-  id            String    @id @default(uuid())
-  companyId     String    @map("company_id")
-  productId     String?   @map("product_id") // plan relacionado (opcional)
-  publicCode    String?   @unique @map("public_code") // código corto para comprobantes/seguimiento
-  planName      String    @map("plan_name") // copia histórica del nombre del plan
-  customerName  String    @map("customer_name")
-  customerPhone String    @map("customer_phone")
-  status        SubStatus @default(pending)
-  startsAt      DateTime? @map("starts_at") // cuándo se activó
-  endsAt        DateTime? @map("ends_at") // vencimiento (para avisar/renovar)
-  note          String?   @db.Text
-  proofUrl         String?   @map("proof_url") // comprobante de pago Yape (imagen)
-  proofSubmittedAt DateTime? @map("proof_submitted_at") // cuándo subió el comprobante
-  operationNumber  String?   @map("operation_number") // N° de operación leído del comprobante, para detectar reuso
-  detectedMethod   String?   @map("detected_method") // yape | plin, leído del comprobante por OCR
-  price         Decimal?  @db.Decimal(12, 2) // monto cobrado: copiado del producto vinculado, o ingresado a mano al activar
+  id                     String    @id @default(uuid())
+  companyId              String    @map("company_id")
+  productId              String?   @map("product_id") // plan relacionado (opcional)
+  publicCode             String?   @unique @map("public_code") // código corto para comprobantes/seguimiento
+  planName               String    @map("plan_name") // copia histórica del nombre del plan
+  customerName           String    @map("customer_name")
+  customerPhone          String    @map("customer_phone")
+  status                 SubStatus @default(pending)
+  startsAt               DateTime? @map("starts_at") // cuándo se activó
+  endsAt                 DateTime? @map("ends_at") // vencimiento (para avisar/renovar)
+  note                   String?   @db.Text
+  proofUrl               String?   @map("proof_url") // comprobante de pago Yape (imagen)
+  proofSubmittedAt       DateTime? @map("proof_submitted_at") // cuándo subió el comprobante
+  operationNumber        String?   @map("operation_number") // N° de operación leído del comprobante, para detectar reuso
+  detectedMethod         String?   @map("detected_method") // yape | plin, leído del comprobante por OCR
+  price                  Decimal?  @db.Decimal(12, 2) // monto cobrado: copiado del producto vinculado, o ingresado a mano al activar
   // Renovación pedida por el cliente desde su link público: queda pendiente de aprobar sin pisar el comprobante original.
   renewalMonths          Int?      @map("renewal_months")
   renewalProofUrl        String?   @map("renewal_proof_url")
   renewalSubmittedAt     DateTime? @map("renewal_submitted_at")
   renewalOperationNumber String?   @map("renewal_operation_number")
   renewalDetectedMethod  String?   @map("renewal_detected_method")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
 
   company Company  @relation(fields: [companyId], references: [id])
   product Product? @relation(fields: [productId], references: [id])
@@ -573,23 +577,23 @@ model Subscription {
 
 /// Configuración global de la plataforma (fila única, id = 1).
 model PlatformSettings {
-  id              Int      @id @default(1)
-  platformName    String   @default("MiTiendita") @map("platform_name")
-  logoUrl         String?  @map("logo_url")
-  mainDomain      String   @default("mitiendita.com") @map("main_domain")
-  currency        String   @default("PEN")
-  supportWhatsapp String?  @map("support_whatsapp")
-  supportEmail    String?  @map("support_email")
-  terms           String?  @db.Text
-  privacy         String?  @db.Text
-  trialDays       Int      @default(14) @map("trial_days")
+  id                 Int      @id @default(1)
+  platformName       String   @default("MiTiendita") @map("platform_name")
+  logoUrl            String?  @map("logo_url")
+  mainDomain         String   @default("mitiendita.com") @map("main_domain")
+  currency           String   @default("PEN")
+  supportWhatsapp    String?  @map("support_whatsapp")
+  supportEmail       String?  @map("support_email")
+  terms              String?  @db.Text
+  privacy            String?  @db.Text
+  trialDays          Int      @default(14) @map("trial_days")
   // Integración de envío de WhatsApp (Twilio) usada por WhatsappService.
   // Si están vacíos, el servicio usa las variables de entorno TWILIO_* como respaldo.
   whatsappEnabled    Boolean  @default(false) @map("whatsapp_enabled")
   twilioAccountSid   String?  @map("twilio_account_sid")
   twilioAuthToken    String?  @map("twilio_auth_token")
   twilioWhatsappFrom String?  @map("twilio_whatsapp_from")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
 
   @@map("platform_settings")
 }

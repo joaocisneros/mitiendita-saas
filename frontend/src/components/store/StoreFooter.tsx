@@ -7,7 +7,7 @@ export function StoreFooter({ store }: { store: StoreBrand }) {
   const hasPlin = Boolean(store.plinNumber || store.plinQrUrl);
   return (
     <footer className="mt-4 border-t border-slate-200 bg-white">
-      <div className="mx-auto max-w-[1440px] px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1280px] px-4 py-8 sm:px-6 lg:px-8">
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="flex items-center gap-2.5">

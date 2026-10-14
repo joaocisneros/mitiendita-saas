@@ -6,6 +6,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { MediaService } from '../media/media.service';
 import type { OrderStatus } from '../../generated/prisma/enums';
+import { adjustVariantStock } from './variant-stock.util';
 
 // Transiciones permitidas (según la especificación).
 const TRANSITIONS: Record<string, OrderStatus[]> = {
@@ -184,6 +185,7 @@ export class AdminOrdersService {
             SET stock = GREATEST(0, stock - ${item.quantity}),
                 reserved = GREATEST(0, reserved - ${item.quantity})
             WHERE id = ${item.productId} AND company_id = ${companyId}`;
+          await adjustVariantStock(tx, item.productId, item.variant, item.quantity, 'commit');
           await tx.stockMovement.create({
             data: {
               companyId,
@@ -284,11 +286,13 @@ export class AdminOrdersService {
             await tx.$executeRaw`
               UPDATE products SET reserved = GREATEST(0, reserved - ${item.quantity})
               WHERE id = ${item.productId} AND company_id = ${companyId}`;
+            await adjustVariantStock(tx, item.productId, item.variant, item.quantity, 'release');
           } else {
             // Ya estaba confirmado (stock comprometido): devolverlo.
             await tx.$executeRaw`
               UPDATE products SET stock = stock + ${item.quantity}
               WHERE id = ${item.productId} AND company_id = ${companyId}`;
+            await adjustVariantStock(tx, item.productId, item.variant, item.quantity, 'restore');
             await tx.stockMovement.create({
               data: {
                 companyId,

@@ -9,10 +9,11 @@ export function HeaderCartIcon() {
   return (
     <button
       onClick={openCart}
-      className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20 text-white ring-1 ring-white/25 backdrop-blur transition hover:bg-white/30"
+      className="relative flex h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-white/20 px-3.5 text-white ring-1 ring-white/25 backdrop-blur transition hover:bg-white/30"
       aria-label="Ver carrito"
     >
       <DashboardIcon name="cart" className="h-5 w-5" />
+      <span className="hidden text-sm font-bold sm:inline">Carrito</span>
       {count > 0 && (
         <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-black text-white shadow">
           {count}

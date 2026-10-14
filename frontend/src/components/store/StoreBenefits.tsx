@@ -33,7 +33,7 @@ const BY_ARCHETYPE: Record<StoreArchetype, Benefit[]> = {
 export function StoreBenefits({ archetype }: { archetype: StoreArchetype }) {
   const items = BY_ARCHETYPE[archetype] ?? BY_ARCHETYPE.catalogo;
   return (
-    <section className="mt-10 border-t border-slate-200 pt-8">
+    <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {items.map((b) => (
           <div key={b.title} className="flex items-center gap-3">

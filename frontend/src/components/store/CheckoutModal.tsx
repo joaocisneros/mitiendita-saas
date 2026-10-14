@@ -42,6 +42,17 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
     const v = variants[productId];
     return [v?.size ? `Talla ${v.size}` : "", v?.color ?? ""].filter(Boolean).join(" · ");
   }
+  function optionAvailable(
+    item: (typeof items)[number],
+    next: { size?: string; color?: string },
+  ) {
+    if (!item.variantStocks?.length) return true;
+    return item.variantStocks.some((row) =>
+      (!next.size || row.size === next.size)
+      && (!next.color || row.color === next.color)
+      && row.stock - (row.reserved ?? 0) >= item.quantity,
+    );
+  }
   const idemKey = useRef<string | null>(null);
 
   useEffect(() => {
@@ -101,6 +112,10 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
         setError(`Elige el color de "${i.name}".`);
         return;
       }
+      if (!optionAvailable(i, v ?? {})) {
+        setError(`La opción elegida de "${i.name}" ya no tiene suficiente stock.`);
+        return;
+      }
     }
     setSaving(true);
     try {
@@ -114,7 +129,13 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
           address: method === "delivery" ? address : undefined,
           reference: reference || undefined,
           customerNote: note || undefined,
-          items: items.map((i) => ({ productId: i.productId, quantity: i.quantity, variant: variantLabel(i.productId) || undefined })),
+          items: items.map((i) => ({
+            productId: i.productId,
+            quantity: i.quantity,
+            variant: variantLabel(i.productId) || undefined,
+            size: variants[i.productId]?.size,
+            color: variants[i.productId]?.color,
+          })),
         },
         idemKey.current,
       );
@@ -238,7 +259,8 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
                             <span className="text-[11px] font-bold text-slate-400">Talla:</span>
                             {parseOptions(i.sizes).map((s) => {
                               const on = variants[i.productId]?.size === s;
-                              return <button key={s} type="button" onClick={() => setVariant(i.productId, { size: s })} style={on ? { backgroundColor: accent, borderColor: accent, color: "#fff" } : undefined} className="rounded-md border border-slate-300 px-2 py-0.5 text-xs font-black text-slate-700 transition">{s}</button>;
+                              const disabled = !optionAvailable(i, { ...variants[i.productId], size: s });
+                              return <button key={s} type="button" disabled={disabled} onClick={() => setVariant(i.productId, { size: s })} style={on ? { backgroundColor: accent, borderColor: accent, color: "#fff" } : undefined} className="rounded-md border border-slate-300 px-2 py-0.5 text-xs font-black text-slate-700 transition disabled:cursor-not-allowed disabled:opacity-35">{s}</button>;
                             })}
                           </div>
                         )}
@@ -247,7 +269,8 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
                             <span className="text-[11px] font-bold text-slate-400">Color:</span>
                             {parseOptions(i.colors).map((c) => {
                               const on = variants[i.productId]?.color === c;
-                              return <button key={c} type="button" onClick={() => setVariant(i.productId, { color: c })} style={on ? { backgroundColor: accent, borderColor: accent, color: "#fff" } : undefined} className="rounded-md border border-slate-300 px-2 py-0.5 text-xs font-black text-slate-700 transition">{c}</button>;
+                              const disabled = !optionAvailable(i, { ...variants[i.productId], color: c });
+                              return <button key={c} type="button" disabled={disabled} onClick={() => setVariant(i.productId, { color: c })} style={on ? { backgroundColor: accent, borderColor: accent, color: "#fff" } : undefined} className="rounded-md border border-slate-300 px-2 py-0.5 text-xs font-black text-slate-700 transition disabled:cursor-not-allowed disabled:opacity-35">{c}</button>;
                             })}
                           </div>
                         )}

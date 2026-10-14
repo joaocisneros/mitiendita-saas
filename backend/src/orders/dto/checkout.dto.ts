@@ -28,6 +28,16 @@ export class CheckoutItemDto {
   @IsString()
   @MaxLength(120)
   variant?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  size?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  color?: string;
 }
 
 export class CheckoutDto {

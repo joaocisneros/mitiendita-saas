@@ -15,6 +15,8 @@ import {
 } from "@/lib/business-categories";
 import { formatPrice } from "@/lib/format";
 
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://mitiendita-saas.vercel.app").replace(/\/$/, "");
+
 /** Vista previa al compartir el link de un producto. */
 export async function generateMetadata({
   params,
@@ -23,19 +25,27 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { subdomain, slug } = await params;
   try {
-    const product = await storefrontApi.getProduct(subdomain, slug);
+    const [product, storeData] = await Promise.all([
+      storefrontApi.getProduct(subdomain, slug),
+      storefrontApi.getStore(subdomain),
+    ]);
     const description =
-      product.description || `Disponible en la tienda. ${product.name}.`;
-    const images = product.imageUrl ? [{ url: product.imageUrl }] : undefined;
+      product.description?.replace(/\s+/g, " ").slice(0, 160) || `${product.name}, disponible en ${storeData.store.name}. Compra o consulta por internet.`;
+    const socialImage = product.images?.[0] || product.imageUrl;
+    const images = socialImage ? [{ url: socialImage, alt: product.name }] : undefined;
+    const canonical = `${SITE_URL}/tienda/${encodeURIComponent(subdomain)}/producto/${encodeURIComponent(slug)}`;
+    const title = `${product.name} | ${storeData.store.name}`;
     return {
-      title: product.name,
+      title,
       description,
-      openGraph: { title: product.name, description, images, type: "website" },
+      alternates: { canonical },
+      robots: { index: true, follow: true },
+      openGraph: { title, description, images, type: "website", url: canonical, siteName: storeData.store.name, locale: "es_PE" },
       twitter: {
         card: "summary_large_image",
-        title: product.name,
+        title,
         description,
-        images: product.imageUrl ? [product.imageUrl] : undefined,
+        images: socialImage ? [socialImage] : undefined,
       },
     };
   } catch {
@@ -71,9 +81,27 @@ export default async function ProductDetailPage({
         `Hola ${store.store.name}, quiero ${action.toLowerCase()}: ${product.name}`,
       )}`
     : null;
+  const productUrl = `${SITE_URL}/tienda/${encodeURIComponent(subdomain)}/producto/${encodeURIComponent(slug)}`;
+  const productStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    description: product.description || undefined,
+    image: product.images?.length ? product.images : product.imageUrl ? [product.imageUrl] : undefined,
+    brand: product.brand ? { "@type": "Brand", name: product.brand } : undefined,
+    offers: {
+      "@type": "Offer",
+      url: productUrl,
+      priceCurrency: store.store.currency,
+      price: product.price,
+      availability: product.inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      seller: { "@type": "Organization", name: store.store.name },
+    },
+  };
 
   return (
     <div className="min-h-screen flex-1 bg-slate-50 pb-24">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productStructuredData).replace(/</g, "\\u003c") }} />
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-4xl items-center gap-3 px-4 py-4">
           <Link
@@ -186,7 +214,7 @@ export default async function ProductDetailPage({
                 Este negocio aún no cargó su WhatsApp.
               </div>
             )}
-            <ShareButton title={product.name} accent={accent} />
+            <ShareButton title={product.name} description={product.description ?? `Disponible en ${store.store.name}`} accent={accent} />
           </div>
 
           <p className="mt-4 text-center text-xs font-medium text-slate-500">

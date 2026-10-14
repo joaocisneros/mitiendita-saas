@@ -16,7 +16,7 @@ export function CategoryChips({
 }) {
   if (!categories || categories.length === 0) return null;
   return (
-    <div className="mb-6">
+    <div>
       <p className="mb-2 text-xs font-black uppercase tracking-[0.14em] text-slate-400">Explora por categoría</p>
       <div className="flex gap-2 overflow-x-auto pb-1">
         <Chip href={`/tienda/${subdomain}`} active={!category} accent={accent}>🛍️ Todos</Chip>

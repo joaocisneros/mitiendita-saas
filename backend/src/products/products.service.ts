@@ -11,6 +11,38 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { QueryProductsDto } from './dto/query-products.dto';
 
+type VariantStock = {
+  size: string | null;
+  color: string | null;
+  stock: number;
+  reserved: number;
+};
+
+function cleanVariantStocks(
+  rows: Array<{ size?: string; color?: string; stock: number }> | undefined,
+  current: VariantStock[] = [],
+): VariantStock[] | undefined {
+  if (rows === undefined) return undefined;
+  const seen = new Set<string>();
+  return rows.map((row) => {
+    const size = row.size?.trim() || null;
+    const color = row.color?.trim() || null;
+    const key = `${size ?? ''}\u0000${color ?? ''}`.toLocaleLowerCase();
+    if (!size && !color) throw new BadRequestException('Cada opción debe tener talla o color.');
+    if (seen.has(key)) throw new BadRequestException('Hay opciones de talla y color repetidas.');
+    seen.add(key);
+    const previous = current.find(
+      (item) => (item.size ?? '').toLocaleLowerCase() === (size ?? '').toLocaleLowerCase()
+        && (item.color ?? '').toLocaleLowerCase() === (color ?? '').toLocaleLowerCase(),
+    );
+    const reserved = Math.max(0, Number(previous?.reserved ?? 0));
+    if (row.stock < reserved) {
+      throw new BadRequestException(`No puedes reducir ${[size, color].filter(Boolean).join(' / ')} por debajo de ${reserved}; hay unidades reservadas.`);
+    }
+    return { size, color, stock: row.stock, reserved };
+  });
+}
+
 @Injectable()
 export class ProductsService {
   constructor(
@@ -39,7 +71,11 @@ export class ProductsService {
     const slug = await this.uniqueSlug(companyId, slugify(dto.name));
     // La portada (imageUrl) siempre es la primera foto de la galería.
     const images =
-      dto.images?.slice(0, 4) ?? (dto.imageUrl ? [dto.imageUrl] : []);
+      dto.images?.slice(0, 6) ?? (dto.imageUrl ? [dto.imageUrl] : []);
+    const variantStocks = cleanVariantStocks(dto.variantStocks) ?? [];
+    const stock = variantStocks.length
+      ? variantStocks.reduce((sum, item) => sum + item.stock, 0)
+      : dto.stock;
 
     return this.prisma.product.create({
       data: {
@@ -49,12 +85,16 @@ export class ProductsService {
         slug,
         description: dto.description ?? null,
         price: dto.price,
-        stock: dto.stock,
+        stock,
         sku: dto.sku ?? null,
         imageUrl: images[0] ?? null,
         images,
+        brand: dto.brand?.trim() || null,
+        material: dto.material?.trim() || null,
+        sizeGuide: dto.sizeGuide?.trim() || null,
         sizes: dto.sizes ?? null,
         colors: dto.colors ?? null,
+        variantStocks,
         reservationPaymentMode: dto.reservationPaymentMode ?? 'optional',
         reservationAdvanceType: dto.reservationAdvanceType ?? 'percent',
         reservationAdvanceValue: dto.reservationAdvanceValue ?? 30,
@@ -116,11 +156,28 @@ export class ProductsService {
       (current.imageUrl ? [current.imageUrl] : []);
     if (dto.images !== undefined) {
       // La portada (imageUrl) siempre es la primera foto de la galería.
-      const images = dto.images.slice(0, 4);
+      const images = dto.images.slice(0, 6);
       data.images = images;
       data.imageUrl = images[0] ?? null;
     } else if (dto.imageUrl !== undefined) {
       data.images = dto.imageUrl ? [dto.imageUrl] : [];
+    }
+    if (dto.variantStocks !== undefined) {
+      const currentVariants = Array.isArray(current.variantStocks)
+        ? (current.variantStocks as VariantStock[])
+        : [];
+      const variantStocks = cleanVariantStocks(dto.variantStocks, currentVariants) ?? [];
+      const removedWithReservations = currentVariants.some((old) =>
+        old.reserved > 0 && !variantStocks.some((next) =>
+          (next.size ?? '').toLocaleLowerCase() === (old.size ?? '').toLocaleLowerCase()
+          && (next.color ?? '').toLocaleLowerCase() === (old.color ?? '').toLocaleLowerCase(),
+        ),
+      );
+      if (removedWithReservations) {
+        throw new BadRequestException('No puedes eliminar una opción que tiene unidades reservadas.');
+      }
+      data.variantStocks = variantStocks;
+      if (variantStocks.length) data.stock = variantStocks.reduce((sum, item) => sum + item.stock, 0);
     }
     const updated = await this.prisma.product.update({ where: { id }, data });
 

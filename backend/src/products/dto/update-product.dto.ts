@@ -11,7 +11,10 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ProductVariantStockDto } from './create-product.dto';
 
 /** Todos los campos opcionales. `categoryId: null` desasigna la categoría. */
 export class UpdateProductDto {
@@ -55,9 +58,24 @@ export class UpdateProductDto {
 
   @IsOptional()
   @IsArray()
-  @ArrayMaxSize(4, { message: 'Máximo 4 fotos por producto.' })
+  @ArrayMaxSize(6, { message: 'Máximo 6 fotos por producto.' })
   @IsString({ each: true })
   images?: string[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  brand?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  material?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  sizeGuide?: string;
 
   @IsOptional()
   @IsString()
@@ -68,6 +86,13 @@ export class UpdateProductDto {
   @IsString()
   @MaxLength(300)
   colors?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(100)
+  @ValidateNested({ each: true })
+  @Type(() => ProductVariantStockDto)
+  variantStocks?: ProductVariantStockDto[];
 
   @IsOptional()
   @IsIn(['none', 'optional', 'required'])

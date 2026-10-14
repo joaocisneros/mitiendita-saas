@@ -4,9 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { adminApi, type DashboardData, type AdminAppointment } from "@/lib/admin-api";
 import { formatPrice } from "@/lib/format";
-import { StatusBadge, type OrderStatusContext } from "@/components/StatusBadge";
+import { orderStatusLabel, StatusBadge, type OrderStatusContext } from "@/components/StatusBadge";
 import { OrderDetailModal } from "@/components/OrderDetailModal";
-import { BarChart } from "@/components/Charts";
+import { BarChart, DonutChart } from "@/components/Charts";
 import { Skeleton } from "@/components/Skeleton";
 import { archetypeOf, resolveCategory } from "@/lib/business-categories";
 
@@ -84,8 +84,14 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-xl font-extrabold">Resumen de la tienda</h1>
+    <div className="space-y-4">
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <p className="text-sm font-bold text-violet-700">Así va tu negocio</p>
+          <h1 className="mt-1 text-xl font-extrabold">Resumen de la tienda</h1>
+        </div>
+        <Link href="/panel/reportes" className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-violet-700 ring-1 ring-violet-200">Ver reportes</Link>
+      </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Stat label={isServiceLike ? "Ingresos de hoy" : "Ventas de hoy"} value={formatPrice(data.salesToday)} accent />
@@ -96,30 +102,21 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5 lg:col-span-2">
+        <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 lg:col-span-2">
           <h2 className="mb-3 font-bold text-slate-900">
             {isServiceLike ? "Ingresos" : "Ventas"} (últimos 14 días)
           </h2>
           <BarChart
             data={data.salesTrend.map((d) => ({ label: d.date, value: d.value }))}
             format={(v) => formatPrice(v)}
+            height={145}
           />
         </section>
-        <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+        <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
           <h2 className="mb-3 font-bold text-slate-900">{operationsName} por estado</h2>
-          <div className="flex flex-wrap gap-2">
-            {data.ordersByStatus.map((s) => (
-              <span key={s.status} className="flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5">
-                <StatusBadge status={s.status} context={statusContext} />
-                <b className="text-slate-800">{s.count}</b>
-              </span>
-            ))}
-            {data.ordersByStatus.length === 0 && (
-              <p className="text-sm text-slate-500">
-                {isServiceLike ? "Sin solicitudes aún." : "Sin pedidos aún."}
-              </p>
-            )}
-          </div>
+          {data.ordersByStatus.length > 0 ? (
+            <DonutChart size={130} data={data.ordersByStatus.map((item, index) => ({ label: orderStatusLabel(item.status, statusContext), value: item.count, color: ["#7c3aed", "#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#64748b"][index % 6] }))} />
+          ) : <div className="flex h-[145px] items-center justify-center rounded-xl bg-slate-50 text-sm text-slate-500">{isServiceLike ? "Sin solicitudes aún." : "Sin pedidos aún."}</div>}
         </section>
       </div>
 
@@ -181,88 +178,43 @@ export default function DashboardPage() {
         </section>
       )}
 
-      <section>
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="font-bold">{recentTitle}</h2>
-          <Link href="/panel/pedidos" className="text-sm text-violet-600">
-            Ver todas →
-          </Link>
-        </div>
-        <div className="overflow-hidden rounded-2xl bg-white ring-1 ring-black/5">
-          {data.recentOrders.length === 0 ? (
-            <p className="p-6 text-center text-sm text-gray-400">
-              {isServiceLike ? "Aún no hay solicitudes." : "Aún no hay pedidos."}
-            </p>
-          ) : (
-            <ul className="divide-y divide-black/5">
-              {data.recentOrders.map((o) => (
-                <li key={o.id}>
-                  <button
-                    onClick={() => setSelectedId(o.id)}
-                    className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
-                  >
-                    <div>
-                      <p className="font-medium">{o.customerName}</p>
-                      <p className="text-xs text-gray-400">{o.publicCode}</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <StatusBadge status={o.status} context={statusContext} />
-                      <span className="font-bold">{formatPrice(o.total, o.currency)}</span>
-                    </div>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </section>
-
-      {!isServiceLike && data.lowStockProducts.length > 0 && (
-        <section>
-          <h2 className="mb-2 font-bold">Productos con stock bajo</h2>
-          <div className="rounded-2xl bg-white p-4 ring-1 ring-black/5">
-            <ul className="space-y-1 text-sm">
-              {data.lowStockProducts.map((p) => (
-                <li key={p.id} className="flex justify-between">
-                  <span>{p.name}</span>
-                  <span className="font-semibold text-amber-600">{p.available} disp.</span>
-                </li>
-              ))}
-            </ul>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <section className="lg:col-span-2">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="font-bold">{recentTitle}</h2>
+            <Link href="/panel/pedidos" className="text-sm font-semibold text-violet-600">Ver todos →</Link>
+          </div>
+          <div className="overflow-hidden rounded-2xl bg-white ring-1 ring-black/5">
+            {data.recentOrders.length === 0 ? (
+              <p className="p-6 text-center text-sm text-gray-400">{isServiceLike ? "Aún no hay solicitudes." : "Aún no hay pedidos."}</p>
+            ) : (
+              <ul className="divide-y divide-black/5">
+                {data.recentOrders.slice(0, 4).map((order) => (
+                  <li key={order.id}>
+                    <button onClick={() => setSelectedId(order.id)} className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left hover:bg-gray-50">
+                      <div className="min-w-0"><p className="truncate font-semibold">{order.customerName}</p><p className="text-xs text-gray-400">{order.publicCode}</p></div>
+                      <div className="flex shrink-0 items-center gap-3"><StatusBadge status={order.status} context={statusContext} /><span className="font-bold">{formatPrice(order.total, order.currency)}</span></div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </section>
-      )}
 
-      <section>
-        <h2 className="mb-2 font-bold text-slate-950">
-          {statusContext === "telecom"
-            ? "Planes más solicitados"
-            : isServiceLike
-              ? "Servicios más solicitados"
-              : "Productos más vendidos"}
-        </h2>
-        <div className="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
-          {data.topProducts.length === 0 ? (
-            <p className="py-4 text-center text-sm font-medium text-slate-600">
-              {isServiceLike
-                ? "Aparecerán aquí cuando tengas pagos aprobados."
-                : "Los productos aparecerán aquí cuando tengas pagos aprobados."}
-            </p>
-          ) : (
-            <ol className="space-y-3">
-              {data.topProducts.map((product, index) => (
-                <li key={`${product.id}-${product.name}`} className="flex items-center gap-3">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-100 text-sm font-black text-violet-700">
-                    {index + 1}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate font-semibold text-slate-900">{product.name}</span>
-                  <span className="text-sm font-bold text-slate-700">{product.units} unidades</span>
-                </li>
-              ))}
-            </ol>
-          )}
-        </div>
-      </section>
+        <section>
+          <h2 className="mb-2 font-bold text-slate-950">Lo más importante</h2>
+          <div className="space-y-4 rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+            {!isServiceLike && data.lowStockProducts.length > 0 && (
+              <div><div className="mb-2 flex items-center justify-between"><h3 className="text-sm font-bold text-amber-700">Stock por terminarse</h3><Link href="/panel/inventario" className="text-xs font-semibold text-violet-600">Revisar →</Link></div><ul className="space-y-1.5 text-sm">{data.lowStockProducts.slice(0, 3).map((product) => <li key={product.id} className="flex justify-between gap-3"><span className="truncate">{product.name}</span><span className="shrink-0 font-bold text-amber-700">{product.available} disponibles</span></li>)}</ul></div>
+            )}
+            <div className={!isServiceLike && data.lowStockProducts.length > 0 ? "border-t border-slate-200 pt-3" : ""}>
+              <h3 className="mb-2 text-sm font-bold text-slate-800">{statusContext === "telecom" ? "Planes más solicitados" : isServiceLike ? "Servicios más solicitados" : "Productos más vendidos"}</h3>
+              {data.topProducts.length === 0 ? <p className="text-xs text-slate-500">Aparecerán cuando tengas pagos aprobados.</p> : <ol className="space-y-2">{data.topProducts.slice(0, 3).map((product, index) => <li key={`${product.id}-${product.name}`} className="flex items-center gap-2 text-sm"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-violet-100 text-xs font-black text-violet-700">{index + 1}</span><span className="min-w-0 flex-1 truncate font-medium">{product.name}</span><span className="shrink-0 font-bold text-slate-600">{product.units}</span></li>)}</ol>}
+            </div>
+          </div>
+        </section>
+      </div>
 
       {selectedId && (
         <OrderDetailModal

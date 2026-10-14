@@ -27,7 +27,7 @@ export function ProductCard({
 
   return (
     <>
-      <article className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/70 transition duration-200 hover:-translate-y-0.5 hover:shadow-lg">
+      <article className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 transition duration-200 hover:-translate-y-1 hover:shadow-xl">
         <button
           type="button"
           onClick={() => setShowDetail(true)}
@@ -59,7 +59,7 @@ export function ProductCard({
           )}
         </button>
 
-        <div className="flex flex-1 flex-col p-3">
+        <div className="flex flex-1 flex-col p-3.5 sm:p-4">
           {product.category && (
             <span className="mb-0.5 text-[11px] font-bold uppercase tracking-wide text-slate-400">
               {product.category.name}
@@ -68,11 +68,11 @@ export function ProductCard({
           <button
             type="button"
             onClick={() => setShowDetail(true)}
-            className="line-clamp-2 min-h-[2.5rem] text-left text-sm font-semibold leading-tight text-slate-800 transition hover:text-slate-950"
+            className="line-clamp-2 min-h-[2.75rem] text-left text-[15px] font-bold leading-snug text-slate-900 transition hover:opacity-75"
           >
             {product.name}
           </button>
-          <p className="mt-1 text-lg font-black tracking-tight" style={{ color: accent }}>
+          <p className="mt-1 text-xl font-black tracking-tight" style={{ color: accent }}>
             {formatPrice(product.price, currency)}
           </p>
           {product.inStock && product.available <= 5 && (
@@ -109,12 +109,14 @@ function OptionPreview({ sizes, colors }: { sizes?: string | null; colors?: stri
   if (s.length === 0 && c.length === 0) return null;
   return (
     <div className="mt-1.5 flex flex-wrap gap-1">
-      {s.map((v) => (
+      {s.slice(0, 3).map((v) => (
         <span key={`s-${v}`} className="rounded border border-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">{v}</span>
       ))}
-      {c.slice(0, 4).map((v) => (
+      {s.length > 3 && <span className="px-1 text-[10px] font-bold text-slate-400">+{s.length - 3}</span>}
+      {c.slice(0, 2).map((v) => (
         <span key={`c-${v}`} className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">{v}</span>
       ))}
+      {c.length > 2 && <span className="px-1 text-[10px] font-bold text-slate-400">+{c.length - 2}</span>}
     </div>
   );
 }

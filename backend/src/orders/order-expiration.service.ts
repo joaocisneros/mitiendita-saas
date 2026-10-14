@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
+import { adjustVariantStock } from './variant-stock.util';
 
 /**
  * Vence las reservas no pagadas: si un pedido pendiente supera su tiempo
@@ -39,6 +40,7 @@ export class OrderExpirationService {
           await tx.$executeRaw`
             UPDATE products SET reserved = GREATEST(0, reserved - ${item.quantity})
             WHERE id = ${item.productId} AND company_id = ${order.companyId}`;
+          await adjustVariantStock(tx, item.productId, item.variant, item.quantity, 'release');
         }
         await tx.order.update({
           where: { id: order.id },

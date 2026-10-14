@@ -47,10 +47,17 @@ export function ProductGallery({
             Destacado
           </span>
         )}
+        {hasMultiple && (
+          <>
+            <button type="button" onClick={() => setActive((active - 1 + images.length) % images.length)} className="absolute left-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-xl font-black text-slate-800 shadow" aria-label="Foto anterior">‹</button>
+            <button type="button" onClick={() => setActive((active + 1) % images.length)} className="absolute right-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-xl font-black text-slate-800 shadow" aria-label="Foto siguiente">›</button>
+            <span className="absolute bottom-3 right-3 rounded-full bg-slate-950/70 px-2.5 py-1 text-xs font-bold text-white">{active + 1}/{images.length}</span>
+          </>
+        )}
       </div>
 
       {hasMultiple && (
-        <div className="mt-3 grid grid-cols-4 gap-2">
+        <div className="mt-3 grid grid-cols-6 gap-2">
           {images.map((url, index) => (
             <button
               key={url}

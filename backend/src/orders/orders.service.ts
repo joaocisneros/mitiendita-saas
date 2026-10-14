@@ -14,6 +14,7 @@ import { analyzePaymentProof } from '../common/utils/yape-ocr.util';
 import { findDuplicateOperation } from '../common/utils/duplicate-proof.util';
 import { CheckoutDto } from './dto/checkout.dto';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
+import { adjustVariantStock, variantLabel } from './variant-stock.util';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -96,7 +97,7 @@ export class OrdersService {
       return {
         productId: p.id,
         name: p.name,
-        variant: item.variant?.trim() || null,
+        variant: variantLabel(item.size, item.color) ?? item.variant?.trim() ?? null,
         sku: p.sku,
         unitPrice,
         quantity: item.quantity,
@@ -163,6 +164,7 @@ export class OrdersService {
             `Stock insuficiente para "${line.name}".`,
           );
         }
+        await adjustVariantStock(tx, line.productId, line.variant, line.quantity, 'reserve');
       }
 
       // 3) Código público único.

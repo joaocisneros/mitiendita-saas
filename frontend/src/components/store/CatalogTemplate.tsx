@@ -38,23 +38,24 @@ export function CatalogTemplate({
   const activeName = category ? categories.find((c) => c.slug === category)?.name : undefined;
   const title = search ? `Resultados de "${search}"` : (activeName ?? catalogLabel);
   return (
-    <>
-      <StoreSearch
-        subdomain={subdomain}
-        accent={accent}
-        placeholder={searchPlaceholder}
-        defaultValue={search}
-        category={category}
-      />
-
-      <CategoryChips subdomain={subdomain} categories={categories} category={category} accent={accent} />
+    <section id="catalogo" className="scroll-mt-6">
+      <div className="mb-7 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-5">
+        <StoreSearch
+          subdomain={subdomain}
+          accent={accent}
+          placeholder={searchPlaceholder}
+          defaultValue={search}
+          category={category}
+        />
+        <CategoryChips subdomain={subdomain} categories={categories} category={category} accent={accent} />
+      </div>
 
       {products.length === 0 ? (
         <StoreEmpty accent={accent} message={emptyLabel} icon="🛒" />
       ) : (
         <>
         <StoreToolbar subdomain={subdomain} title={title} total={total} sort={sort} />
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4 xl:gap-5">
           {products.map((p) => (
             <ProductCard
               key={p.id}
@@ -62,13 +63,13 @@ export function CatalogTemplate({
               currency={currency}
               subdomain={subdomain}
               accent={accent}
-              actionLabel={actionLabel}
+              actionLabel={actionLabel === "Agregar" ? "Agregar al carrito" : actionLabel}
             />
           ))}
         </div>
         </>
       )}
-    </>
+    </section>
   );
 }
 
