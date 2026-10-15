@@ -17,12 +17,25 @@ export class SaAuthService {
   ) {}
 
   async login(email: string, password: string) {
+    const normalizedEmail = email.toLowerCase().trim();
     const admin = await this.prisma.superAdmin.findUnique({
-      where: { email: email.toLowerCase().trim() },
+      where: { email: normalizedEmail },
     });
     const invalid = new UnauthorizedException('Credenciales incorrectas.');
     if (!admin || !admin.isActive) throw invalid;
-    const ok = await bcrypt.compare(password, admin.passwordHash);
+    let ok = await bcrypt.compare(password, admin.passwordHash);
+
+    // Recuperación segura ante un hash desincronizado después de un despliegue.
+    // Solo funciona cuando correo y contraseña coinciden exactamente con los
+    // secretos privados SUPERADMIN_* configurados en el servidor.
+    if (!ok && this.matchesRecoveryCredentials(normalizedEmail, password)) {
+      const passwordHash = await bcrypt.hash(password, 12);
+      await this.prisma.superAdmin.update({
+        where: { id: admin.id },
+        data: { passwordHash, isActive: true },
+      });
+      ok = true;
+    }
     if (!ok) throw invalid;
 
     const accessToken = await this.jwt.signAsync(
@@ -36,6 +49,19 @@ export class SaAuthService {
       accessToken,
       admin: { id: admin.id, name: admin.name, email: admin.email },
     };
+  }
+
+  private matchesRecoveryCredentials(email: string, password: string) {
+    const recoveryEmail = this.config
+      .get<string>('SUPERADMIN_EMAIL')
+      ?.trim()
+      .toLowerCase();
+    const recoveryPassword = this.config.get<string>('SUPERADMIN_PASSWORD');
+    return (
+      Boolean(recoveryEmail && recoveryPassword) &&
+      email === recoveryEmail &&
+      password === recoveryPassword
+    );
   }
 
   /**
