@@ -154,6 +154,27 @@ export class AuthService {
       membership.role,
     );
 
+    // El inicio de sesión ocurre antes de que exista request.user, por eso se
+    // audita aquí y no en el interceptor global.
+    await this.prisma.tenantAudit
+      .create({
+        data: {
+          userId: user.id,
+          actorName: user.name,
+          actorEmail: user.email,
+          actorRole: membership.role,
+          companyId: membership.companyId,
+          module: 'access',
+          action: 'access.login',
+          result: 'success',
+          details: { method: 'credentials' },
+        },
+      })
+      .catch((error) => {
+        // El acceso nunca debe bloquearse por una falla secundaria de auditoría.
+        console.error('No se pudo auditar el inicio de sesión', error);
+      });
+
     return {
       user: { id: user.id, name: user.name, email: user.email },
       companyId: membership.companyId,

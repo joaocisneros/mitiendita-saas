@@ -28,11 +28,42 @@ const MODULES: Record<string, string> = {
   customers: 'customer',
   subscriptions: 'subscription',
   'store-settings': 'store',
+  settings: 'store',
   auth: 'profile',
 };
 
+function resolveAudit(path: string, method: string) {
+  const parts = path.split('/').filter(Boolean);
+  if (parts[0] === 'api') parts.shift();
+  if (parts[0] === 'admin') parts.shift();
+  const root = parts[0];
+  if (!root) return null;
+  if (root === 'auth' && parts[1] === 'login') return null;
+  if (root === 'auth' && parts[1] === 'logout') {
+    return { module: 'access', action: 'access.logout' };
+  }
+
+  const module = MODULES[root] ?? root.replace(/-/g, '_');
+  if (root === 'inventory' && parts.includes('adjust')) {
+    return { module, action: 'inventory.adjusted' };
+  }
+  if (root === 'orders' && parts.includes('status')) {
+    return { module, action: 'order.status_updated' };
+  }
+  if (root === 'appointments' && parts.includes('status')) {
+    return { module, action: 'appointment.status_updated' };
+  }
+  const paymentIndex = parts.indexOf('payment');
+  if (paymentIndex >= 0 && parts[paymentIndex + 1]) {
+    return { module, action: `${module}.payment_${parts[paymentIndex + 1]}` };
+  }
+  const operation = ACTIONS[method];
+  return operation ? { module, action: `${module}.${operation}` } : null;
+}
+
 function safeDetails(value: unknown): Record<string, unknown> | undefined {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    return undefined;
   const blocked = /password|token|secret|authorization|qr|image|file/i;
   const entries = Object.entries(value as Record<string, unknown>)
     .filter(([key]) => !blocked.test(key))
@@ -43,7 +74,9 @@ function safeDetails(value: unknown): Record<string, unknown> | undefined {
         ? `${item.slice(0, 160)}…`
         : item,
     ]);
-  return entries.length ? Object.fromEntries(entries) : undefined;
+  return entries.length
+    ? (Object.fromEntries(entries) as Record<string, unknown>)
+    : undefined;
 }
 
 @Injectable()
@@ -54,19 +87,13 @@ export class TenantAuditInterceptor implements NestInterceptor {
     if (context.getType() !== 'http') return next.handle();
     const request = context.switchToHttp().getRequest<AuditRequest>();
     const user = request.user;
-    const operation = ACTIONS[request.method];
-    if (!user || user.scope === 'super' || !user.companyId || !operation) {
+    if (!user || user.scope === 'super' || !user.companyId) {
       return next.handle();
     }
 
     const path = (request.originalUrl || request.url).split('?')[0];
-    const segments = path.split('/').filter(Boolean);
-    const root = segments[0] === 'api' ? segments[1] : segments[0];
-    if (!root || ['auth', 'media'].includes(root) && path.includes('login')) {
-      return next.handle();
-    }
-    const module = MODULES[root] ?? root.replace(/-/g, '_');
-    const action = `${module}.${operation}`;
+    const audit = resolveAudit(path, request.method);
+    if (!audit) return next.handle();
     const rawEntityId = request.params?.id;
     const entityId = Array.isArray(rawEntityId)
       ? (rawEntityId[0] ?? null)
@@ -75,7 +102,13 @@ export class TenantAuditInterceptor implements NestInterceptor {
 
     return next.handle().pipe(
       tap(() => {
-        void this.writeAudit(user, module, action, entityId, details);
+        void this.writeAudit(
+          user,
+          audit.module,
+          audit.action,
+          entityId,
+          details,
+        );
       }),
     );
   }
