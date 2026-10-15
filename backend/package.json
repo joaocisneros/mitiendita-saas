@@ -25,6 +25,7 @@
     "test:e2e:prepare": "cross-env DATABASE_URL=mysql://root:@localhost:3306/mitiendita_test prisma migrate reset --force && cross-env DATABASE_URL=mysql://root:@localhost:3306/mitiendita_test npm run prisma:seed",
     "test:e2e": "npm run test:e2e:prepare && cross-env DATABASE_URL=mysql://root:@localhost:3306/mitiendita_test NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json",
     "prisma:seed": "tsx prisma/seed.ts",
+    "superadmin:recover": "tsx prisma/recover-superadmin.ts",
     "prisma:seed:demo": "tsx prisma/seed-demo.ts",
     "prisma:seed:showcase": "tsx prisma/seed-showcase.ts",
     "prisma:seed:telecom": "tsx prisma/seed-telecom.ts",
