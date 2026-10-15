@@ -55,14 +55,20 @@ export class SaAuditService {
     ];
     const companies = await this.prisma.company.findMany({
       where: { id: { in: companyIds } },
-      select: { id: true, name: true },
+      select: { id: true, name: true, subdomain: true },
     });
     const names = new Map(
       companies.map((company) => [company.id, company.name]),
     );
+    const subdomains = new Map(
+      companies.map((company) => [company.id, company.subdomain]),
+    );
     const adminItems = rows.map((row) => ({
         ...row,
         companyName: row.companyId ? (names.get(row.companyId) ?? null) : null,
+        companySubdomain: row.companyId
+          ? (subdomains.get(row.companyId) ?? null)
+          : null,
         actorRole: 'Superadministrador',
         module: row.action.split('.')[0],
         result: 'success',
@@ -71,6 +77,7 @@ export class SaAuditService {
     const userItems = tenantRows.map((row) => ({
       ...row,
       companyName: names.get(row.companyId) ?? null,
+      companySubdomain: subdomains.get(row.companyId) ?? null,
       actorRole: row.actorRole === 'OWNER' ? 'Dueño' : 'Empleado',
       superAdmin: { name: row.actorName, email: row.actorEmail },
     }));

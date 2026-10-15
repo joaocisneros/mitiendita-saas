@@ -96,7 +96,7 @@ function detailSummary(entries: [string, unknown][], planNames: Record<number, s
 }
 
 export default function ActivityPage() {
-  const emptyFilters = { action: "", module: "", search: "", company: "", responsible: "", from: "", to: "" };
+  const emptyFilters = { action: "", module: "", search: "", from: "", to: "" };
   const [rows, setRows] = useState<AuditRow[]>([]);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
@@ -115,14 +115,10 @@ export default function ActivityPage() {
         .audits(target, filters)
         .then((result) => {
           const normalizedSearch = filters.search.trim().toLowerCase();
-          const normalizedCompany = filters.company.trim().toLowerCase();
-          const normalizedResponsible = filters.responsible.trim().toLowerCase();
           const filtered = result.items.filter((row) => {
             const created = new Date(row.createdAt);
             if (filters.module && !row.action.startsWith(`${filters.module}.`)) return false;
-            if (normalizedSearch && !`${actionLabel(row.action)} ${row.superAdmin.name} ${row.superAdmin.email}`.toLowerCase().includes(normalizedSearch)) return false;
-            if (normalizedCompany && !`${row.companyName ?? ""}`.toLowerCase().includes(normalizedCompany)) return false;
-            if (normalizedResponsible && !`${row.superAdmin.name} ${row.superAdmin.email}`.toLowerCase().includes(normalizedResponsible)) return false;
+            if (normalizedSearch && !`${actionLabel(row.action)} ${row.superAdmin.name} ${row.superAdmin.email} ${row.companyName ?? ""} ${row.companySubdomain ?? ""} ${row.actorRole ?? ""}`.toLowerCase().includes(normalizedSearch)) return false;
             if (filters.from && created < new Date(`${filters.from}T00:00:00`)) return false;
             if (filters.to && created > new Date(`${filters.to}T23:59:59.999`)) return false;
             return true;
@@ -171,14 +167,12 @@ export default function ActivityPage() {
       <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
         <div className="mb-4"><p className="text-sm font-bold text-slate-900">Buscar en la auditoría</p><p className="mt-0.5 text-xs font-medium text-slate-500">Combina filtros para localizar una operación específica.</p></div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <input value={draft.search} onChange={(e) => setDraft({ ...draft, search: e.target.value })} placeholder="Buscar acción o responsable" className="h-10 rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-violet-600" />
-          <input value={draft.company} onChange={(e) => setDraft({ ...draft, company: e.target.value })} placeholder="Empresa o subdominio" className="h-10 rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-violet-600" />
+          <input value={draft.search} onChange={(e) => setDraft({ ...draft, search: e.target.value })} onKeyDown={(e) => { if (e.key === "Enter") setFilters(draft); }} placeholder="Buscar acción, responsable, correo o empresa" className="h-10 rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-violet-600 md:col-span-2" />
           <select value={draft.module} onChange={(e) => setDraft({ ...draft, module: e.target.value })} className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700"><option value="">Todos los módulos</option><option value="company">Empresas</option><option value="subscription">Suscripciones</option><option value="user">Usuarios</option><option value="product">Productos</option><option value="category">Categorías</option><option value="order">Pedidos</option><option value="inventory">Inventario</option><option value="appointment">Citas</option><option value="store">Configuración de tienda</option><option value="plan">Planes</option><option value="platform">Plataforma</option><option value="api_token">API</option></select>
           <select value={draft.action} onChange={(e) => setDraft({ ...draft, action: e.target.value })} className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700"><option value="">Todas las acciones</option>{actions.map((a) => <option key={a} value={a}>{actionLabel(a)}</option>)}</select>
-          <input value={draft.responsible} onChange={(e) => setDraft({ ...draft, responsible: e.target.value })} placeholder="Nombre o correo responsable" className="h-10 rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-violet-600" />
           <label className="flex h-10 items-center gap-2 rounded-xl border border-slate-300 px-3 text-xs font-bold text-slate-500">Desde<input type="date" value={draft.from} onChange={(e) => setDraft({ ...draft, from: e.target.value })} className="min-w-0 flex-1 bg-transparent text-sm text-slate-700 outline-none" /></label>
           <label className="flex h-10 items-center gap-2 rounded-xl border border-slate-300 px-3 text-xs font-bold text-slate-500">Hasta<input type="date" value={draft.to} onChange={(e) => setDraft({ ...draft, to: e.target.value })} className="min-w-0 flex-1 bg-transparent text-sm text-slate-700 outline-none" /></label>
-          <div className="flex gap-2"><button onClick={() => setFilters(draft)} className="h-10 flex-1 rounded-xl bg-violet-600 px-4 text-sm font-bold text-white hover:bg-violet-700">Aplicar filtros</button><button onClick={() => { setDraft(emptyFilters); setFilters(emptyFilters); }} className="h-10 rounded-xl bg-slate-100 px-4 text-sm font-bold text-slate-700 hover:bg-slate-200">Limpiar</button></div>
+          <div className="flex gap-2 xl:col-span-2"><button onClick={() => setFilters(draft)} className="h-10 flex-1 rounded-xl bg-violet-600 px-4 text-sm font-bold text-white hover:bg-violet-700">Aplicar filtros</button><button onClick={() => { setDraft(emptyFilters); setFilters(emptyFilters); }} className="h-10 rounded-xl bg-slate-100 px-4 text-sm font-bold text-slate-700 hover:bg-slate-200">Limpiar</button></div>
         </div>
       </section>
       {error && (

@@ -165,6 +165,7 @@ export interface AuditRow {
   action: string;
   companyId: string | null;
   companyName: string | null;
+  companySubdomain?: string | null;
   details: Record<string, unknown> | null;
   createdAt: string;
   superAdmin: { name: string; email: string };
