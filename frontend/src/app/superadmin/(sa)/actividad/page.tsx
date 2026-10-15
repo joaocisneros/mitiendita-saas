@@ -23,6 +23,21 @@ const LABELS: Record<string, string> = {
   "platform.whatsapp_updated": "Actualizó la integración de WhatsApp",
   "api_token.approved": "Aprobó una solicitud de token de API",
   "api_token.rejected": "Rechazó una solicitud de token de API",
+  "product.created": "Creó un producto",
+  "product.updated": "Editó un producto",
+  "product.deleted": "Eliminó un producto",
+  "category.created": "Creó una categoría",
+  "category.updated": "Editó una categoría",
+  "category.deleted": "Eliminó una categoría",
+  "order.updated": "Actualizó un pedido",
+  "appointment.updated": "Actualizó una cita",
+  "inventory.created": "Registró un movimiento de inventario",
+  "inventory.updated": "Actualizó el inventario",
+  "customer.created": "Creó un cliente",
+  "customer.updated": "Editó un cliente",
+  "customer.deleted": "Eliminó un cliente",
+  "store.updated": "Actualizó la configuración de la tienda",
+  "profile.updated": "Actualizó su perfil",
 };
 
 function actionLabel(action: string) {
@@ -30,6 +45,11 @@ function actionLabel(action: string) {
 }
 
 function actionMeta(action: string) {
+  if (action.startsWith("product.") || action.startsWith("category.")) return { category: "Catálogo", icon: "products" as const, box: "bg-fuchsia-100 text-fuchsia-700", badge: "bg-fuchsia-50 text-fuchsia-700" };
+  if (action.startsWith("order.")) return { category: "Pedidos", icon: "orders" as const, box: "bg-cyan-100 text-cyan-700", badge: "bg-cyan-50 text-cyan-700" };
+  if (action.startsWith("inventory.")) return { category: "Inventario", icon: "inventory" as const, box: "bg-orange-100 text-orange-700", badge: "bg-orange-50 text-orange-700" };
+  if (action.startsWith("appointment.")) return { category: "Citas", icon: "calendar" as const, box: "bg-pink-100 text-pink-700", badge: "bg-pink-50 text-pink-700" };
+  if (action.startsWith("store.") || action.startsWith("profile.")) return { category: "Configuración", icon: "settings" as const, box: "bg-slate-200 text-slate-700", badge: "bg-slate-100 text-slate-700" };
   if (action.startsWith("subscription.")) return { category: "Suscripción", icon: "plans" as const, box: "bg-emerald-100 text-emerald-700", badge: "bg-emerald-50 text-emerald-700" };
   if (action.startsWith("user.")) return { category: "Usuario", icon: "customers" as const, box: "bg-blue-100 text-blue-700", badge: "bg-blue-50 text-blue-700" };
   if (action.startsWith("plan.")) return { category: "Plan", icon: "reports" as const, box: "bg-amber-100 text-amber-700", badge: "bg-amber-50 text-amber-700" };
@@ -153,7 +173,7 @@ export default function ActivityPage() {
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <input value={draft.search} onChange={(e) => setDraft({ ...draft, search: e.target.value })} placeholder="Buscar acción o responsable" className="h-10 rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-violet-600" />
           <input value={draft.company} onChange={(e) => setDraft({ ...draft, company: e.target.value })} placeholder="Empresa o subdominio" className="h-10 rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-violet-600" />
-          <select value={draft.module} onChange={(e) => setDraft({ ...draft, module: e.target.value })} className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700"><option value="">Todos los módulos</option><option value="company">Empresas</option><option value="subscription">Suscripciones</option><option value="user">Usuarios</option><option value="plan">Planes</option><option value="platform">Plataforma</option><option value="api_token">API</option></select>
+          <select value={draft.module} onChange={(e) => setDraft({ ...draft, module: e.target.value })} className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700"><option value="">Todos los módulos</option><option value="company">Empresas</option><option value="subscription">Suscripciones</option><option value="user">Usuarios</option><option value="product">Productos</option><option value="category">Categorías</option><option value="order">Pedidos</option><option value="inventory">Inventario</option><option value="appointment">Citas</option><option value="store">Configuración de tienda</option><option value="plan">Planes</option><option value="platform">Plataforma</option><option value="api_token">API</option></select>
           <select value={draft.action} onChange={(e) => setDraft({ ...draft, action: e.target.value })} className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700"><option value="">Todas las acciones</option>{actions.map((a) => <option key={a} value={a}>{actionLabel(a)}</option>)}</select>
           <input value={draft.responsible} onChange={(e) => setDraft({ ...draft, responsible: e.target.value })} placeholder="Nombre o correo responsable" className="h-10 rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-violet-600" />
           <label className="flex h-10 items-center gap-2 rounded-xl border border-slate-300 px-3 text-xs font-bold text-slate-500">Desde<input type="date" value={draft.from} onChange={(e) => setDraft({ ...draft, from: e.target.value })} className="min-w-0 flex-1 bg-transparent text-sm text-slate-700 outline-none" /></label>
@@ -183,7 +203,7 @@ export default function ActivityPage() {
               <td className="px-4 py-4">{row.companyId ? <button onClick={() => setSelectedId(row.companyId)} className="font-bold text-violet-700 hover:underline">{row.companyName ?? "Ver empresa"} →</button> : <span className="text-slate-400">No aplica</span>}</td>
               <td className="px-4 py-4"><span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-wide ${meta.badge}`}>{meta.category}</span></td>
               <td className="px-4 py-4"><div className="flex items-center gap-2"><span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${meta.box}`}><DashboardIcon name={meta.icon} className="h-4 w-4" /></span><span className="font-bold text-slate-950">{actionLabel(row.action)}</span></div></td>
-              <td className="px-4 py-4 text-xs font-semibold text-slate-700">{row.companyName ?? meta.category}</td>
+              <td className="px-4 py-4 text-xs font-semibold text-slate-700">{row.entityId ? `${meta.category} · ${row.entityId.slice(0, 8)}` : (row.companyName ?? meta.category)}</td>
               <td className="px-4 py-4"><span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black uppercase text-emerald-800">Correcto</span></td>
               <td className="px-4 py-4"><span className={details.length > 0 ? "text-xs font-semibold text-slate-700" : "text-xs text-slate-400"}>{details.length > 0 ? detailSummary(details, planNames) : "Sin cambios adicionales"}</span></td>
             </tr>

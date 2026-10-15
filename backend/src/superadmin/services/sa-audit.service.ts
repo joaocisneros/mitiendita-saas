@@ -30,18 +30,28 @@ export class SaAuditService {
     const page = Math.max(1, opts.page ?? 1);
     const limit = Math.min(100, Math.max(1, opts.limit ?? 30));
     const where = opts.action ? { action: opts.action } : {};
-    const [rows, total] = await Promise.all([
+    const [rows, tenantRows, superTotal, tenantTotal] = await Promise.all([
       this.prisma.superAdminAudit.findMany({
         where,
         orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
+        take: page * limit,
         include: { superAdmin: { select: { name: true, email: true } } },
       }),
+      this.prisma.tenantAudit.findMany({
+        where: opts.action ? { action: opts.action } : {},
+        orderBy: { createdAt: 'desc' },
+        take: page * limit,
+      }),
       this.prisma.superAdminAudit.count({ where }),
+      this.prisma.tenantAudit.count({
+        where: opts.action ? { action: opts.action } : {},
+      }),
     ]);
     const companyIds = [
-      ...new Set(rows.flatMap((row) => (row.companyId ? [row.companyId] : []))),
+      ...new Set([
+        ...rows.flatMap((row) => (row.companyId ? [row.companyId] : [])),
+        ...tenantRows.map((row) => row.companyId),
+      ]),
     ];
     const companies = await this.prisma.company.findMany({
       where: { id: { in: companyIds } },
@@ -50,14 +60,25 @@ export class SaAuditService {
     const names = new Map(
       companies.map((company) => [company.id, company.name]),
     );
-    return {
-      items: rows.map((row) => ({
+    const adminItems = rows.map((row) => ({
         ...row,
         companyName: row.companyId ? (names.get(row.companyId) ?? null) : null,
         actorRole: 'Superadministrador',
         module: row.action.split('.')[0],
         result: 'success',
-      })),
+        entityId: row.companyId,
+      }));
+    const userItems = tenantRows.map((row) => ({
+      ...row,
+      companyName: names.get(row.companyId) ?? null,
+      actorRole: row.actorRole === 'OWNER' ? 'Dueño' : 'Empleado',
+      superAdmin: { name: row.actorName, email: row.actorEmail },
+    }));
+    const combined = [...adminItems, ...userItems]
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    const total = superTotal + tenantTotal;
+    return {
+      items: combined.slice((page - 1) * limit, page * limit),
       total,
       page,
       pages: Math.ceil(total / limit),
@@ -66,11 +87,10 @@ export class SaAuditService {
 
   /** Acciones distintas registradas, para poblar el filtro del frontend. */
   async actions() {
-    const rows = await this.prisma.superAdminAudit.findMany({
-      distinct: ['action'],
-      select: { action: true },
-      orderBy: { action: 'asc' },
-    });
-    return rows.map((row) => row.action);
+    const [adminRows, tenantRows] = await Promise.all([
+      this.prisma.superAdminAudit.findMany({ distinct: ['action'], select: { action: true } }),
+      this.prisma.tenantAudit.findMany({ distinct: ['action'], select: { action: true } }),
+    ]);
+    return [...new Set([...adminRows, ...tenantRows].map((row) => row.action))].sort();
   }
 }

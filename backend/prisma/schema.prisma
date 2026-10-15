@@ -180,6 +180,27 @@ model SuperAdminAudit {
   @@map("super_admin_audits")
 }
 
+/// Auditoría de operaciones realizadas por dueños y empleados de las tiendas.
+model TenantAudit {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  actorName   String   @map("actor_name")
+  actorEmail  String   @map("actor_email")
+  actorRole   String   @map("actor_role")
+  companyId   String   @map("company_id")
+  module      String
+  action      String
+  entityId    String?  @map("entity_id")
+  result      String   @default("success")
+  details     Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([companyId, createdAt])
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+  @@map("tenant_audits")
+}
+
 /// Subdominios reservados que ninguna empresa puede usar (www, api, admin...).
 model ReservedSubdomain {
   id        Int      @id @default(autoincrement())

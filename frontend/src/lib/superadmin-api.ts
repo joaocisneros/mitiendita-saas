@@ -171,6 +171,7 @@ export interface AuditRow {
   actorRole?: string;
   module?: string;
   result?: "success" | "error";
+  entityId?: string | null;
 }
 export interface PageResult<T> {
   items: T[];
