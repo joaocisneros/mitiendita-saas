@@ -2,7 +2,7 @@
 // mediante un rewrite. Así evitamos problemas de CORS en producción.
 const API =
   typeof window === "undefined"
-    ? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8300/api"
+    ? (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8300/api")
     : "/api";
 const KEY = "mt_super";
 const ADMIN_KEY = "mt_super_admin";
@@ -38,7 +38,9 @@ export function getSuperAdmin(): SuperAdminInfo | null {
   const token = getSuperToken();
   if (token) {
     try {
-      const payload = JSON.parse(atob(token.split(".")[1] ?? "")) as { email?: string };
+      const payload = JSON.parse(atob(token.split(".")[1] ?? "")) as {
+        email?: string;
+      };
       if (payload?.email) return { name: "", email: payload.email };
     } catch {
       /* token no decodificable */
@@ -173,6 +175,7 @@ export interface AuditRow {
   module?: string;
   result?: "success" | "error";
   entityId?: string | null;
+  entityLabel?: string | null;
 }
 export interface PageResult<T> {
   items: T[];
@@ -234,14 +237,17 @@ export const superApi = {
     if (data.admin) setSuperAdmin(data.admin);
     return data;
   },
-  updateProfile: (body: { name?: string; currentPassword?: string; newPassword?: string }) =>
+  updateProfile: (body: {
+    name?: string;
+    currentPassword?: string;
+    newPassword?: string;
+  }) =>
     sfetch<{ id: string; name: string; email: string }>("/superadmin/profile", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }),
-  stats: (days = 30) =>
-    sfetch<GlobalStats>(`/superadmin/stats?days=${days}`),
+  stats: (days = 30) => sfetch<GlobalStats>(`/superadmin/stats?days=${days}`),
   companies: (
     params: {
       search?: string;
@@ -305,7 +311,18 @@ export const superApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ planId }),
     }),
-  audits: (page = 1, filters?: { action?: string; module?: string; search?: string; company?: string; responsible?: string; from?: string; to?: string }) => {
+  audits: (
+    page = 1,
+    filters?: {
+      action?: string;
+      module?: string;
+      search?: string;
+      company?: string;
+      responsible?: string;
+      from?: string;
+      to?: string;
+    },
+  ) => {
     const q = new URLSearchParams();
     q.set("page", String(page));
     q.set("limit", "100");
@@ -314,7 +331,12 @@ export const superApi = {
   },
   auditActions: () => sfetch<string[]>("/superadmin/audit-actions"),
 
-  subscriptions: (status?: string, search?: string, page = 1, alert?: string) => {
+  subscriptions: (
+    status?: string,
+    search?: string,
+    page = 1,
+    alert?: string,
+  ) => {
     const q = new URLSearchParams();
     if (status) q.set("status", status);
     if (alert) q.set("alert", alert);
@@ -361,9 +383,12 @@ export const superApi = {
       body: JSON.stringify({ newPassword }),
     }),
   toggleUser: (id: string) =>
-    sfetch<{ ok: boolean; isActive: boolean }>(`/superadmin/users/${id}/toggle`, {
-      method: "POST",
-    }),
+    sfetch<{ ok: boolean; isActive: boolean }>(
+      `/superadmin/users/${id}/toggle`,
+      {
+        method: "POST",
+      },
+    ),
 
   // ── Acciones sobre empresas ──
   deleteCompany: (id: string) =>
@@ -392,36 +417,58 @@ export const superApi = {
       body: JSON.stringify(body),
     }),
   sendWhatsappTest: (to: string) =>
-    sfetch<{ status: string; messageId?: string; reason?: string }>("/superadmin/whatsapp/test", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ to }),
-    }),
-  whatsappOwners: () => sfetch<SaWhatsappOwner[]>("/superadmin/whatsapp/duenos"),
-  whatsappCustomers: () => sfetch<SaWhatsappCustomer[]>("/superadmin/whatsapp/clientes"),
-  whatsappDirectory: (opts: { search?: string; role?: string; page?: number; limit?: number }) => {
+    sfetch<{ status: string; messageId?: string; reason?: string }>(
+      "/superadmin/whatsapp/test",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to }),
+      },
+    ),
+  whatsappOwners: () =>
+    sfetch<SaWhatsappOwner[]>("/superadmin/whatsapp/duenos"),
+  whatsappCustomers: () =>
+    sfetch<SaWhatsappCustomer[]>("/superadmin/whatsapp/clientes"),
+  whatsappDirectory: (opts: {
+    search?: string;
+    role?: string;
+    page?: number;
+    limit?: number;
+  }) => {
     const params = new URLSearchParams();
     if (opts.search) params.set("search", opts.search);
     if (opts.role) params.set("role", opts.role);
     if (opts.page) params.set("page", String(opts.page));
     if (opts.limit) params.set("limit", String(opts.limit));
-    return sfetch<{ items: SaWhatsappDirectoryRow[]; total: number; page: number; limit: number; pages: number }>(
-      `/superadmin/whatsapp/directorio?${params.toString()}`,
-    );
+    return sfetch<{
+      items: SaWhatsappDirectoryRow[];
+      total: number;
+      page: number;
+      limit: number;
+      pages: number;
+    }>(`/superadmin/whatsapp/directorio?${params.toString()}`);
   },
   // ── Tokens de API de plataforma (self-service del superadmin) ──
-  platformApiScopes: () => sfetch<string[]>("/superadmin/api-tokens/platform-scopes"),
+  platformApiScopes: () =>
+    sfetch<string[]>("/superadmin/api-tokens/platform-scopes"),
   platformApiTokens: () => sfetch<SaApiTokenRow[]>("/superadmin/api-tokens"),
   createPlatformApiToken: (body: { name: string; scopes: string[] }) =>
-    sfetch<{ token: string; prefix: string; scopes: string[] }>("/superadmin/api-tokens", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }),
+    sfetch<{ token: string; prefix: string; scopes: string[] }>(
+      "/superadmin/api-tokens",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    ),
   revokeApiToken: (id: string) =>
-    sfetch<{ ok: boolean }>(`/superadmin/api-tokens/${id}`, { method: "DELETE" }),
+    sfetch<{ ok: boolean }>(`/superadmin/api-tokens/${id}`, {
+      method: "DELETE",
+    }),
   revealApiToken: (id: string) =>
-    sfetch<{ token: string }>(`/superadmin/api-tokens/${id}/reveal`, { method: "POST" }),
+    sfetch<{ token: string }>(`/superadmin/api-tokens/${id}/reveal`, {
+      method: "POST",
+    }),
   updateApiTokenScopes: (id: string, scopes: string[]) =>
     sfetch<SaApiTokenRow>(`/superadmin/api-tokens/${id}`, {
       method: "PATCH",
@@ -429,11 +476,25 @@ export const superApi = {
       body: JSON.stringify({ scopes }),
     }),
   // ── Tokens de API por empresa (el superadmin los crea; se avisan por WhatsApp) ──
-  companyApiScopes: () => sfetch<string[]>("/superadmin/api-tokens/company-scopes"),
-  apiTokenCompanies: () => sfetch<{ id: string; name: string; subdomain: string }[]>("/superadmin/api-tokens/companies"),
-  companyApiTokens: () => sfetch<SaCompanyApiTokenRow[]>("/superadmin/api-tokens/empresas"),
-  createCompanyApiToken: (body: { companyId: string; name: string; scopes: string[] }) =>
-    sfetch<{ token: string; prefix: string; scopes: string[]; whatsapp: string }>("/superadmin/api-tokens/empresas", {
+  companyApiScopes: () =>
+    sfetch<string[]>("/superadmin/api-tokens/company-scopes"),
+  apiTokenCompanies: () =>
+    sfetch<{ id: string; name: string; subdomain: string }[]>(
+      "/superadmin/api-tokens/companies",
+    ),
+  companyApiTokens: () =>
+    sfetch<SaCompanyApiTokenRow[]>("/superadmin/api-tokens/empresas"),
+  createCompanyApiToken: (body: {
+    companyId: string;
+    name: string;
+    scopes: string[];
+  }) =>
+    sfetch<{
+      token: string;
+      prefix: string;
+      scopes: string[];
+      whatsapp: string;
+    }>("/superadmin/api-tokens/empresas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

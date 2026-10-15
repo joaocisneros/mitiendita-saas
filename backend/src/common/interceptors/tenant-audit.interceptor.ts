@@ -101,15 +101,44 @@ export class TenantAuditInterceptor implements NestInterceptor {
     const details = safeDetails(request.body);
 
     return next.handle().pipe(
-      tap(() => {
+      tap((response) => {
+        const responseData =
+          response && typeof response === 'object' && !Array.isArray(response)
+            ? (response as Record<string, unknown>)
+            : undefined;
+        const responseId =
+          typeof responseData?.id === 'string' ? responseData.id : null;
+        const responseLabel = this.resolveResponseLabel(
+          audit.module,
+          responseData,
+        );
         void this.writeAudit(
           user,
           audit.module,
           audit.action,
-          entityId,
-          details,
+          entityId ?? responseId,
+          responseLabel ? { ...details, entityLabel: responseLabel } : details,
         );
       }),
+    );
+  }
+
+  private resolveResponseLabel(
+    module: string,
+    response?: Record<string, unknown>,
+  ) {
+    if (!response) return undefined;
+    const candidates =
+      module === 'order'
+        ? [response.publicCode, response.customerName]
+        : module === 'appointment'
+          ? [response.publicCode, response.serviceName, response.customerName]
+          : module === 'subscription'
+            ? [response.publicCode, response.planName, response.customerName]
+            : [response.name, response.title, response.storeName];
+    return candidates.find(
+      (value): value is string =>
+        typeof value === 'string' && value.trim() !== '',
     );
   }
 

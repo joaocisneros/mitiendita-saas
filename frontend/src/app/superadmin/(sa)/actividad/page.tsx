@@ -162,6 +162,9 @@ const DETAIL_LABELS: Record<string, string> = {
   newStatus: "Nuevo estado",
   previousStatus: "Estado anterior",
   method: "Método",
+  userName: "Usuario",
+  userEmail: "Correo",
+  entityLabel: "Elemento",
 };
 const DETAIL_VALUES: Record<string, string> = {
   active: "Activo",
@@ -439,7 +442,10 @@ export default function ActivityPage() {
                 const meta = actionMeta(row.action);
                 const details = row.details
                   ? Object.entries(row.details).filter(
-                      ([, value]) => value !== undefined && value !== null,
+                      ([key, value]) =>
+                        key !== "entityLabel" &&
+                        value !== undefined &&
+                        value !== null,
                     )
                   : [];
                 return (
@@ -498,9 +504,10 @@ export default function ActivityPage() {
                       </div>
                     </td>
                     <td className="px-4 py-4 text-xs font-semibold text-slate-700">
-                      {row.entityId
-                        ? `${meta.category} · ${row.entityId.slice(0, 8)}`
-                        : (row.companyName ?? meta.category)}
+                      {row.entityLabel ??
+                        (row.entityId
+                          ? `${meta.category} · ${row.entityId.slice(0, 8)}`
+                          : (row.companyName ?? meta.category))}
                     </td>
                     <td className="px-4 py-4">
                       <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black uppercase text-emerald-800">
