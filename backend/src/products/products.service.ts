@@ -28,16 +28,23 @@ function cleanVariantStocks(
     const size = row.size?.trim() || null;
     const color = row.color?.trim() || null;
     const key = `${size ?? ''}\u0000${color ?? ''}`.toLocaleLowerCase();
-    if (!size && !color) throw new BadRequestException('Cada opción debe tener talla o color.');
-    if (seen.has(key)) throw new BadRequestException('Hay opciones de talla y color repetidas.');
+    if (!size && !color)
+      throw new BadRequestException('Cada opción debe tener talla o color.');
+    if (seen.has(key))
+      throw new BadRequestException('Hay opciones de talla y color repetidas.');
     seen.add(key);
     const previous = current.find(
-      (item) => (item.size ?? '').toLocaleLowerCase() === (size ?? '').toLocaleLowerCase()
-        && (item.color ?? '').toLocaleLowerCase() === (color ?? '').toLocaleLowerCase(),
+      (item) =>
+        (item.size ?? '').toLocaleLowerCase() ===
+          (size ?? '').toLocaleLowerCase() &&
+        (item.color ?? '').toLocaleLowerCase() ===
+          (color ?? '').toLocaleLowerCase(),
     );
     const reserved = Math.max(0, Number(previous?.reserved ?? 0));
     if (row.stock < reserved) {
-      throw new BadRequestException(`No puedes reducir ${[size, color].filter(Boolean).join(' / ')} por debajo de ${reserved}; hay unidades reservadas.`);
+      throw new BadRequestException(
+        `No puedes reducir ${[size, color].filter(Boolean).join(' / ')} por debajo de ${reserved}; hay unidades reservadas.`,
+      );
     }
     return { size, color, stock: row.stock, reserved };
   });
@@ -166,18 +173,27 @@ export class ProductsService {
       const currentVariants = Array.isArray(current.variantStocks)
         ? (current.variantStocks as VariantStock[])
         : [];
-      const variantStocks = cleanVariantStocks(dto.variantStocks, currentVariants) ?? [];
-      const removedWithReservations = currentVariants.some((old) =>
-        old.reserved > 0 && !variantStocks.some((next) =>
-          (next.size ?? '').toLocaleLowerCase() === (old.size ?? '').toLocaleLowerCase()
-          && (next.color ?? '').toLocaleLowerCase() === (old.color ?? '').toLocaleLowerCase(),
-        ),
+      const variantStocks =
+        cleanVariantStocks(dto.variantStocks, currentVariants) ?? [];
+      const removedWithReservations = currentVariants.some(
+        (old) =>
+          old.reserved > 0 &&
+          !variantStocks.some(
+            (next) =>
+              (next.size ?? '').toLocaleLowerCase() ===
+                (old.size ?? '').toLocaleLowerCase() &&
+              (next.color ?? '').toLocaleLowerCase() ===
+                (old.color ?? '').toLocaleLowerCase(),
+          ),
       );
       if (removedWithReservations) {
-        throw new BadRequestException('No puedes eliminar una opción que tiene unidades reservadas.');
+        throw new BadRequestException(
+          'No puedes eliminar una opción que tiene unidades reservadas.',
+        );
       }
       data.variantStocks = variantStocks;
-      if (variantStocks.length) data.stock = variantStocks.reduce((sum, item) => sum + item.stock, 0);
+      if (variantStocks.length)
+        data.stock = variantStocks.reduce((sum, item) => sum + item.stock, 0);
     }
     const updated = await this.prisma.product.update({ where: { id }, data });
 

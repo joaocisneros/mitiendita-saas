@@ -32,7 +32,10 @@ export default function ReportsPage() {
       .catch((e) => setError(e instanceof Error ? e.message : "No se pudo actualizar el reporte."))
       .finally(() => setLoading(false));
   }, [from, to]);
-  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const timer = window.setTimeout(load, 0);
+    return () => window.clearTimeout(timer);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-4">

@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
+
+const subscribeToLocation = () => () => {};
 
 /** Comparte la página actual o una URL específica del producto. */
 export function ShareButton({
@@ -15,11 +17,11 @@ export function ShareButton({
   url?: string;
 }) {
   const [copied, setCopied] = useState(false);
-  const [currentUrl, setCurrentUrl] = useState("");
-
-  useEffect(() => {
-    setCurrentUrl(url ? new URL(url, window.location.origin).toString() : window.location.href);
-  }, [url]);
+  const currentUrl = useSyncExternalStore(
+    subscribeToLocation,
+    () => (url ? new URL(url, window.location.origin).toString() : window.location.href),
+    () => "",
+  );
 
   function shareUrl() {
     return currentUrl || (typeof window !== "undefined" ? window.location.href : "");

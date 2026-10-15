@@ -14,7 +14,6 @@ export default function SuperDashboard() {
   const [statsError, setStatsError] = useState("");
 
   useEffect(() => {
-    setStatsError("");
     superApi.stats(rangeDays)
       .then((result) => {
         setStats(result);

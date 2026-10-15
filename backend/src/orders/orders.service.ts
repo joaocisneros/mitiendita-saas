@@ -97,7 +97,8 @@ export class OrdersService {
       return {
         productId: p.id,
         name: p.name,
-        variant: variantLabel(item.size, item.color) ?? item.variant?.trim() ?? null,
+        variant:
+          variantLabel(item.size, item.color) ?? item.variant?.trim() ?? null,
         sku: p.sku,
         unitPrice,
         quantity: item.quantity,
@@ -164,7 +165,13 @@ export class OrdersService {
             `Stock insuficiente para "${line.name}".`,
           );
         }
-        await adjustVariantStock(tx, line.productId, line.variant, line.quantity, 'reserve');
+        await adjustVariantStock(
+          tx,
+          line.productId,
+          line.variant,
+          line.quantity,
+          'reserve',
+        );
       }
 
       // 3) Código público único.

@@ -2,6 +2,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
+import { PrismaService } from '../src/prisma/prisma.service';
 
 /**
  * Fase 6: panel del dueño — aprobar pagos, transiciones de estado,
@@ -15,6 +16,7 @@ describe('Panel de pedidos del dueño (e2e)', () => {
   let tokenB = '';
   let productId = '';
   let orderId = '';
+  let prisma: PrismaService;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -30,6 +32,7 @@ describe('Panel de pedidos del dueño (e2e)', () => {
       }),
     );
     await app.init();
+    prisma = app.get(PrismaService);
 
     const reg = async (k: string, sub: string) =>
       (
@@ -75,9 +78,11 @@ describe('Panel de pedidos del dueño (e2e)', () => {
   const A = () => ({ Authorization: `Bearer ${tokenA}` });
   const B = () => ({ Authorization: `Bearer ${tokenB}` });
 
-  it('el dueño ve sus pedidos', async () => {
+  it('no muestra como pedido un checkout que todavía no tiene comprobante', async () => {
     const res = await http().get('/api/admin/orders').set(A()).expect(200);
-    expect(res.body.total).toBeGreaterThanOrEqual(1);
+    expect(
+      res.body.items.some((order: { id: string }) => order.id === orderId),
+    ).toBe(false);
   });
 
   it('otra empresa NO puede ver el pedido (aislamiento)', async () => {
@@ -108,6 +113,19 @@ describe('Panel de pedidos del dueño (e2e)', () => {
   });
 
   it('aprobar el pago confirma el pedido y compromete el stock', async () => {
+    await prisma.$transaction([
+      prisma.payment.update({
+        where: { orderId },
+        data: {
+          status: 'proof_submitted',
+          proofUrl: 'https://test.local/demo.png',
+        },
+      }),
+      prisma.order.update({
+        where: { id: orderId },
+        data: { paymentStatus: 'proof_submitted', reservationExpiresAt: null },
+      }),
+    ]);
     const res = await http()
       .post(`/api/admin/orders/${orderId}/payment/approve`)
       .set(A())
@@ -120,6 +138,50 @@ describe('Panel de pedidos del dueño (e2e)', () => {
       .get(`/api/public/stores/${subA}/products/prod-adm`)
       .expect(200);
     expect(prod.body.available).toBe(3);
+  });
+
+  it('rechazar un pedido pendiente lo cancela y libera todo el stock reservado', async () => {
+    const rejectedOrderId = (
+      await http()
+        .post(`/api/public/stores/${subA}/checkout`)
+        .send({
+          customerName: 'Cliente Rechazado',
+          customerPhone: '+51987000001',
+          deliveryMethod: 'pickup',
+          items: [{ productId, quantity: 1 }],
+        })
+        .expect(201)
+    ).body.id as string;
+
+    const reserved = await http()
+      .get('/api/admin/inventory/products')
+      .set(A())
+      .expect(200);
+    const beforeReject = reserved.body.find(
+      (product: { id: string }) => product.id === productId,
+    );
+    expect(beforeReject.stock).toBe(3);
+    expect(beforeReject.reserved).toBe(1);
+    expect(beforeReject.available).toBe(2);
+
+    const rejected = await http()
+      .post(`/api/admin/orders/${rejectedOrderId}/payment/reject`)
+      .set(A())
+      .send({ comment: 'El cliente canceló el pago' })
+      .expect(201);
+    expect(rejected.body.status).toBe('cancelled');
+    expect(rejected.body.payment.status).toBe('rejected');
+
+    const released = await http()
+      .get('/api/admin/inventory/products')
+      .set(A())
+      .expect(200);
+    const afterReject = released.body.find(
+      (product: { id: string }) => product.id === productId,
+    );
+    expect(afterReject.stock).toBe(3);
+    expect(afterReject.reserved).toBe(0);
+    expect(afterReject.available).toBe(3);
   });
 
   it('incluye métricas y productos más vendidos en el dashboard', async () => {

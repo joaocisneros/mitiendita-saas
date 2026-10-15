@@ -32,7 +32,10 @@ export class StorefrontService {
       orderBy: { updatedAt: 'desc' },
       select: { subdomain: true, updatedAt: true },
     });
-    return rows.map((row) => ({ subdomain: row.subdomain, updatedAt: row.updatedAt }));
+    return rows.map((row) => ({
+      subdomain: row.subdomain,
+      updatedAt: row.updatedAt,
+    }));
   }
 
   /** Información de marca + categorías activas de la tienda. */

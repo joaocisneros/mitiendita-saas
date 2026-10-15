@@ -77,12 +77,23 @@ export function CompanyDetailModal({
   }
 
   useEffect(() => {
-    setTab("summary");
-    setEditing(false);
+    let active = true;
+    const resetTimer = window.setTimeout(() => {
+      setTab("summary");
+      setEditing(false);
+    }, 0);
     superApi
       .company(companyId)
-      .then(setCompany)
-      .catch((cause) => setError(cause instanceof Error ? cause.message : "Error"));
+      .then((result) => {
+        if (active) setCompany(result);
+      })
+      .catch((cause) => {
+        if (active) setError(cause instanceof Error ? cause.message : "Error");
+      });
+    return () => {
+      active = false;
+      window.clearTimeout(resetTimer);
+    };
   }, [companyId]);
 
   const owner = company?.memberships.find((membership) => membership.role === "OWNER")?.user;

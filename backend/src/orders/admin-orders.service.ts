@@ -86,12 +86,17 @@ export class AdminOrdersService {
       .filter(Boolean);
     const where = {
       companyId,
+      // Un checkout sin comprobante es solo una reserva temporal. No debe
+      // mostrarse como pedido operativo en el panel del negocio.
+      AND: [
+        { paymentStatus: { not: 'pending' as const } },
+        ...(paymentStatuses?.length === 1
+          ? [{ paymentStatus: paymentStatuses[0] as never }]
+          : paymentStatuses && paymentStatuses.length > 1
+            ? [{ paymentStatus: { in: paymentStatuses as never[] } }]
+            : []),
+      ],
       ...(q.status ? { status: q.status as OrderStatus } : {}),
-      ...(paymentStatuses?.length === 1
-        ? { paymentStatus: paymentStatuses[0] as never }
-        : paymentStatuses && paymentStatuses.length > 1
-          ? { paymentStatus: { in: paymentStatuses as never[] } }
-          : {}),
       ...(q.search
         ? {
             OR: [
@@ -165,6 +170,11 @@ export class AdminOrdersService {
   async approvePayment(companyId: string, id: string, userId: string) {
     const order = await this.get(companyId, id);
     if (order.payment?.status === 'approved') return this.get(companyId, id);
+    if (order.payment?.status !== 'proof_submitted') {
+      throw new BadRequestException(
+        'El cliente todavía no ha enviado un comprobante para validar.',
+      );
+    }
 
     await this.prisma.$transaction(async (tx) => {
       await tx.payment.update({
@@ -185,7 +195,13 @@ export class AdminOrdersService {
             SET stock = GREATEST(0, stock - ${item.quantity}),
                 reserved = GREATEST(0, reserved - ${item.quantity})
             WHERE id = ${item.productId} AND company_id = ${companyId}`;
-          await adjustVariantStock(tx, item.productId, item.variant, item.quantity, 'commit');
+          await adjustVariantStock(
+            tx,
+            item.productId,
+            item.variant,
+            item.quantity,
+            'commit',
+          );
           await tx.stockMovement.create({
             data: {
               companyId,
@@ -225,7 +241,7 @@ export class AdminOrdersService {
     return this.get(companyId, id);
   }
 
-  /** Rechaza el pago. El pedido NO se elimina; el cliente puede resubir. */
+  /** Rechaza el pago, cancela el pedido pendiente y libera su stock reservado. */
   async rejectPayment(
     companyId: string,
     id: string,
@@ -233,19 +249,80 @@ export class AdminOrdersService {
     comment?: string,
   ) {
     const order = await this.get(companyId, id);
-    await this.prisma.payment.update({
-      where: { orderId: order.id },
-      data: {
-        status: 'rejected',
-        rejectionComment: comment ?? null,
-        validatedAt: new Date(),
-        validatedByUserId: userId,
-      },
+    if (order.status === 'cancelled' && order.paymentStatus === 'rejected') {
+      return order;
+    }
+    if (order.status !== 'pending') {
+      throw new BadRequestException(
+        'Solo se puede rechazar el pago de un pedido pendiente.',
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      const current = await tx.order.findFirst({
+        where: { id: order.id, companyId },
+        include: { items: true },
+      });
+      if (!current) throw new NotFoundException('Pedido no encontrado.');
+      if (current.status !== 'pending') {
+        throw new BadRequestException(
+          'El pedido ya fue procesado y no se puede rechazar.',
+        );
+      }
+
+      for (const item of current.items) {
+        if (!item.productId) continue;
+        await tx.$executeRaw`
+          UPDATE products
+          SET reserved = GREATEST(0, reserved - ${item.quantity})
+          WHERE id = ${item.productId} AND company_id = ${companyId}`;
+        await adjustVariantStock(
+          tx,
+          item.productId,
+          item.variant,
+          item.quantity,
+          'release',
+        );
+      }
+
+      const now = new Date();
+      await tx.payment.update({
+        where: { orderId: current.id },
+        data: {
+          status: 'rejected',
+          rejectionComment: comment?.trim() || null,
+          validatedAt: now,
+          validatedByUserId: userId,
+        },
+      });
+      await tx.order.update({
+        where: { id: current.id },
+        data: {
+          status: 'cancelled',
+          paymentStatus: 'rejected',
+          reservationExpiresAt: null,
+          cancelledAt: now,
+        },
+      });
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: current.id,
+          fromStatus: 'pending',
+          toStatus: 'cancelled',
+          changedByUserId: userId,
+          comment: comment?.trim() || 'Pago rechazado',
+        },
+      });
     });
-    await this.prisma.order.update({
-      where: { id: order.id },
-      data: { paymentStatus: 'rejected' },
-    });
+
+    if (order.payment?.proofUrl) {
+      const proofUrl = order.payment.proofUrl;
+      await this.prisma.payment.update({
+        where: { orderId: order.id },
+        data: { proofUrl: null },
+      });
+      void this.media.deleteByUrl(proofUrl, companyId);
+    }
     return this.get(companyId, id);
   }
 
@@ -286,13 +363,25 @@ export class AdminOrdersService {
             await tx.$executeRaw`
               UPDATE products SET reserved = GREATEST(0, reserved - ${item.quantity})
               WHERE id = ${item.productId} AND company_id = ${companyId}`;
-            await adjustVariantStock(tx, item.productId, item.variant, item.quantity, 'release');
+            await adjustVariantStock(
+              tx,
+              item.productId,
+              item.variant,
+              item.quantity,
+              'release',
+            );
           } else {
             // Ya estaba confirmado (stock comprometido): devolverlo.
             await tx.$executeRaw`
               UPDATE products SET stock = stock + ${item.quantity}
               WHERE id = ${item.productId} AND company_id = ${companyId}`;
-            await adjustVariantStock(tx, item.productId, item.variant, item.quantity, 'restore');
+            await adjustVariantStock(
+              tx,
+              item.productId,
+              item.variant,
+              item.quantity,
+              'restore',
+            );
             await tx.stockMovement.create({
               data: {
                 companyId,

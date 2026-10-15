@@ -88,11 +88,7 @@ export class SaWhatsappService {
     }));
   }
 
-  /**
-   * Dueños + clientes combinados en un solo directorio: si el mismo número aparece
-   * como dueño en una tienda y cliente en otra, se fusiona en una fila con ambos roles.
-   * Búsqueda, filtro por rol y paginación se resuelven acá, no en el navegador.
-   */
+  /** Directorio global consolidado: una fila por número válido. */
   async listDirectory(opts: {
     search?: string;
     role?: 'Dueño' | 'Cliente' | 'all';
@@ -121,77 +117,141 @@ export class SaWhatsappService {
       }),
     ]);
 
-    type Role = 'Dueño' | 'Cliente';
+    type Role = 'Dueño' | 'Cliente' | 'Dueño y cliente';
+    type Status =
+      | 'available'
+      | 'incomplete'
+      | 'missing'
+      | 'name_review'
+      | 'duplicate';
     type Row = {
       id: string;
-      nombres: string[];
+      nombre: string;
       telefono: string | null;
-      roles: Role[];
-      empresas: string[];
+      rol: Role;
+      empresa: string;
+      companyId: string;
+      status: Status;
+      duplicateNames: string[];
     };
+    const normalizePeruvianPhone = (phone: string | null) => {
+      const digits = phone?.replace(/\D+/g, '') ?? '';
+      if (/^9\d{8}$/.test(digits)) return `51${digits}`;
+      if (/^519\d{8}$/.test(digits)) return digits;
+      return null;
+    };
+    const hasReviewableName = (name: string) => {
+      const clean = name.trim();
+      return clean.length >= 3 && /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ' -]+$/.test(clean);
+    };
+    let all: Row[] = [
+      ...companies.map<Row>((company) => ({
+        id: `owner:${company.id}`,
+        nombre: company.memberships[0]?.user.name ?? 'Sin usuario asignado',
+        telefono: company.settings?.whatsappNumber ?? null,
+        rol: 'Dueño',
+        empresa: company.name,
+        companyId: company.id,
+        status: 'available',
+        duplicateNames: [],
+      })),
+      ...customers.map<Row>((customer) => ({
+        id: `customer:${customer.id}`,
+        nombre: customer.name,
+        telefono: customer.phone,
+        rol: 'Cliente',
+        empresa: customer.company.name,
+        companyId: customer.companyId,
+        status: 'available',
+        duplicateNames: [],
+      })),
+    ].sort((a, b) => a.nombre.localeCompare(b.nombre));
 
-    const groups = new Map<string, Row>();
-    const withoutPhone: Row[] = [];
-    let anonId = 0;
-
-    const addEntry = (
-      rol: Role,
-      nombre: string,
-      telefono: string | null,
-      empresa: string,
-    ) => {
-      const digits = telefono?.replace(/\D+/g, '') ?? '';
+    for (const row of all) {
+      const digits = row.telefono?.replace(/\D+/g, '') ?? '';
+      const normalized = normalizePeruvianPhone(row.telefono);
       if (!digits) {
-        withoutPhone.push({
-          id: `sin-numero-${anonId++}`,
-          nombres: [nombre],
-          telefono,
-          roles: [rol],
-          empresas: [empresa],
-        });
-        return;
+        row.status = 'missing';
+      } else if (!normalized) {
+        row.status = 'incomplete';
+      } else if (!hasReviewableName(row.nombre)) {
+        row.status = 'name_review';
       }
-      const existing = groups.get(digits);
-      if (!existing) {
-        groups.set(digits, {
-          id: digits,
-          nombres: [nombre],
-          telefono,
-          roles: [rol],
-          empresas: [empresa],
-        });
-        return;
-      }
-      if (!existing.nombres.includes(nombre)) existing.nombres.push(nombre);
-      if (!existing.roles.includes(rol)) existing.roles.push(rol);
-      if (!existing.empresas.includes(empresa)) existing.empresas.push(empresa);
+    }
+
+    // El directorio del superadministrador es global: consolida un número válido
+    // en una sola fila, conserva todas sus empresas y elige el nombre más completo.
+    const nameScore = (name: string) => {
+      const clean = name.trim();
+      const words = clean.split(/\s+/).filter(Boolean).length;
+      const letters = (clean.match(/[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/g) ?? []).length;
+      return (hasReviewableName(clean) ? 1000 : 0) + words * 100 + letters;
     };
-
-    for (const c of companies) {
-      addEntry(
-        'Dueño',
-        c.memberships[0]?.user.name ?? 'Sin usuario',
-        c.settings?.whatsappNumber ?? null,
-        c.name,
-      );
+    const consolidated = new Map<string, Row[]>();
+    const ungrouped: Row[] = [];
+    for (const row of all) {
+      const normalized = normalizePeruvianPhone(row.telefono);
+      if (!normalized) {
+        ungrouped.push(row);
+        continue;
+      }
+      consolidated.set(normalized, [
+        ...(consolidated.get(normalized) ?? []),
+        row,
+      ]);
     }
-    for (const cu of customers) {
-      addEntry('Cliente', cu.name, cu.phone, cu.company.name);
-    }
+    all = [
+      ...ungrouped,
+      ...[...consolidated.entries()].map(([phone, matches]) => {
+        const best = [...matches].sort(
+          (a, b) => nameScore(b.nombre) - nameScore(a.nombre),
+        )[0];
+        const companies = [...new Set(matches.map((item) => item.empresa))];
+        const roles = new Set(matches.map((item) => item.rol));
+        const role: Role =
+          roles.has('Dueño') && roles.has('Cliente')
+            ? 'Dueño y cliente'
+            : best.rol;
+        const merged: Row = {
+          ...best,
+          id: `phone:${phone}`,
+          telefono: phone,
+          rol: role,
+          empresa: companies.join(', '),
+          status: hasReviewableName(best.nombre) ? 'available' : 'name_review',
+          duplicateNames: [
+            ...new Set(
+              matches
+                .map((item) => item.nombre.trim())
+                .filter(
+                  (name) =>
+                    name.toLocaleLowerCase() !==
+                    best.nombre.trim().toLocaleLowerCase(),
+                ),
+            ),
+          ],
+        };
+        return merged;
+      }),
+    ].sort((a, b) => a.nombre.localeCompare(b.nombre));
 
-    let all = [...groups.values(), ...withoutPhone].sort((a, b) =>
-      a.nombres[0].localeCompare(b.nombres[0]),
-    );
+    const summary = {
+      total: all.length,
+      owners: all.filter((row) => row.rol.includes('Dueño')).length,
+      customers: all.filter((row) => row.rol.includes('Cliente')).length,
+      available: all.filter((row) => row.status === 'available').length,
+      needsReview: all.filter((row) => row.status !== 'available').length,
+    };
 
     if (opts.role && opts.role !== 'all') {
-      all = all.filter((r) => r.roles.includes(opts.role as Role));
+      all = all.filter((r) => r.rol.includes(opts.role as 'Dueño' | 'Cliente'));
     }
     if (opts.search?.trim()) {
       const q = opts.search.trim().toLowerCase();
       all = all.filter(
         (r) =>
-          r.nombres.some((n) => n.toLowerCase().includes(q)) ||
-          r.empresas.some((e) => e.toLowerCase().includes(q)) ||
+          r.nombre.toLowerCase().includes(q) ||
+          r.empresa.toLowerCase().includes(q) ||
           (r.telefono ?? '').toLowerCase().includes(q),
       );
     }
@@ -204,6 +264,7 @@ export class SaWhatsappService {
       page,
       limit,
       pages: Math.max(1, Math.ceil(total / limit)),
+      summary,
     };
   }
 }

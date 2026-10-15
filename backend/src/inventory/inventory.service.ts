@@ -74,7 +74,10 @@ export class InventoryService {
       where: { id: dto.productId, companyId, deletedAt: null },
     });
     if (!product) throw new NotFoundException('Producto no encontrado.');
-    if (Array.isArray(product.variantStocks) && product.variantStocks.length > 0) {
+    if (
+      Array.isArray(product.variantStocks) &&
+      product.variantStocks.length > 0
+    ) {
       throw new BadRequestException(
         'Este producto tiene cantidades por talla o color. Cámbialas desde Productos > Editar.',
       );

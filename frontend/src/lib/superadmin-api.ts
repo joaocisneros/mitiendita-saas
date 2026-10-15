@@ -446,6 +446,7 @@ export const superApi = {
       page: number;
       limit: number;
       pages: number;
+      summary: SaWhatsappDirectorySummary;
     }>(`/superadmin/whatsapp/directorio?${params.toString()}`);
   },
   // ── Tokens de API de plataforma (self-service del superadmin) ──
@@ -538,10 +539,26 @@ export interface SaWhatsappOwner {
 
 export interface SaWhatsappDirectoryRow {
   id: string;
-  nombres: string[];
+  nombre: string;
   telefono: string | null;
-  roles: ("Dueño" | "Cliente")[];
-  empresas: string[];
+  rol: "Dueño" | "Cliente" | "Dueño y cliente";
+  empresa: string;
+  companyId: string;
+  status:
+    | "available"
+    | "incomplete"
+    | "missing"
+    | "name_review"
+    | "duplicate";
+  duplicateNames: string[];
+}
+
+export interface SaWhatsappDirectorySummary {
+  total: number;
+  owners: number;
+  customers: number;
+  available: number;
+  needsReview: number;
 }
 
 export interface GlobalUser {

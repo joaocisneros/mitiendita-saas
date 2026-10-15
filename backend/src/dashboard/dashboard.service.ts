@@ -28,10 +28,18 @@ export class DashboardService {
       newCustomersMonth,
     ] = await Promise.all([
       this.prisma.order.count({
-        where: { companyId, createdAt: { gte: startOfDay } },
+        where: {
+          companyId,
+          paymentStatus: { not: 'pending' },
+          createdAt: { gte: startOfDay },
+        },
       }),
       this.prisma.order.count({
-        where: { companyId, status: 'pending' },
+        where: {
+          companyId,
+          status: 'pending',
+          paymentStatus: 'proof_submitted',
+        },
       }),
       // Ventas = pagos aprobados hoy.
       this.prisma.order.findMany({
@@ -43,7 +51,7 @@ export class DashboardService {
         select: { total: true },
       }),
       this.prisma.order.findMany({
-        where: { companyId },
+        where: { companyId, paymentStatus: { not: 'pending' } },
         orderBy: { createdAt: 'desc' },
         take: 5,
         select: {
@@ -82,7 +90,7 @@ export class DashboardService {
       }),
       this.prisma.order.groupBy({
         by: ['status'],
-        where: { companyId },
+        where: { companyId, paymentStatus: { not: 'pending' } },
         _count: { _all: true },
       }),
       this.prisma.customer.count({

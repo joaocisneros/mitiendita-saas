@@ -96,12 +96,13 @@ export function OrderDetailModal({
     adminApi.settings().then((s) => setSubdomain(s.subdomain ?? null)).catch(() => {});
   }, [orderId]);
 
-  async function run(fn: () => Promise<AdminOrderDetail>) {
+  async function run(fn: () => Promise<AdminOrderDetail>, closeAfterSuccess = false) {
     setBusy(true);
     setError("");
     try {
       setOrder(await fn());
       onChanged?.();
+      if (closeAfterSuccess) onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
     } finally {
@@ -111,7 +112,7 @@ export function OrderDetailModal({
 
   const canValidatePayment =
     order?.payment &&
-    ["proof_submitted", "pending"].includes(order.payment.status);
+    order.payment.status === "proof_submitted";
   const context = order ? orderContext(order) : null;
   const nextTransitions = order ? nextForOrder(order) : [];
 
@@ -128,6 +129,7 @@ export function OrderDetailModal({
               <p className="text-sm text-slate-500">
                 {new Date(order.createdAt).toLocaleString("es-PE")}
               </p>
+              {order.paymentStatus === "approved" && (
               <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                 <button
                   type="button"
@@ -147,10 +149,20 @@ export function OrderDetailModal({
                   </a>
                 )}
               </div>
+              )}
             </div>
-            <div className="flex shrink-0 flex-col items-end gap-1">
-              <OrderStatusBadge order={order} />
-              <StatusBadge status={order.paymentStatus} type="payment" />
+            <div className="flex shrink-0 items-center">
+              {order.paymentStatus === "rejected" ? (
+                <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">
+                  <span aria-hidden="true">×</span>
+                  Pedido rechazado
+                </span>
+              ) : (
+                <div className="flex flex-col items-end gap-1">
+                  <OrderStatusBadge order={order} />
+                  <StatusBadge status={order.paymentStatus} type="payment" />
+                </div>
+              )}
             </div>
           </div>
 
@@ -201,8 +213,31 @@ export function OrderDetailModal({
             </div>
 
             <div className="space-y-4">
-              <Card title="Pago">
-                {order.payment?.proofUrl ? (
+              <Card title={order.paymentStatus === "rejected" ? "Resultado del pago" : "Pago"}>
+                {order.paymentStatus === "rejected" ? (
+                  <div className="rounded-xl border border-red-200 bg-red-50/70 p-4">
+                    <div className="flex items-start gap-3">
+                      <span
+                        aria-hidden="true"
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-100 text-lg font-bold text-red-700"
+                      >
+                        ×
+                      </span>
+                      <div>
+                        <p className="font-bold text-slate-900">Comprobante rechazado</p>
+                        <p className="mt-1 text-sm leading-5 text-slate-600">
+                          El pago no fue confirmado y el pedido quedó cancelado. El inventario no fue descontado.
+                        </p>
+                      </div>
+                    </div>
+                    {order.payment?.rejectionComment && (
+                      <div className="mt-3 border-t border-red-200 pt-3 text-sm">
+                        <span className="font-semibold text-slate-700">Motivo del rechazo: </span>
+                        <span className="text-slate-600">{order.payment.rejectionComment}</span>
+                      </div>
+                    )}
+                  </div>
+                ) : order.payment?.proofUrl ? (
                   <button
                     type="button"
                     onClick={() => setProofPreview(order.payment?.proofUrl ?? null)}
@@ -222,7 +257,8 @@ export function OrderDetailModal({
                 ) : (
                   <p className="text-sm text-slate-400">El cliente aún no subió comprobante.</p>
                 )}
-                {(order.payment?.detectedMethod || order.payment?.operationNumber) && (
+                {order.paymentStatus !== "rejected" &&
+                  (order.payment?.detectedMethod || order.payment?.operationNumber) && (
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                     {order.payment?.detectedMethod && (
                       <span className="rounded-full bg-violet-100 px-2 py-0.5 font-bold capitalize text-violet-700">
@@ -233,9 +269,6 @@ export function OrderDetailModal({
                       <span className="font-mono text-slate-500">N° op. {order.payment.operationNumber}</span>
                     )}
                   </div>
-                )}
-                {order.payment?.rejectionComment && (
-                  <p className="mt-2 text-sm text-red-600">Rechazo: {order.payment.rejectionComment}</p>
                 )}
                 {canValidatePayment && (
                   <div className="mt-3 flex gap-2">
@@ -248,16 +281,21 @@ export function OrderDetailModal({
                     </button>
                     <button
                       disabled={busy}
-                      onClick={() => run(() => adminApi.rejectPayment(order.id, ""))}
+                      onClick={() =>
+                        void run(
+                          () => adminApi.rejectPayment(order.id, "Comprobante rechazado"),
+                          true,
+                        )
+                      }
                       className="flex-1 rounded-lg bg-red-100 py-2 font-semibold text-red-700 hover:bg-red-200 disabled:opacity-60"
                     >
-                      Rechazar
+                      Rechazar pago
                     </button>
                   </div>
                 )}
               </Card>
 
-              {nextTransitions.length > 0 && (
+              {!canValidatePayment && nextTransitions.length > 0 && (
                 <Card title={context.isServiceLike ? "Gestionar servicio" : "Cambiar estado"}>
                   <div className="flex flex-wrap gap-2">
                     {nextTransitions.map((t) => (

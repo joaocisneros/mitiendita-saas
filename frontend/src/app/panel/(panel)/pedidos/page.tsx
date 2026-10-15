@@ -15,7 +15,7 @@ type Filter = { value: string; label: string; field?: FilterField };
 
 const PHYSICAL_FILTERS: Filter[] = [
   { value: "", label: "Todos" },
-  { value: "pending,proof_submitted", label: "Por revisar", field: "paymentStatus" },
+  { value: "proof_submitted", label: "Por revisar", field: "paymentStatus" },
   { value: "rejected", label: "Rechazados", field: "paymentStatus" },
   { value: "confirmed", label: "Confirmados", field: "status" },
   { value: "preparing", label: "Preparando", field: "status" },
@@ -25,7 +25,7 @@ const PHYSICAL_FILTERS: Filter[] = [
 
 const SERVICE_FILTERS: Filter[] = [
   { value: "", label: "Todas" },
-  { value: "pending,proof_submitted", label: "Por revisar", field: "paymentStatus" },
+  { value: "proof_submitted", label: "Por revisar", field: "paymentStatus" },
   { value: "rejected", label: "Rechazados", field: "paymentStatus" },
   { value: "confirmed", label: "Aceptadas", field: "status" },
   { value: "preparing", label: "En gestión", field: "status" },
@@ -117,7 +117,7 @@ export default function OrdersListPage() {
           <p className="mt-1 text-xs font-medium text-slate-500">
             {isServiceLike
               ? "Las nuevas solicitudes y comprobantes se actualizan automáticamente."
-              : "Los nuevos pedidos y comprobantes se actualizan automáticamente."}
+              : "Los pedidos aparecen cuando el cliente completa el pago y envía su comprobante."}
           </p>
         </div>
         <button
@@ -247,6 +247,8 @@ export default function OrdersListPage() {
                     {subdomain && (
                       <td className="p-4">
                         <div className="flex items-center gap-2 text-xs font-bold">
+                          {o.paymentStatus === "approved" ? (
+                            <>
                           <button
                             type="button"
                             onClick={() => setReceiptCode(o.publicCode)}
@@ -266,6 +268,10 @@ export default function OrdersListPage() {
                           >
                             📲
                           </a>
+                            </>
+                          ) : (
+                            <span className="text-slate-400">Sin recibo</span>
+                          )}
                         </div>
                       </td>
                     )}

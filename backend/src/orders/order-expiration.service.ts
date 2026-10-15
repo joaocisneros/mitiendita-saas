@@ -40,7 +40,13 @@ export class OrderExpirationService {
           await tx.$executeRaw`
             UPDATE products SET reserved = GREATEST(0, reserved - ${item.quantity})
             WHERE id = ${item.productId} AND company_id = ${order.companyId}`;
-          await adjustVariantStock(tx, item.productId, item.variant, item.quantity, 'release');
+          await adjustVariantStock(
+            tx,
+            item.productId,
+            item.variant,
+            item.quantity,
+            'release',
+          );
         }
         await tx.order.update({
           where: { id: order.id },

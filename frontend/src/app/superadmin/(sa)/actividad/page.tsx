@@ -189,10 +189,31 @@ function detailValue(value: unknown) {
 }
 
 function detailSummary(
+  action: string,
   entries: [string, unknown][],
   planNames: Record<number, string>,
+  entityLabel?: string | null,
 ) {
   const values = Object.fromEntries(entries);
+  if (action === "access.login")
+    return "Acceso realizado con correo y contraseña.";
+  if (action === "user.password_reset") {
+    const name = String(values.userName ?? entityLabel ?? "el usuario");
+    const email = values.userEmail ? ` (${String(values.userEmail)})` : "";
+    return `Contraseña restablecida para ${name}${email}.`;
+  }
+  const operationMessages: Record<string, string> = {
+    "product.created": "Producto creado correctamente.",
+    "product.updated": "Información del producto actualizada.",
+    "product.deleted": "Producto eliminado.",
+    "category.created": "Categoría creada correctamente.",
+    "category.updated": "Información de la categoría actualizada.",
+    "category.deleted": "Categoría eliminada.",
+    "inventory.adjusted": "Existencias actualizadas en el inventario.",
+    "store.updated": "Configuración de la tienda actualizada.",
+    "profile.updated": "Información del perfil actualizada.",
+  };
+  if (operationMessages[action]) return operationMessages[action];
   if (values.previousStatus !== undefined && values.newStatus !== undefined) {
     const previous =
       COMPANY_STATUS_WORDS[String(values.previousStatus)] ??
@@ -478,7 +499,7 @@ export default function ActivityPage() {
                           onClick={() => setSelectedId(row.companyId)}
                           className="font-bold text-violet-700 hover:underline"
                         >
-                          {row.companyName ?? "Ver empresa"} →
+                          {row.companyName ?? "Ver empresa"}
                         </button>
                       ) : (
                         <span className="text-slate-400">No aplica</span>
@@ -523,7 +544,12 @@ export default function ActivityPage() {
                         }
                       >
                         {details.length > 0
-                          ? detailSummary(details, planNames)
+                          ? detailSummary(
+                              row.action,
+                              details,
+                              planNames,
+                              row.entityLabel,
+                            )
                           : "Sin cambios adicionales"}
                       </span>
                     </td>
