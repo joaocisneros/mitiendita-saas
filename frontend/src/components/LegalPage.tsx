@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { PublicLegal } from "@/lib/api";
-import { WHATSAPP_NUMBER } from "@/lib/contact";
+import { supportNumber } from "@/lib/contact";
 import { LEGAL_UPDATED_AT } from "@/lib/legal-texts";
 
 /**
@@ -21,7 +21,7 @@ export function LegalPage({
   legal: PublicLegal | null;
   other: { href: string; label: string };
 }) {
-  const whatsapp = (legal?.supportWhatsapp || WHATSAPP_NUMBER).replace(/\D/g, "");
+  const whatsapp = supportNumber(legal?.supportWhatsapp);
   const email = legal?.supportEmail;
 
   return (

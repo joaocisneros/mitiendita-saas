@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { adminApi } from "@/lib/admin-api";
-import { WHATSAPP_NUMBER } from "@/lib/contact";
+import { supportNumber } from "@/lib/contact";
 import { DashboardIcon } from "@/components/DashboardIcon";
 
 const SEEN_KEY = "mt_plan_notice";
@@ -42,7 +42,7 @@ function buildNotice(
   const text = trial
     ? "Elige un plan para seguir usando MiTiendita."
     : "Renueva tu plan para seguir usando MiTiendita.";
-  const number = (plan.supportWhatsapp || WHATSAPP_NUMBER).replace(/\D/g, "");
+  const number = supportNumber(plan.supportWhatsapp);
   const message = `Hola, soy de la tienda ${storeName}. Quiero ${trial ? "elegir un plan" : "renovar mi plan"}.`;
   return { expired: days < 0, title, text, whatsapp: `https://wa.me/${number}?text=${encodeURIComponent(message)}` };
 }
