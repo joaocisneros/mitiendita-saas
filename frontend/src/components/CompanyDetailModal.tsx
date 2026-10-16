@@ -108,7 +108,7 @@ export function CompanyDetailModal({
           <header className="flex flex-col gap-2 pr-10 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <h2 className="truncate text-xl font-black text-slate-950 sm:text-2xl">{company.name}</h2>
-              <p className="truncate text-sm text-slate-500">{company.subdomain}.mitiendita.com</p>
+              <p className="truncate text-sm text-slate-500">/tienda/{company.subdomain}</p>
               <Link href={`/tienda/${company.subdomain}`} target="_blank" className="mt-1 inline-flex text-xs font-bold text-violet-700 hover:underline">
                 Abrir tienda pública ↗
               </Link>

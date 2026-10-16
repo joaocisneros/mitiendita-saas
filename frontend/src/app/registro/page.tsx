@@ -5,12 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { adminApi } from "@/lib/admin-api";
 import { DashboardIcon } from "@/components/DashboardIcon";
-import { BUSINESS_CATEGORIES } from "@/lib/business-categories";
+import { BUSINESS_CATEGORIES, featuresOf } from "@/lib/business-categories";
 import { whatsappLink } from "@/lib/contact";
 
 export default function RegisterPage() {
   const router = useRouter();
   const [form, setForm] = useState({ responsibleName: "", email: "", password: "", commercialName: "", subdomain: "", whatsappNumber: "", businessType: "" });
+  // Mientras no lo edite a mano, la dirección sigue al nombre comercial.
+  const [subdomainTouched, setSubdomainTouched] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -47,13 +49,14 @@ export default function RegisterPage() {
           <form onSubmit={submit} className="mt-5 grid gap-3.5 sm:grid-cols-2">
             <Field label="Nombre del responsable"><input required minLength={2} value={form.responsibleName} onChange={(e) => set("responsibleName", e.target.value)} className="field" placeholder="María Pérez" /></Field>
             <Field label="Correo electrónico"><input required type="email" autoComplete="email" value={form.email} onChange={(e) => set("email", e.target.value)} className="field" placeholder="maria@empresa.com" /></Field>
-            <Field label="Nombre comercial"><input required minLength={2} value={form.commercialName} onChange={(e) => { const value = e.target.value; setForm((current) => ({ ...current, commercialName: value, subdomain: current.subdomain || normalizeSubdomain(value) })); }} className="field" placeholder="Bodega María" /></Field>
-            <Field label="Rubro"><select required value={form.businessType} onChange={(e) => set("businessType", e.target.value)} className="field" style={{ color: form.businessType ? "#0f172a" : "#94a3b8" }}><option value="" disabled>¿A qué se dedica tu negocio?</option>{BUSINESS_CATEGORIES.map((cat) => <optgroup key={cat.id} label={`${cat.emoji} ${cat.label}`}>{cat.subtypes.map((type) => <option key={type}>{type}</option>)}</optgroup>)}</select></Field>
-            <Field label="Dirección web" hint={`Tu tienda estará en: mitiendita-saas.vercel.app/tienda/${form.subdomain || "tu-tienda"}`}><div className="flex"><span className="flex items-center rounded-l-xl border border-r-0 border-slate-300 bg-slate-50 px-2 text-xs font-bold text-slate-500">/tienda/</span><input required minLength={3} value={form.subdomain} onChange={(e) => set("subdomain", normalizeSubdomain(e.target.value))} className="field rounded-l-none" placeholder="bodega-maria" /></div></Field>
+            <Field label="Nombre comercial"><input required minLength={2} value={form.commercialName} onChange={(e) => { const value = e.target.value; setForm((current) => ({ ...current, commercialName: value, subdomain: subdomainTouched ? current.subdomain : normalizeSubdomain(value) })); }} className="field" placeholder="Bodega María" /></Field>
+            <Field label="Rubro"><select required value={form.businessType} onChange={(e) => set("businessType", e.target.value)} className="field" style={{ color: form.businessType ? "#0f172a" : "#94a3b8" }}><option value="" disabled>¿A qué se dedica tu negocio?</option>{BUSINESS_CATEGORIES.map((cat) => <optgroup key={cat.id} label={`${cat.emoji} ${cat.label}`}>{cat.subtypes.map((type) => <option key={type}>{type}</option>)}</optgroup>)}</select>{form.businessType ? <p className="mt-1.5 text-xs text-slate-500"><span className="font-semibold text-slate-600">Incluye:</span> {featuresOf(form.businessType).join(" · ")}</p> : null}</Field>
+            <Field label="Dirección web" hint={`Tu tienda estará en: mitiendita-saas.vercel.app/tienda/${form.subdomain || "tu-tienda"}`}><div className="flex"><span className="flex items-center rounded-l-xl border border-r-0 border-slate-300 bg-slate-50 px-2 text-xs font-bold text-slate-500">/tienda/</span><input required minLength={3} value={form.subdomain} onChange={(e) => { setSubdomainTouched(true); set("subdomain", normalizeSubdomain(e.target.value)); }} className="field rounded-l-none" placeholder="bodega-maria" /></div></Field>
             <Field label="WhatsApp" hint="Solo tus 9 dígitos (sin el 51). Es el número que recibirá los pedidos."><div className="flex"><span className="flex items-center rounded-l-xl border border-r-0 border-slate-300 bg-slate-50 px-3 text-sm font-bold text-slate-500">+51</span><input required inputMode="numeric" minLength={9} maxLength={9} value={form.whatsappNumber} onChange={(e) => set("whatsappNumber", e.target.value.replace(/\D/g, "").slice(0, 9))} className="field rounded-l-none" placeholder="987 654 321" /></div></Field>
             <div className="sm:col-span-2"><Field label="Contraseña"><div className="relative"><input required type={showPassword ? "text" : "password"} minLength={8} autoComplete="new-password" value={form.password} onChange={(e) => set("password", e.target.value)} className="field pr-20" placeholder="Mínimo 8 caracteres" /><button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-violet-700">{showPassword ? "Ocultar" : "Mostrar"}</button></div></Field></div>
             {error && <p role="alert" className="sm:col-span-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p>}
             <button disabled={loading} className="sm:col-span-2 h-11 rounded-xl bg-violet-600 font-bold text-white shadow-lg shadow-violet-200 hover:bg-violet-700 disabled:opacity-60">{loading ? "Creando tu tienda..." : "Crear mi tienda"}</button>
+            <p className="sm:col-span-2 text-center text-xs text-slate-500">Al crear tu tienda aceptas los <Link href="/terminos" target="_blank" className="font-semibold text-violet-700 hover:underline">Términos y condiciones</Link> y la <Link href="/privacidad" target="_blank" className="font-semibold text-violet-700 hover:underline">Política de privacidad</Link>.</p>
           </form>
           <p className="mt-4 text-center text-sm font-medium text-slate-600">¿Ya tienes una cuenta? <Link href="/panel/login" className="font-bold text-violet-700 hover:underline">Inicia sesión</Link></p>
           <p className="mt-2 text-center text-sm font-medium text-slate-600">¿Necesitas ayuda? <a href={whatsappLink("Hola, necesito ayuda para registrar mi tienda en MiTiendita")} target="_blank" rel="noopener noreferrer" className="font-bold text-green-600 hover:underline">Escríbenos por WhatsApp 💬</a></p>

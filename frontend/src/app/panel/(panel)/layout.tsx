@@ -8,6 +8,7 @@ import { archetypeOf, resolveCategory, usesCredits } from "@/lib/business-catego
 import { DashboardIcon } from "@/components/DashboardIcon";
 import { ProfileModal } from "@/components/ProfileModal";
 import { AccountMenu } from "@/components/AccountMenu";
+import { PlanNoticeModal } from "@/components/PlanNoticeModal";
 
 const NAV = [
   { href: "/panel", label: "Resumen", icon: "dashboard" as const },
@@ -32,6 +33,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const [ready, setReady] = useState(false);
   const [subdomain, setSubdomain] = useState<string | null>(null);
+  const [storeName, setStoreName] = useState("");
   const [usesAppointments, setUsesAppointments] = useState(false);
   const [usesSubscriptions, setUsesSubscriptions] = useState(false);
   const [usesCredit, setUsesCredit] = useState(false);
@@ -83,6 +85,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       .settings()
       .then((settings) => {
         setSubdomain(settings.subdomain ?? null);
+        setStoreName(settings.storeName ?? "");
         const archetype = archetypeOf(resolveCategory(settings.businessType));
         setUsesAppointments(archetype === "servicios");
         setUsesSubscriptions(archetype === "digital");
@@ -227,6 +230,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           })}
         </nav>
       </div>
+
+      {/* En modo soporte (superadmin dentro de la tienda) no se muestra. */}
+      {storeName && !supportMode && <PlanNoticeModal storeName={storeName} />}
 
       {profileOpen && (
         <ProfileModal

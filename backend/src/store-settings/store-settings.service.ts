@@ -27,6 +27,29 @@ export class StoreSettingsService {
     };
   }
 
+  async planStatus(companyId: string) {
+    const [company, platform] = await Promise.all([
+      this.prisma.company.findUnique({
+        where: { id: companyId },
+        select: {
+          subscriptionStatus: true,
+          currentPeriodEndsAt: true,
+          plan: { select: { name: true } },
+        },
+      }),
+      this.prisma.platformSettings.findUnique({
+        where: { id: 1 },
+        select: { supportWhatsapp: true },
+      }),
+    ]);
+    return {
+      subscriptionStatus: company?.subscriptionStatus ?? null,
+      currentPeriodEndsAt: company?.currentPeriodEndsAt ?? null,
+      planName: company?.plan?.name ?? null,
+      supportWhatsapp: platform?.supportWhatsapp || null,
+    };
+  }
+
   async update(companyId: string, dto: UpdateSettingsDto) {
     // Imágenes actuales, para borrar las que se reemplacen.
     const current = await this.prisma.companySettings.findUnique({

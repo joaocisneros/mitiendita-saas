@@ -202,7 +202,7 @@ export default function CompaniesPage() {
                     >
                       {company.name}
                     </button>
-                    <p className="mt-1 text-xs font-medium text-slate-600">{company.subdomain}.mitiendita.com</p>
+                    <p className="mt-1 text-xs font-medium text-slate-600">/tienda/{company.subdomain}</p>
                     <Link href={`/tienda/${company.subdomain}`} target="_blank" className="mt-1 inline-flex text-xs font-bold text-violet-700 hover:underline">
                       Abrir tienda ↗
                     </Link>

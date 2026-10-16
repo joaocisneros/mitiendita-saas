@@ -4,6 +4,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -38,8 +39,9 @@ export class CreateCompanyDto {
   subdomain!: string;
 
   @IsString()
-  @MinLength(6)
-  @MaxLength(20)
+  @Matches(/^(\+?51)?9\d{8}$/, {
+    message: 'El WhatsApp debe ser un celular peruano de 9 dígitos.',
+  })
   whatsappNumber!: string;
 
   @IsOptional()

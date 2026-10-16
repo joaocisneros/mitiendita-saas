@@ -42,6 +42,13 @@ export const BUSINESS_CATEGORIES: BusinessCategory[] = [
       "Papelerías",
       "Joyerías",
       "Tiendas de electrodomésticos",
+      "Jugueterías",
+      "Bazares y regalos",
+      "Florerías",
+      "Perfumerías y cosméticos",
+      "Distribuidoras y mayoristas",
+      "Fruterías y verdulerías",
+      "Carnicerías y avícolas",
     ],
   },
   {
@@ -66,6 +73,8 @@ export const BUSINESS_CATEGORIES: BusinessCategory[] = [
       "Heladerías",
       "Juguerías",
       "Sanguicherías",
+      "Comida rápida",
+      "Menú y comida casera",
     ],
   },
   {
@@ -173,7 +182,7 @@ export const BUSINESS_CATEGORIES: BusinessCategory[] = [
       search: "Buscar servicios...",
       empty: "Aún no hay servicios publicados.",
     },
-    subtypes: ["Reparto a domicilio", "Mensajería", "Empresas de limpieza", "Seguridad", "Fotografía y eventos", "Abogados", "Contadores", "Mudanzas"],
+    subtypes: ["Reparto a domicilio", "Mensajería", "Empresas de limpieza", "Seguridad", "Fotografía y eventos", "Abogados", "Contadores", "Mudanzas", "Lavanderías", "Imprentas y diseño", "Técnicos y reparaciones"],
   },
   {
     id: "digital",
@@ -343,6 +352,10 @@ export const CREDIT_SUBTYPES = [
   "Tiendas de electrodomésticos",
   "Tecnología",
   "Ferreterías",
+  "Jugueterías",
+  "Bazares y regalos",
+  "Perfumerías y cosméticos",
+  "Distribuidoras y mayoristas",
 ];
 
 /** ¿La tienda puede usar Ventas al crédito? Coincidencia exacta con el subtipo. */
@@ -350,6 +363,21 @@ export function usesCredits(businessType?: string | null): boolean {
   if (!businessType) return false;
   const bt = normalize(businessType);
   return CREDIT_SUBTYPES.some((subtype) => normalize(subtype) === bt);
+}
+
+/** Funciones del panel que activa cada tipo de tienda (para mostrarlas al elegir rubro). */
+const FEATURES_BY_ARCHETYPE: Record<StoreArchetype, string[]> = {
+  catalogo: ["Pedidos", "Productos", "Inventario", "Clientes", "Reportes"],
+  carta: ["Pedidos", "Carta", "Inventario", "Clientes", "Reportes"],
+  servicios: ["Citas y reservas", "Servicios", "Clientes", "Reportes"],
+  digital: ["Planes y suscripciones", "Clientes", "Reportes"],
+};
+
+/** Lo que tendrá la tienda según su rubro, ej. ["Pedidos", ..., "Ventas al crédito"]. */
+export function featuresOf(businessType?: string | null): string[] {
+  const features = [...FEATURES_BY_ARCHETYPE[archetypeOf(resolveCategory(businessType))]];
+  if (usesCredits(businessType)) features.push("Ventas al crédito");
+  return features;
 }
 
 /**

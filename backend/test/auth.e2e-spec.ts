@@ -2,6 +2,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
+import { PrismaService } from '../src/prisma/prisma.service';
 
 /**
  * Pruebas de la Fase 0: registro, login, sesión y aislamiento entre empresas.
@@ -66,6 +67,19 @@ describe('Auth y multi-tenant (e2e)', () => {
     refreshA = res.body.refreshToken;
   });
 
+  it('el registro desde la web recibe los días de prueba configurados', async () => {
+    const prisma = app.get(PrismaService);
+    const [company, settings] = await Promise.all([
+      prisma.company.findUniqueOrThrow({ where: { id: companyIdA } }),
+      prisma.platformSettings.findUnique({ where: { id: 1 } }),
+    ]);
+    const days = settings?.trialDays ?? 14;
+    expect(company.subscriptionStatus).toBe('trial');
+    const diffDays =
+      (company.currentPeriodEndsAt!.getTime() - Date.now()) / 86_400_000;
+    expect(Math.round(diffDays)).toBe(days);
+  });
+
   it('registra la empresa B', async () => {
     const res = await http()
       .post('/api/auth/register')
@@ -96,6 +110,17 @@ describe('Auth y multi-tenant (e2e)', () => {
       .expect(200);
     tokenA = res.body.accessToken;
     expect(res.body.companyId).toBe(companyIdA);
+  });
+
+  it('el dueño ve el estado de su prueba para el aviso del panel', async () => {
+    const res = await http()
+      .get('/api/admin/settings/plan')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .expect(200);
+    expect(res.body.subscriptionStatus).toBe('trial');
+    expect(res.body.currentPeriodEndsAt).toBeTruthy();
+    expect(res.body).toHaveProperty('supportWhatsapp');
+    await http().get('/api/admin/settings/plan').expect(401);
   });
 
   it('rechaza login con contraseña incorrecta', async () => {

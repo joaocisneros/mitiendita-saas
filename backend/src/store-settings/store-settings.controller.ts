@@ -14,6 +14,12 @@ export class StoreSettingsController {
     return this.settings.get(companyId);
   }
 
+  /** Estado del plan o de la prueba gratuita, para el aviso del panel. */
+  @Get('plan')
+  plan(@CurrentUser('companyId') companyId: string) {
+    return this.settings.planStatus(companyId);
+  }
+
   @Patch()
   update(
     @CurrentUser('companyId') companyId: string,

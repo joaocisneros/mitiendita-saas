@@ -108,6 +108,21 @@ describe('Superadmin y configuración (e2e)', () => {
     expect(created.body.trialEndsAt).toBeDefined();
   });
 
+  it('no crea la empresa si el WhatsApp no es un celular válido', async () => {
+    await http()
+      .post('/api/superadmin/companies')
+      .set('Authorization', `Bearer ${superToken}`)
+      .send({
+        responsibleName: 'Propietaria Mala',
+        email: `mala_${tag}@test.com`,
+        password: 'clave12345',
+        commercialName: 'Empresa Mala',
+        subdomain: `empresa-mala-${tag}`,
+        whatsappNumber: 'correo@gmail.com',
+      })
+      .expect(400);
+  });
+
   it('crea, actualiza y asigna un plan', async () => {
     const created = await http()
       .post('/api/superadmin/plans')
@@ -155,6 +170,51 @@ describe('Superadmin y configuración (e2e)', () => {
       .expect(200);
     expect(res.body.storeName).toBe('Nuevo Nombre');
     expect(res.body.primaryColor).toBe('#ff0000');
+  });
+
+  it('publica los datos del titular sin login y sin datos de integraciones', async () => {
+    await http()
+      .patch('/api/superadmin/settings')
+      .set('Authorization', `Bearer ${superToken}`)
+      .send({ legalRuc: '123' })
+      .expect(400);
+    await http()
+      .patch('/api/superadmin/settings')
+      .set('Authorization', `Bearer ${superToken}`)
+      .send({ supportWhatsapp: '999999999999999999' })
+      .expect(400);
+    await http()
+      .patch('/api/superadmin/settings')
+      .set('Authorization', `Bearer ${superToken}`)
+      .send({ supportWhatsapp: '51987654321' })
+      .expect(200);
+    await http()
+      .patch('/api/superadmin/settings')
+      .set('Authorization', `Bearer ${superToken}`)
+      .send({
+        legalName: 'Titular de Prueba S.A.C.',
+        legalRuc: '20123456789',
+        legalAddress: 'Av. Prueba 123, Lima',
+        supportEmail: 'soporte@test.com',
+      })
+      .expect(200);
+    const res = await http().get('/api/public/legal').expect(200);
+    expect(res.body).toMatchObject({
+      legalName: 'Titular de Prueba S.A.C.',
+      legalRuc: '20123456789',
+      legalAddress: 'Av. Prueba 123, Lima',
+      supportEmail: 'soporte@test.com',
+    });
+    expect(Object.keys(res.body).sort()).toEqual(
+      [
+        'legalAddress',
+        'legalName',
+        'legalRuc',
+        'platformName',
+        'supportEmail',
+        'supportWhatsapp',
+      ].sort(),
+    );
   });
 
   it('registra las acciones sensibles en la auditoría', async () => {

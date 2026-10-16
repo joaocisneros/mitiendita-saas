@@ -61,9 +61,13 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
-    const defaultPlan = await this.prisma.plan.findUnique({
-      where: { slug: 'basico' },
-    });
+    const [defaultPlan, settings] = await Promise.all([
+      this.prisma.plan.findUnique({ where: { slug: 'basico' } }),
+      this.prisma.platformSettings.findUnique({ where: { id: 1 } }),
+    ]);
+    // Misma prueba gratuita que cuando el superadmin crea la empresa.
+    const trialEndsAt = new Date();
+    trialEndsAt.setDate(trialEndsAt.getDate() + (settings?.trialDays ?? 14));
 
     // Todo o nada: empresa + config + usuario + membresía en una transacción.
     const created = await this.prisma.$transaction(async (tx) => {
@@ -72,6 +76,8 @@ export class AuthService {
           name: dto.commercialName,
           subdomain,
           planId: defaultPlan?.id ?? null,
+          subscriptionStatus: 'trial',
+          currentPeriodEndsAt: trialEndsAt,
         },
       });
 
