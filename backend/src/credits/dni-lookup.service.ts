@@ -5,9 +5,9 @@ import {
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { decryptApiToken } from '../api-tokens/api-token.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { toTitleCase } from '../common/utils/text.util';
+import { readCredentials } from '../superadmin/services/sa-document-api.service';
 
 type DniData = {
   nombres?: string;
@@ -39,12 +39,13 @@ export class DniLookupService {
       );
     }
 
+    const { apiKey, apiSecret } = readCredentials(config);
     let response: Response;
     try {
       response = await fetch(`${config.baseUrl}/consultas/dni/${number}`, {
         headers: {
-          'X-Api-Key': decryptApiToken(config.apiKeyEncrypted),
-          'X-Api-Secret': decryptApiToken(config.apiSecretEncrypted),
+          'X-Api-Key': apiKey,
+          'X-Api-Secret': apiSecret,
           Accept: 'application/json',
         },
         signal: AbortSignal.timeout(15_000),

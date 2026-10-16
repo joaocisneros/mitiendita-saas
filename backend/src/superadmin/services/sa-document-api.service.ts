@@ -51,28 +51,35 @@ export class SaDocumentApiService {
         'Ingresa la API Key y el API Secret para completar la configuración.',
       );
     }
-    await this.prisma.documentApiConfig.upsert({
-      where: { id: 1 },
-      create: {
-        id: 1,
-        apiKeyEncrypted: encryptApiToken(apiKey!),
-        apiSecretEncrypted: encryptApiToken(dto.apiSecret!.trim()),
-        apiKeyLastFour: apiKey!.slice(-4),
-        enabled: dto.enabled,
-      },
-      update: {
-        enabled: dto.enabled,
-        ...(apiKey
-          ? {
-              apiKeyEncrypted: encryptApiToken(apiKey),
-              apiKeyLastFour: apiKey.slice(-4),
-            }
-          : {}),
-        ...(dto.apiSecret?.trim()
-          ? { apiSecretEncrypted: encryptApiToken(dto.apiSecret.trim()) }
-          : {}),
-      },
-    });
+    // Con configuración existente solo se cifra lo que llegó: así se puede
+    // activar/desactivar sin volver a escribir la API Key y el API Secret.
+    if (existing) {
+      await this.prisma.documentApiConfig.update({
+        where: { id: 1 },
+        data: {
+          enabled: dto.enabled,
+          ...(apiKey
+            ? {
+                apiKeyEncrypted: encryptApiToken(apiKey),
+                apiKeyLastFour: apiKey.slice(-4),
+              }
+            : {}),
+          ...(dto.apiSecret?.trim()
+            ? { apiSecretEncrypted: encryptApiToken(dto.apiSecret.trim()) }
+            : {}),
+        },
+      });
+    } else {
+      await this.prisma.documentApiConfig.create({
+        data: {
+          id: 1,
+          apiKeyEncrypted: encryptApiToken(apiKey!),
+          apiSecretEncrypted: encryptApiToken(dto.apiSecret!.trim()),
+          apiKeyLastFour: apiKey!.slice(-4),
+          enabled: dto.enabled,
+        },
+      });
+    }
     await this.audit.log(
       actorId,
       'document_api.configuration_updated',
@@ -96,6 +103,9 @@ export class SaDocumentApiService {
     const quota = await this.request<Record<string, unknown>>(
       '/consultas/cuota',
       apiKey && apiSecret ? { apiKey, apiSecret } : undefined,
+      // Probar no consulta documentos: se permite aunque esté desactivada,
+      // así el superadmin puede volver a activarla sin reescribir credenciales.
+      true,
     );
     await this.audit.log(actorId, 'document_api.connection_tested');
     return { ok: true, message: 'Conexión establecida correctamente.', quota };
@@ -125,20 +135,21 @@ export class SaDocumentApiService {
   private async request<T>(
     path: string,
     temporaryCredentials?: { apiKey: string; apiSecret: string },
+    allowDisabled = false,
   ): Promise<T> {
     const config = await this.prisma.documentApiConfig.findUnique({
       where: { id: 1 },
     });
-    if (!temporaryCredentials && (!config || !config.enabled)) {
+    if (
+      !temporaryCredentials &&
+      (!config || (!config.enabled && !allowDisabled))
+    ) {
       throw new ServiceUnavailableException(
         'Configura y activa primero la conexión con CismaFact.',
       );
     }
-    const apiKey =
-      temporaryCredentials?.apiKey ?? decryptApiToken(config!.apiKeyEncrypted);
-    const apiSecret =
-      temporaryCredentials?.apiSecret ??
-      decryptApiToken(config!.apiSecretEncrypted);
+    const credentials = temporaryCredentials ?? readCredentials(config!);
+    const { apiKey, apiSecret } = credentials;
     const baseUrl = config?.baseUrl ?? 'https://cismafact.alwaysdata.net/api';
     let response: Response;
     try {
@@ -177,5 +188,25 @@ export class SaDocumentApiService {
     if (!body)
       throw new BadGatewayException('CismaFact devolvió una respuesta vacía.');
     return body as T;
+  }
+}
+
+/**
+ * Descifra las credenciales guardadas. Si la clave de cifrado del servidor
+ * cambió, avisa con un mensaje claro en vez de un error 500.
+ */
+export function readCredentials(config: {
+  apiKeyEncrypted: string;
+  apiSecretEncrypted: string;
+}) {
+  try {
+    return {
+      apiKey: decryptApiToken(config.apiKeyEncrypted),
+      apiSecret: decryptApiToken(config.apiSecretEncrypted),
+    };
+  } catch {
+    throw new ServiceUnavailableException(
+      'No se pueden leer las credenciales guardadas de CismaFact. Vuelve a ingresarlas en Consultas RUC/DNI.',
+    );
   }
 }
