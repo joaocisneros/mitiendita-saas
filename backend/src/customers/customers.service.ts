@@ -61,7 +61,10 @@ export class CustomersService {
         return {
           ...customer,
           name: latest ? toTitleCase(latest.customerName) : customer.name,
-          address: latest?.address ?? customer.address,
+          // Dirección de la última compra que tuvo una (las de recojo no tienen).
+          address: latest
+            ? (orders.find((order) => order.address)?.address ?? null)
+            : customer.address,
           lastPurchaseAt: latest?.createdAt ?? customer.lastPurchaseAt,
           ordersCount: orders.length,
           totalSpent: orders
@@ -102,7 +105,9 @@ export class CustomersService {
     return {
       ...customer,
       name: latest ? toTitleCase(latest.customerName) : customer.name,
-      address: latest?.address ?? customer.address,
+      address: latest
+        ? (customer.orders.find((order) => order.address)?.address ?? null)
+        : customer.address,
       lastPurchaseAt: latest?.createdAt ?? customer.lastPurchaseAt,
     };
   }
