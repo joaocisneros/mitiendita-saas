@@ -254,6 +254,13 @@ export function OrderDetailModal({
                       Ver comprobante completo →
                     </span>
                   </button>
+                ) : order.paymentStatus === "approved" ? (
+                  // Al entregar o cancelar, la foto se borra para ahorrar espacio.
+                  <p className="text-sm font-medium text-emerald-700">
+                    ✅ Pago validado. La foto del comprobante se eliminó al finalizar el pedido para ahorrar espacio.
+                  </p>
+                ) : order.paymentStatus === "rejected" ? (
+                  <p className="text-sm text-slate-500">Comprobante rechazado. La foto ya no se guarda.</p>
                 ) : (
                   <p className="text-sm text-slate-400">El cliente aún no subió comprobante.</p>
                 )}
@@ -302,7 +309,13 @@ export function OrderDetailModal({
                       <button
                         key={t.value}
                         disabled={busy}
-                        onClick={() => run(() => adminApi.changeStatus(order.id, t.value))}
+                        onClick={() =>
+                          run(
+                            () => adminApi.changeStatus(order.id, t.value),
+                            // Pedido terminado (entregado/cancelado): el modal se cierra solo.
+                            t.value === "delivered" || t.value === "cancelled",
+                          )
+                        }
                         className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
                       >
                         {t.label}
