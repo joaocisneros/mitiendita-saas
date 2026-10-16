@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import type { ValidationError } from 'class-validator';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 
 /**
@@ -172,9 +173,12 @@ function flattenValidationErrors(errors: ValidationError[]): string[] {
 
 async function bootstrap() {
   assertProductionSecrets();
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.setGlobalPrefix('api');
+  // La API devuelve datos que cambian con cada sesión: sin ETag nunca responde
+  // 304 "sin cambios" (que los paneles mostraban como error).
+  app.set('etag', false);
 
   app.useGlobalPipes(
     new ValidationPipe({

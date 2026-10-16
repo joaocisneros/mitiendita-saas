@@ -126,14 +126,16 @@ export class WhatsappService {
     storeName: string;
     tokenName: string;
     scopes: string[];
-    token: string;
+    apiKey: string;
+    apiSecret: string;
   }): Promise<WhatsappNotificationResult> {
     const body = [
-      `🔑 Nuevo token de API — ${input.storeName}`,
+      `🔑 Nuevas credenciales de API — ${input.storeName}`,
       `Nombre: ${input.tokenName}`,
       `Módulos: ${input.scopes.join(', ')}`,
-      `Token: ${input.token}`,
-      '⚠️ Guárdalo en un lugar seguro, no lo compartas.',
+      `X-Api-Key: ${input.apiKey}`,
+      `X-Api-Secret: ${input.apiSecret}`,
+      '⚠️ Guarda el secret en un lugar seguro, no lo compartas.',
     ].join('\n');
     return this.send(input.recipient, body);
   }

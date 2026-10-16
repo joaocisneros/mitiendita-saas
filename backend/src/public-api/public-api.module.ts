@@ -9,6 +9,7 @@ import { ReportsModule } from '../reports/reports.module';
 import { AppointmentsModule } from '../appointments/appointments.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { SuperAdminModule } from '../superadmin/superadmin.module';
+import { CreditsModule } from '../credits/credits.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { SuperAdminModule } from '../superadmin/superadmin.module';
     AppointmentsModule,
     SubscriptionsModule,
     SuperAdminModule,
+    CreditsModule,
   ],
   controllers: [PublicApiController],
 })

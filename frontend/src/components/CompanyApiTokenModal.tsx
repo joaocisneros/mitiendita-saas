@@ -19,16 +19,14 @@ export function CreateCompanyApiTokenModal({
   scopes: string[];
   scopeLabels: Record<string, string>;
   onClose: () => void;
-  onCreate: (body: { companyId: string; name: string; scopes: string[] }) => Promise<{ token: string; whatsapp: string }>;
-  onCreated: () => void;
+  onCreate: (body: { companyId: string; name: string; scopes: string[] }) => Promise<{ apiKey: string; apiSecret: string; whatsapp: string }>;
+  onCreated: (credentials: { apiKey: string; apiSecret: string; whatsapp?: string }) => void;
 }) {
   const [companyId, setCompanyId] = useState(companies[0]?.id ?? "");
   const [name, setName] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [result, setResult] = useState<{ token: string; whatsapp: string } | null>(null);
-  const [copied, setCopied] = useState(false);
 
   function toggleScope(scope: string) {
     setSelected((prev) => (prev.includes(scope) ? prev.filter((s) => s !== scope) : [...prev, scope]));
@@ -54,57 +52,13 @@ export function CreateCompanyApiTokenModal({
     setSaving(true);
     try {
       const r = await onCreate({ companyId, name: name.trim(), scopes: selected });
-      setResult(r);
-      onCreated();
+      // Se abre la ventana de Credenciales con la API Key y el API Secret.
+      onCreated(r);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo crear el token.");
     } finally {
       setSaving(false);
     }
-  }
-
-  async function copyToken() {
-    if (!result) return;
-    await navigator.clipboard.writeText(result.token);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  if (result) {
-    return (
-      <Overlay onClose={onClose}>
-        <div className="space-y-4">
-          <header>
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Token creado</p>
-            <h2 className="mt-1 text-2xl font-black text-slate-950">Cópialo ahora</h2>
-            <p className="mt-1 text-sm font-medium text-slate-600">
-              {result.whatsapp === "sent"
-                ? "Ya se lo enviamos también por WhatsApp a la tienda. Podrás verlo de nuevo cuando quieras desde la lista."
-                : "No se pudo enviar por WhatsApp automáticamente — cópialo y compártelo tú mismo (también podrás verlo de nuevo desde la lista)."}
-            </p>
-          </header>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 truncate rounded-lg bg-slate-50 px-3 py-2.5 text-xs font-mono text-slate-800 ring-1 ring-slate-200">
-              {result.token}
-            </code>
-            <button
-              onClick={copyToken}
-              className="shrink-0 rounded-lg bg-emerald-600 px-3 py-2.5 text-xs font-bold text-white hover:bg-emerald-700"
-            >
-              {copied ? "¡Copiado!" : "Copiar"}
-            </button>
-          </div>
-          <footer className="flex justify-end border-t border-slate-200 pt-4">
-            <button
-              onClick={onClose}
-              className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-violet-700"
-            >
-              Listo, cerrar
-            </button>
-          </footer>
-        </div>
-      </Overlay>
-    );
   }
 
   return (

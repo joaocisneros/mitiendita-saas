@@ -8,8 +8,8 @@ export const metadata: Metadata = {
 
 const REASON_STATUS: { code: string; tone: "ok" | "warn" | "danger"; text: string }[] = [
   { code: "200", tone: "ok", text: "Todo bien, la respuesta trae los datos pedidos." },
-  { code: "401", tone: "danger", text: "Falta el header Authorization, o el token no existe / fue eliminado." },
-  { code: "403", tone: "warn", text: "El token es válido, pero no tiene marcado el módulo que estás pidiendo." },
+  { code: "401", tone: "danger", text: "Faltan X-Api-Key o X-Api-Secret, no coinciden, o la credencial fue eliminada." },
+  { code: "403", tone: "warn", text: "Las credenciales son válidas, pero no tienen marcado el módulo que estás pidiendo." },
   { code: "400", tone: "danger", text: "Falta un dato requerido (ej. un token de plataforma llamando algo que exige tienda)." },
 ];
 
@@ -93,54 +93,63 @@ export default function ApiDocsPage() {
             Referencia de la API de integraciones
           </h1>
           <p className="mt-3 max-w-2xl text-base text-slate-600">
-            Cómo un sistema externo (tuyo o de un tercero) puede leer los datos de MiTiendita usando un token de
-            API creado desde el Superadmin. Cada token trae permiso solo a los módulos que se le marcaron al
-            crearlo.
+            Cómo un sistema externo (tuyo o de un tercero) puede leer los datos de MiTiendita con las credenciales
+            creadas desde el Superadmin: <strong>URL base + API Key + API Secret</strong>. Cada credencial trae
+            permiso solo a los módulos que se le marcaron al crearla.
           </p>
         </div>
 
         <div className="overflow-x-auto rounded-2xl bg-slate-950 p-5 text-slate-100 shadow-lg">
           <pre className="font-mono text-sm leading-relaxed">
 {`$ curl https://mitiendita-saas.onrender.com/api/v1/pedidos \\
-    -H "Authorization: Bearer mt_live_...tu_token..."`}
+    -H "X-Api-Key: mk_live_...tu_api_key..." \\
+    -H "X-Api-Secret: sk_live_...tu_api_secret..."`}
           </pre>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-            <p className="text-[11px] font-black uppercase tracking-wide text-slate-500">Base URL · producción</p>
+            <p className="text-[11px] font-black uppercase tracking-wide text-slate-500">URL base · producción</p>
             <p className="mt-1 break-all font-mono text-sm font-semibold text-slate-900">
-              https://mitiendita-saas.onrender.com/api
+              https://mitiendita-saas.onrender.com/api/v1
             </p>
+            <p className="mt-1 text-xs text-slate-500">A dónde van todas las peticiones.</p>
           </div>
           <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-            <p className="text-[11px] font-black uppercase tracking-wide text-slate-500">Encabezado de autorización</p>
-            <p className="mt-1 break-all font-mono text-sm font-semibold text-slate-900">
-              Authorization: Bearer mt_live_...
-            </p>
+            <p className="text-[11px] font-black uppercase tracking-wide text-slate-500">X-Api-Key</p>
+            <p className="mt-1 break-all font-mono text-sm font-semibold text-slate-900">mk_live_...</p>
+            <p className="mt-1 text-xs text-slate-500">Identifica quién llama. No es secreta.</p>
+          </div>
+          <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+            <p className="text-[11px] font-black uppercase tracking-wide text-slate-500">X-Api-Secret</p>
+            <p className="mt-1 break-all font-mono text-sm font-semibold text-slate-900">sk_live_...</p>
+            <p className="mt-1 text-xs text-slate-500">La que firma. No debe salir de tu servidor.</p>
           </div>
         </div>
+        <p className="text-xs text-slate-500">
+          Compatibilidad: también se acepta <code className="font-mono">Authorization: Bearer &lt;api_secret&gt;</code>.
+        </p>
 
         <div className="rounded-2xl bg-amber-50 p-4 ring-1 ring-amber-200">
-          <p className="text-xs font-black uppercase tracking-wide text-amber-800">Cómo se obtiene el token</p>
+          <p className="text-xs font-black uppercase tracking-wide text-amber-800">Cómo se obtienen las credenciales</p>
           <p className="mt-1.5 text-sm text-amber-900">
-            Los tokens los crea siempre el <strong>Superadmin</strong>, nunca el dueño de la tienda directamente.
-            Si el token es para una tienda puntual, la plataforma le avisa el valor por WhatsApp al crearlo. Un
-            token revocado o eliminado deja de funcionar de inmediato — no hay forma de recuperarlo, hay que
-            pedir uno nuevo.
+            Las crea siempre el <strong>Superadmin</strong>, nunca el dueño de la tienda directamente. Si la
+            credencial es para una tienda puntual, la plataforma le envía la API Key y el API Secret por WhatsApp.
+            Si el secret se filtra, el Superadmin genera uno nuevo (la API Key se mantiene); una credencial
+            eliminada deja de funcionar de inmediato.
           </p>
         </div>
 
         <section>
           <div className="mb-3 flex items-baseline gap-2 border-t border-slate-200 pt-8">
             <p className="text-sm font-bold uppercase tracking-wide text-violet-700">Módulos de tienda</p>
-            <span className="font-mono text-xs text-slate-500">6 endpoints · token creado para UNA empresa</span>
+            <span className="font-mono text-xs text-slate-500">8 endpoints · token creado para UNA empresa</span>
           </div>
           <div className="space-y-3">
             <Endpoint
               path="/v1/pedidos"
               scope="pedidos"
-              desc="Lista los pedidos de la tienda, más recientes primero."
+              desc="Lista los pedidos de la tienda, más recientes primero, con sus productos, dirección de entrega e importes."
               params={[
                 { name: "status", detail: "pending · confirmed · preparing · out_for_delivery · delivered · cancelled · expired" },
                 { name: "page", detail: "Página, empieza en 1" },
@@ -149,9 +158,15 @@ export default function ApiDocsPage() {
               example={`{
   "items": [
     { "id": "ef26a193-...", "publicCode": "MT-DQ4WUV", "status": "delivered",
-      "paymentStatus": "approved", "deliveryMethod": "pickup",
+      "paymentStatus": "approved", "deliveryMethod": "delivery",
       "customerName": "Ana Torres", "customerPhone": "987654321",
-      "total": "29.9", "currency": "PEN", "createdAt": "2026-07-26T01:33:19.591Z" }
+      "address": "Av. Los Olivos 123", "reference": "Puerta azul", "customerNote": null,
+      "subtotal": "80", "deliveryFee": "5", "total": "85", "currency": "PEN",
+      "items": [
+        { "name": "Polo básico", "variant": "M · Negro", "sku": "PB-01",
+          "quantity": 2, "unitPrice": "40", "lineTotal": "80" }
+      ],
+      "confirmedAt": "2026-07-26T01:40:02.000Z", "createdAt": "2026-07-26T01:33:19.591Z" }
   ],
   "total": 2, "page": 1, "limit": 20, "pages": 1
 }`}
@@ -227,6 +242,46 @@ export default function ApiDocsPage() {
     "preferredAt": "2026-07-28T15:00:00.000Z", "status": "confirmed",
     "paymentMode": "advance", "advanceAmount": "15.00", "paymentStatus": "approved" }
 ]`}
+            />
+            <Endpoint
+              path="/v1/creditos"
+              scope="creditos"
+              desc="Ventas al crédito: resumen de cobranza y clientas con lo vendido, lo abonado y el saldo pendiente."
+              params={[
+                { name: "status", detail: "debt (con deuda) · clear (al día)" },
+                { name: "search", detail: "Busca por nombre, celular o DNI" },
+                { name: "page / limit", detail: "Paginación (límite máx. 100)" },
+              ]}
+              example={`{
+  "resumen": { "receivable": "530.00", "collectedThisMonth": "210.00",
+               "customersWithDebt": 4, "customers": 9 },
+  "items": [
+    { "id": "5b2e...", "fullName": "Ana Torres", "phone": "977333444",
+      "totalSold": "140.00", "totalPaid": "40.00", "balance": "100.00",
+      "lastPaymentAt": "2026-10-10T15:20:00.000Z" }
+  ],
+  "total": 9, "page": 1, "pages": 1
+}`}
+            />
+            <Endpoint
+              path="/v1/creditos/:id"
+              scope="creditos"
+              desc="Detalle de una clienta de crédito: cada venta con sus productos y todos sus abonos."
+              params={[{ name: "id", opt: false, detail: "Id de la clienta (viene en /v1/creditos)" }]}
+              example={`{
+  "id": "5b2e...", "fullName": "Ana Torres", "phone": "977333444",
+  "totalSold": "140.00", "totalPaid": "40.00", "balance": "100.00",
+  "sales": [
+    { "code": "CR-7KQ2", "status": "pending", "total": "140.00",
+      "paidAmount": "40.00", "pending": "100.00", "soldAt": "2026-10-01T14:00:00.000Z",
+      "items": [{ "name": "Polo básico", "variant": null, "quantity": 2,
+                  "unitPrice": "70.00", "lineTotal": "140.00" }] }
+  ],
+  "payments": [
+    { "amount": "40.00", "method": "yape", "paidAt": "2026-10-10T15:20:00.000Z",
+      "saleCode": "CR-7KQ2" }
+  ]
+}`}
             />
           </div>
         </section>

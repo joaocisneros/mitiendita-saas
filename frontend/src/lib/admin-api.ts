@@ -45,7 +45,8 @@ async function tryRefresh(): Promise<boolean> {
 /** fetch que convierte errores de red en un mensaje claro en español. */
 async function safeFetch(url: string, init: RequestInit): Promise<Response> {
   try {
-    return await fetch(url, init);
+    // Datos del panel siempre frescos (sin caché ni respuestas 304).
+    return await fetch(url, { cache: "no-store", ...init });
   } catch {
     throw new Error(
       "No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.",
@@ -160,6 +161,8 @@ export const adminApi = {
       user: { name: string; email: string };
     }>(res, "Credenciales incorrectas.");
     setTokens(data.accessToken, data.refreshToken);
+    // Inicio de sesión real del dueño: ya no es el modo soporte del superadmin.
+    localStorage.removeItem("mt_impersonating");
     return data;
   },
 
@@ -298,6 +301,15 @@ export const adminApi = {
   // ── Configuración ──
   settings: () =>
     authFetch(`/admin/settings`).then((r) => jsonOrThrow<StoreSettings>(r, "Error")),
+  planStatus: () =>
+    authFetch(`/admin/settings/plan`).then((r) =>
+      jsonOrThrow<{
+        subscriptionStatus: "trial" | "active" | "past_due" | "cancelled" | null;
+        currentPeriodEndsAt: string | null;
+        planName: string | null;
+        supportWhatsapp: string | null;
+      }>(r, "Error"),
+    ),
   updateSettings: (body: UpdateSettingsInput) =>
     authFetch(`/admin/settings`, {
       method: "PATCH",

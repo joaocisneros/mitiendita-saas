@@ -14,6 +14,7 @@ export const COMPANY_SCOPES = [
   'reportes',
   'citas',
   'suscripciones',
+  'creditos',
 ] as const;
 export type CompanyScope = (typeof COMPANY_SCOPES)[number];
 
@@ -29,14 +30,19 @@ export const PLATFORM_SCOPES = [
 ] as const;
 export type PlatformScope = (typeof PLATFORM_SCOPES)[number];
 
-/** Genera un token nuevo: `mt_live_<43 caracteres base64url>`. */
+/** API Key pública (X-Api-Key): identifica quién llama, no es secreta. */
+export function generateApiKey(): string {
+  return `mk_live_${randomBytes(18).toString('base64url')}`;
+}
+
+/** Genera un API Secret nuevo (X-Api-Secret): `sk_live_<43 caracteres base64url>`. */
 export function generateApiToken(): {
   token: string;
   prefix: string;
   hash: string;
   encrypted: string;
 } {
-  const token = `mt_live_${randomBytes(32).toString('base64url')}`;
+  const token = `sk_live_${randomBytes(32).toString('base64url')}`;
   return {
     token,
     prefix: token.slice(0, 14),

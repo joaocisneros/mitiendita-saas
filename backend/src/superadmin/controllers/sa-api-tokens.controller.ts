@@ -80,6 +80,13 @@ export class SaApiTokensController {
     return this.tokens.reveal(id);
   }
 
+  /** Nuevo API Secret (el anterior deja de funcionar); la API Key se conserva. */
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post(':id/regenerate')
+  regenerate(@Param('id') id: string) {
+    return this.tokens.regenerateSecret(id);
+  }
+
   @Patch(':id')
   updateScopes(@Param('id') id: string, @Body() dto: UpdateApiTokenScopesDto) {
     return this.tokens.updateScopes(id, dto.scopes);

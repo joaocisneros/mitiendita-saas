@@ -51,6 +51,8 @@ export function getSuperAdmin(): SuperAdminInfo | null {
 
 async function sfetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API}${path}`, {
+    // Datos del panel siempre frescos (sin caché ni respuestas 304).
+    cache: "no-store",
     ...init,
     headers: {
       ...(init.headers ?? {}),
@@ -481,7 +483,7 @@ export const superApi = {
     sfetch<string[]>("/superadmin/api-tokens/platform-scopes"),
   platformApiTokens: () => sfetch<SaApiTokenRow[]>("/superadmin/api-tokens"),
   createPlatformApiToken: (body: { name: string; scopes: string[] }) =>
-    sfetch<{ token: string; prefix: string; scopes: string[] }>(
+    sfetch<{ apiKey: string; apiSecret: string; token: string; prefix: string; scopes: string[] }>(
       "/superadmin/api-tokens",
       {
         method: "POST",
@@ -494,7 +496,11 @@ export const superApi = {
       method: "DELETE",
     }),
   revealApiToken: (id: string) =>
-    sfetch<{ token: string }>(`/superadmin/api-tokens/${id}/reveal`, {
+    sfetch<{ apiKey: string; apiSecret: string; token: string }>(`/superadmin/api-tokens/${id}/reveal`, {
+      method: "POST",
+    }),
+  regenerateApiSecret: (id: string) =>
+    sfetch<{ apiKey: string; apiSecret: string }>(`/superadmin/api-tokens/${id}/regenerate`, {
       method: "POST",
     }),
   updateApiTokenScopes: (id: string, scopes: string[]) =>
@@ -518,6 +524,8 @@ export const superApi = {
     scopes: string[];
   }) =>
     sfetch<{
+      apiKey: string;
+      apiSecret: string;
       token: string;
       prefix: string;
       scopes: string[];
@@ -581,15 +589,20 @@ export interface DniResult {
 
 export interface SaApiTokenRow {
   id: string;
+  /** API Key pública (X-Api-Key). */
+  apiKey: string | null;
   name: string;
   scopes: string[];
   tokenPrefix: string;
   lastUsedAt: string | null;
+  /** Llamadas válidas a la API en el mes en curso. */
+  monthlyCalls?: number;
   createdAt: string;
 }
 
 export interface SaCompanyApiTokenRow extends SaApiTokenRow {
   companyName: string | null;
+  planName?: string | null;
   companySubdomain: string | null;
 }
 
@@ -623,12 +636,15 @@ export interface SaWhatsappDirectoryRow {
   companyId: string;
   status: "available" | "incomplete" | "missing" | "name_review" | "duplicate";
   duplicateNames: string[];
+  /** También está registrada en el módulo Créditos de alguna tienda. */
+  credito?: boolean;
 }
 
 export interface SaWhatsappDirectorySummary {
   total: number;
   owners: number;
   customers: number;
+  credit?: number;
   available: number;
   needsReview: number;
 }
@@ -662,5 +678,8 @@ export interface PlatformSettings {
   supportEmail: string | null;
   terms: string | null;
   privacy: string | null;
+  legalName: string | null;
+  legalRuc: string | null;
+  legalAddress: string | null;
   trialDays: number;
 }

@@ -76,10 +76,16 @@ export class AdminOrdersService {
       search?: string;
       page?: number;
       limit?: number;
+      /** API de integraciones: incluye productos, dirección e importes. */
+      withDetails?: boolean;
     },
   ) {
-    const page = q.page ?? 1;
-    const limit = q.limit ?? 20;
+    const page =
+      q.page && Number.isFinite(q.page) ? Math.max(1, Math.floor(q.page)) : 1;
+    const limit =
+      q.limit && Number.isFinite(q.limit)
+        ? Math.min(100, Math.max(1, Math.floor(q.limit)))
+        : 20;
     // paymentStatus admite varios valores separados por coma (ej. "pending,proof_submitted").
     const paymentStatuses = q.paymentStatus
       ?.split(',')
@@ -136,6 +142,26 @@ export class AdminOrdersService {
           currency: true,
           createdAt: true,
           payment: { select: { detectedMethod: true, operationNumber: true } },
+          ...(q.withDetails
+            ? {
+                address: true,
+                reference: true,
+                customerNote: true,
+                subtotal: true,
+                deliveryFee: true,
+                confirmedAt: true,
+                items: {
+                  select: {
+                    name: true,
+                    variant: true,
+                    sku: true,
+                    quantity: true,
+                    unitPrice: true,
+                    lineTotal: true,
+                  },
+                },
+              }
+            : {}),
         },
       }),
       this.prisma.order.count({ where }),

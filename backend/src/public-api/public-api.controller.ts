@@ -2,6 +2,8 @@ import {
   BadRequestException,
   Controller,
   Get,
+  ParseUUIDPipe,
+  Param,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -24,6 +26,7 @@ import { SaSubscriptionsService } from '../superadmin/services/sa-subscriptions.
 import { SaAuditService } from '../superadmin/services/sa-audit.service';
 import { SaWhatsappService } from '../superadmin/services/sa-whatsapp.service';
 import { SaSettingsService } from '../superadmin/services/sa-settings.service';
+import { CreditsService } from '../credits/credits.service';
 
 /**
  * API pública para integraciones externas, autenticada con un ApiToken (mt_live_...)
@@ -36,6 +39,7 @@ import { SaSettingsService } from '../superadmin/services/sa-settings.service';
 @Controller('v1')
 export class PublicApiController {
   constructor(
+    private readonly credits: CreditsService,
     private readonly orders: AdminOrdersService,
     private readonly products: ProductsService,
     private readonly customers: CustomersService,
@@ -75,6 +79,7 @@ export class PublicApiController {
       status,
       page: page ? Number(page) : undefined,
       limit: limit ? Number(limit) : undefined,
+      withDetails: true,
     });
   }
 
@@ -135,6 +140,39 @@ export class PublicApiController {
       this.requireCompany(companyId),
       status,
     );
+  }
+
+  /** Ventas al crédito: resumen de cobranza y clientas con su saldo. */
+  @ApiScope('creditos')
+  @Get('creditos')
+  async creditos(
+    @CurrentApiToken('companyId') companyId: string | null,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const company = this.requireCompany(companyId);
+    const [resumen, clientas] = await Promise.all([
+      this.credits.summary(company),
+      this.credits.listCustomers(company, {
+        status,
+        search,
+        page: page ? Number(page) : undefined,
+        limit: limit ? Number(limit) : undefined,
+      }),
+    ]);
+    return { resumen, ...clientas };
+  }
+
+  /** Detalle de una clienta de crédito: ventas (con productos) y abonos. */
+  @ApiScope('creditos')
+  @Get('creditos/:id')
+  creditoDetalle(
+    @CurrentApiToken('companyId') companyId: string | null,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.credits.getCustomer(this.requireCompany(companyId), id);
   }
 
   // ── "suscripciones" existe para tienda (sus solicitudes de plan) Y para

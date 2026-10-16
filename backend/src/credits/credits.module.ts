@@ -6,5 +6,6 @@ import { DniLookupService } from './dni-lookup.service';
 @Module({
   controllers: [CreditsController],
   providers: [CreditsService, DniLookupService],
+  exports: [CreditsService],
 })
 export class CreditsModule {}

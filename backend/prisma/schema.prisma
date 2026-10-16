@@ -138,12 +138,18 @@ model ApiToken {
   companyId      String?   @map("company_id")
   name           String
   scopes         Json
+  // API Key pública (X-Api-Key): identifica quién llama. El secreto (X-Api-Secret)
+  // es el token: solo se guarda su hash (tokenHash) y su copia cifrada.
+  apiKey         String?   @unique @map("api_key")
   tokenHash      String    @unique @map("token_hash")
   tokenPrefix    String    @map("token_prefix")
   // Copia cifrada (AES-256-GCM, no reversible sin API_TOKEN_ENCRYPTION_KEY) para poder
   // volver a mostrarlo desde el botón "Ver/Copiar". tokenHash sigue siendo lo que valida el login.
   tokenEncrypted String?   @map("token_encrypted") @db.Text
   lastUsedAt     DateTime? @map("last_used_at")
+  // Consumo del mes: llamadas de callsMonth (AAAA-MM); al cambiar de mes vuelve a 1.
+  callsMonth     String?   @map("calls_month") @db.VarChar(7)
+  monthlyCalls   Int       @default(0) @map("monthly_calls")
   createdAt      DateTime  @default(now()) @map("created_at")
 
   company Company? @relation(fields: [companyId], references: [id])
@@ -728,6 +734,10 @@ model PlatformSettings {
   supportEmail       String?  @map("support_email")
   terms              String?  @db.Text
   privacy            String?  @db.Text
+  // Titular de la plataforma: se publica en /terminos y /privacidad.
+  legalName          String?  @map("legal_name")
+  legalRuc           String?  @map("legal_ruc") @db.VarChar(11)
+  legalAddress       String?  @map("legal_address")
   trialDays          Int      @default(14) @map("trial_days")
   // Integración de envío de WhatsApp (Twilio) usada por WhatsappService.
   // Si están vacíos, el servicio usa las variables de entorno TWILIO_* como respaldo.
