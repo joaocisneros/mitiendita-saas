@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { adminApi, type StoreSettings } from "@/lib/admin-api";
+import { BUSINESS_CATEGORIES } from "@/lib/business-categories";
 
 const TABS = [
   { id: "marca", label: "Marca", icon: "🏪" },
@@ -123,7 +124,7 @@ export default function ConfigPage() {
           <div className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2">
               <Input label="Nombre de la tienda" value={s.storeName} onChange={(v) => set("storeName", v)} />
-              <Input label="Rubro" value={s.businessType ?? ""} onChange={(v) => set("businessType", v)} />
+              <BusinessTypeSelect value={s.businessType ?? ""} onChange={(v) => set("businessType", v)} />
             </div>
             <Textarea label="Descripción" value={s.description ?? ""} onChange={(v) => set("description", v)} />
             <div className="grid items-start gap-3 sm:grid-cols-2">
@@ -158,6 +159,7 @@ export default function ConfigPage() {
               </div>
               <p className="mt-2 text-xs text-slate-400">El horario y las redes aparecen en el pie de tu tienda.</p>
             </div>
+
           </div>
         )}
 
@@ -324,6 +326,26 @@ function HoursPicker({ value, onChange }: { value: string; onChange: (v: string)
         </>
       )}
     </div>
+  );
+}
+
+/** Rubro con la misma lista del registro (evita rubros mal escritos). */
+function BusinessTypeSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const known = BUSINESS_CATEGORIES.some((cat) => cat.subtypes.includes(value));
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-sm font-bold text-slate-800">Rubro</span>
+      <select value={value} onChange={(e) => onChange(e.target.value)}
+        className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-950 outline-none focus:border-violet-600">
+        {!value && <option value="" disabled>Elige el rubro de tu negocio</option>}
+        {value && !known && <option value={value}>{value}</option>}
+        {BUSINESS_CATEGORIES.map((cat) => (
+          <optgroup key={cat.id} label={`${cat.emoji} ${cat.label}`}>
+            {cat.subtypes.map((type) => <option key={type} value={type}>{type}</option>)}
+          </optgroup>
+        ))}
+      </select>
+    </label>
   );
 }
 

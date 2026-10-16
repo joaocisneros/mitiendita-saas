@@ -27,3 +27,12 @@ export function generateAppointmentCode(): string {
   }
   return `MC-${code}`;
 }
+
+/** Genera un código de venta al crédito tipo "CR-7K3P9Q". */
+export function generateCreditCode(): string {
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += ALPHABET[randomInt(ALPHABET.length)];
+  }
+  return `CR-${code}`;
+}

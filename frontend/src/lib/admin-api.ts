@@ -402,6 +402,70 @@ export const adminApi = {
       jsonOrThrow<ReportsData>(r, "Error"),
     );
   },
+
+  // ── Ventas al crédito (módulo opcional) ──
+  creditSummary: () =>
+    authFetch("/admin/credits/summary").then((r) =>
+      jsonOrThrow<CreditSummary>(r, "No se pudo cargar el resumen de créditos."),
+    ),
+  creditCustomers: (params: { search?: string; status?: string; page?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.search) q.set("search", params.search);
+    if (params.status && params.status !== "all") q.set("status", params.status);
+    if (params.page) q.set("page", String(params.page));
+    const qs = q.toString();
+    return authFetch(`/admin/credits/customers${qs ? `?${qs}` : ""}`).then((r) =>
+      jsonOrThrow<{ items: CreditCustomer[]; total: number; pages: number }>(r, "No se pudieron cargar las clientas."),
+    );
+  },
+  creditDniLookup: (dni: string) =>
+    authFetch(`/admin/credits/dni/${dni}`).then((r) =>
+      jsonOrThrow<CreditDniLookup>(r, "No se pudo consultar el DNI."),
+    ),
+  creditCustomer: (id: string) =>
+    authFetch(`/admin/credits/customers/${id}`).then((r) =>
+      jsonOrThrow<CreditCustomerDetail>(r, "No se pudo cargar la clienta."),
+    ),
+  createCreditCustomer: (body: CreditCustomerInput) =>
+    authFetch("/admin/credits/customers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => jsonOrThrow<CreditCustomer>(r, "No se pudo registrar a la clienta.")),
+  updateCreditCustomer: (id: string, body: Partial<CreditCustomerInput> & { isActive?: boolean }) =>
+    authFetch(`/admin/credits/customers/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => jsonOrThrow<CreditCustomer>(r, "No se pudo guardar.")),
+  createCreditSale: (customerId: string, body: CreditSaleInput) =>
+    authFetch(`/admin/credits/customers/${customerId}/sales`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => jsonOrThrow<CreditSale>(r, "No se pudo registrar la venta.")),
+  cancelCreditSale: (saleId: string, reason?: string) =>
+    authFetch(`/admin/credits/sales/${saleId}/cancel`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
+    }).then((r) => jsonOrThrow<CreditSale>(r, "No se pudo anular la venta.")),
+  createCreditPayment: (customerId: string, body: CreditPaymentInput) =>
+    authFetch(`/admin/credits/customers/${customerId}/payments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => jsonOrThrow<{ balance: string }>(r, "No se pudo registrar el abono.")),
+  updateCreditPayment: (paymentId: string, body: Omit<CreditPaymentInput, "creditSaleId">) =>
+    authFetch(`/admin/credits/payments/${paymentId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => jsonOrThrow<{ balance: string }>(r, "No se pudo corregir el abono.")),
+  deleteCreditPayment: (paymentId: string) =>
+    authFetch(`/admin/credits/payments/${paymentId}`, { method: "DELETE" }).then((r) =>
+      jsonOrThrow<{ ok: boolean }>(r, "No se pudo eliminar el abono."),
+    ),
 };
 
 export interface AdminAppointment {
@@ -597,3 +661,100 @@ export type UpdateSettingsInput = Omit<
   deliveryFee?: number;
   minOrder?: number;
 };
+
+// ── Ventas al crédito ──
+export type CreditPaymentMethod = "cash" | "yape" | "plin" | "transfer";
+
+export interface CreditSummary {
+  receivable: string;
+  collectedThisMonth: string;
+  customersWithDebt: number;
+  customers: number;
+}
+
+export interface CreditCustomer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  phone: string;
+  documentNumber: string | null;
+  address: string;
+  reference: string | null;
+  note: string | null;
+  creditLimit: string | null;
+  isActive: boolean;
+  lastActivityAt: string | null;
+  createdAt: string;
+  totalSold?: string;
+  totalPaid?: string;
+  balance?: string;
+  lastPaymentAt?: string | null;
+}
+
+export interface CreditSale {
+  id: string;
+  code: string;
+  status: "pending" | "paid" | "cancelled";
+  total: string;
+  paidAmount: string;
+  pending: string;
+  note: string | null;
+  soldAt: string;
+  cancelledAt: string | null;
+  cancelReason: string | null;
+  items: { productId: string | null; name: string; variant: string | null; unitPrice: string; quantity: number; lineTotal: string; imageUrl: string | null }[];
+}
+
+export interface CreditPayment {
+  id: string;
+  amount: string;
+  method: CreditPaymentMethod;
+  paidAt: string;
+  note: string | null;
+  createdAt: string;
+  creditSaleId: string | null;
+  saleCode: string | null;
+  canDelete: boolean;
+}
+
+export interface CreditCustomerDetail extends CreditCustomer {
+  totalSold: string;
+  totalPaid: string;
+  balance: string;
+  sales: CreditSale[];
+  payments: CreditPayment[];
+}
+
+export interface CreditDniLookup {
+  documentNumber: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  existingCustomerId: string | null;
+}
+
+export interface CreditCustomerInput {
+  documentNumber?: string | null;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  address: string;
+  reference?: string;
+  note?: string;
+  creditLimit?: number | null;
+}
+
+export interface CreditSaleInput {
+  items: { productId: string; quantity: number; size?: string; color?: string; unitPrice?: number }[];
+  note?: string;
+  soldAt?: string;
+}
+
+export interface CreditPaymentInput {
+  amount: number;
+  creditSaleId?: string;
+  method?: CreditPaymentMethod;
+  paidAt?: string;
+  note?: string;
+}

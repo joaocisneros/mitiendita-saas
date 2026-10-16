@@ -34,6 +34,7 @@ export const BUSINESS_CATEGORIES: BusinessCategory[] = [
       "Tiendas de ropa",
       "Zapaterías",
       "Moda y accesorios",
+      "Venta por catálogo",
       "Librerías",
       "Tiendas de mascotas",
       "Tecnología",
@@ -324,6 +325,31 @@ function normalize(value: string) {
     .replace(/[̀-ͯ]/g, "") // quita acentos
     .replace(/s\b/g, "") // insensible a plural
     .trim();
+}
+
+/**
+ * Rubros que usan Ventas al crédito (fiado, cuotas o cobranza por abonos).
+ * Lista exacta: los demás subtipos de Comercio (Farmacias, Licorerías...),
+ * los otros rubros y los rubros vacíos o desconocidos no ven el módulo.
+ */
+export const CREDIT_SUBTYPES = [
+  "Bodegas",
+  "Minimarkets",
+  "Tiendas de ropa",
+  "Zapaterías",
+  "Moda y accesorios",
+  "Venta por catálogo",
+  "Joyerías",
+  "Tiendas de electrodomésticos",
+  "Tecnología",
+  "Ferreterías",
+];
+
+/** ¿La tienda puede usar Ventas al crédito? Coincidencia exacta con el subtipo. */
+export function usesCredits(businessType?: string | null): boolean {
+  if (!businessType) return false;
+  const bt = normalize(businessType);
+  return CREDIT_SUBTYPES.some((subtype) => normalize(subtype) === bt);
 }
 
 /**

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { adminApi, getAccess } from "@/lib/admin-api";
-import { archetypeOf, resolveCategory } from "@/lib/business-categories";
+import { archetypeOf, resolveCategory, usesCredits } from "@/lib/business-categories";
 import { DashboardIcon } from "@/components/DashboardIcon";
 import { ProfileModal } from "@/components/ProfileModal";
 import { AccountMenu } from "@/components/AccountMenu";
@@ -19,6 +19,7 @@ const NAV = [
   { href: "/panel/inventario", label: "Inventario", icon: "inventory" as const },
   { href: "/panel/clientes", label: "Clientes", icon: "customers" as const },
   { href: "/panel/reportes", label: "Reportes", icon: "reports" as const },
+  { href: "/panel/creditos", label: "Créditos", icon: "plans" as const },
   { href: "/panel/config", label: "Configuración", icon: "settings" as const },
 ];
 
@@ -33,6 +34,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const [subdomain, setSubdomain] = useState<string | null>(null);
   const [usesAppointments, setUsesAppointments] = useState(false);
   const [usesSubscriptions, setUsesSubscriptions] = useState(false);
+  const [usesCredit, setUsesCredit] = useState(false);
   const [supportMode, setSupportMode] = useState(false);
   const [email, setEmail] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
@@ -49,6 +51,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     if (item.href === "/panel/citas") return usesAppointments;
     if (item.href === "/panel/suscripciones") return usesSubscriptions;
     if (item.href === "/panel/inventario") return !usesAppointments && !usesSubscriptions;
+    if (item.href === "/panel/creditos") return usesCredit;
     return true;
   });
   const mobileHrefs = usesAppointments
@@ -83,6 +86,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         const archetype = archetypeOf(resolveCategory(settings.businessType));
         setUsesAppointments(archetype === "servicios");
         setUsesSubscriptions(archetype === "digital");
+        setUsesCredit(usesCredits(settings.businessType));
       })
       .catch(() => {});
     adminApi.me().then((u) => setEmail(u.email)).catch(() => {});

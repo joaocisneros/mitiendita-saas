@@ -109,18 +109,21 @@ model Company {
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
-  plan           Plan?            @relation(fields: [planId], references: [id])
-  settings       CompanySettings?
-  memberships    Membership[]
-  categories     Category[]
-  products       Product[]
-  customers      Customer[]
-  orders         Order[]
-  payments       Payment[]
-  stockMovements StockMovement[]
-  appointments   Appointment[]
-  subscriptions  Subscription[]
-  apiTokens      ApiToken[]
+  plan            Plan?            @relation(fields: [planId], references: [id])
+  settings        CompanySettings?
+  memberships     Membership[]
+  categories      Category[]
+  products        Product[]
+  customers       Customer[]
+  orders          Order[]
+  payments        Payment[]
+  stockMovements  StockMovement[]
+  appointments    Appointment[]
+  subscriptions   Subscription[]
+  apiTokens       ApiToken[]
+  creditCustomers CreditCustomer[]
+  creditSales     CreditSale[]
+  creditPayments  CreditPayment[]
 
   @@index([status])
   @@map("companies")
@@ -182,18 +185,18 @@ model SuperAdminAudit {
 
 /// Auditoría de operaciones realizadas por dueños y empleados de las tiendas.
 model TenantAudit {
-  id          String   @id @default(uuid())
-  userId      String   @map("user_id")
-  actorName   String   @map("actor_name")
-  actorEmail  String   @map("actor_email")
-  actorRole   String   @map("actor_role")
-  companyId   String   @map("company_id")
-  module      String
-  action      String
-  entityId    String?  @map("entity_id")
-  result      String   @default("success")
-  details     Json?
-  createdAt   DateTime @default(now()) @map("created_at")
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  actorName  String   @map("actor_name")
+  actorEmail String   @map("actor_email")
+  actorRole  String   @map("actor_role")
+  companyId  String   @map("company_id")
+  module     String
+  action     String
+  entityId   String?  @map("entity_id")
+  result     String   @default("success")
+  details    Json?
+  createdAt  DateTime @default(now()) @map("created_at")
 
   @@index([companyId, createdAt])
   @@index([userId, createdAt])
@@ -362,12 +365,13 @@ model Product {
   updatedAt               DateTime  @updatedAt @map("updated_at")
   deletedAt               DateTime? @map("deleted_at")
 
-  company        Company         @relation(fields: [companyId], references: [id])
-  category       Category?       @relation(fields: [categoryId], references: [id])
+  company        Company          @relation(fields: [companyId], references: [id])
+  category       Category?        @relation(fields: [categoryId], references: [id])
   orderItems     OrderItem[]
   stockMovements StockMovement[]
   appointments   Appointment[]
   subscriptions  Subscription[]
+  creditItems    CreditSaleItem[]
 
   // slug y SKU únicos por empresa. SKU es opcional (varios NULL permitidos).
   @@unique([companyId, slug])
@@ -598,6 +602,119 @@ model Subscription {
   @@index([companyId, status])
   @@index([companyId, endsAt])
   @@map("subscriptions")
+}
+
+// ════════════════ VENTAS AL CRÉDITO (tiendas de rubro Comercio) ════════════════
+
+enum CreditSaleStatus {
+  pending // con saldo por cobrar
+  paid // cubierta por los abonos
+  cancelled // anulada (el stock se devolvió)
+}
+
+enum CreditPaymentMethod {
+  cash
+  yape
+  plin
+  transfer
+}
+
+/// Clienta de crédito. Lista propia del módulo, separada de Customer (tienda online).
+model CreditCustomer {
+  id             String    @id @default(uuid())
+  companyId      String    @map("company_id")
+  firstName      String    @map("first_name")
+  lastName       String    @map("last_name")
+  phone          String // normalizado (solo dígitos)
+  documentNumber String?   @map("document_number") // DNI (opcional)
+  address        String    @db.Text // dirección donde se le cobra
+  reference      String?
+  note           String?   @db.Text
+  creditLimit    Decimal?  @map("credit_limit") @db.Decimal(10, 2) // null = sin límite
+  isActive       Boolean   @default(true) @map("is_active")
+  lastActivityAt DateTime? @map("last_activity_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  company  Company         @relation(fields: [companyId], references: [id])
+  sales    CreditSale[]
+  payments CreditPayment[]
+
+  @@unique([companyId, phone])
+  @@unique([companyId, documentNumber])
+  @@index([companyId])
+  @@map("credit_customers")
+}
+
+/// Venta entregada al crédito. paidAmount se recalcula aplicando los abonos
+/// a las ventas más antiguas primero.
+model CreditSale {
+  id               String           @id @default(uuid())
+  companyId        String           @map("company_id")
+  creditCustomerId String           @map("credit_customer_id")
+  code             String           @unique
+  status           CreditSaleStatus @default(pending)
+  total            Decimal          @db.Decimal(10, 2)
+  paidAmount       Decimal          @default(0) @map("paid_amount") @db.Decimal(10, 2)
+  note             String?          @db.Text
+  soldAt           DateTime         @default(now()) @map("sold_at")
+  createdByUserId  String?          @map("created_by_user_id")
+  cancelledAt      DateTime?        @map("cancelled_at")
+  cancelReason     String?          @map("cancel_reason")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  company  Company          @relation(fields: [companyId], references: [id])
+  customer CreditCustomer   @relation(fields: [creditCustomerId], references: [id])
+  items    CreditSaleItem[]
+  payments CreditPayment[]
+
+  @@index([companyId, status])
+  @@index([creditCustomerId])
+  @@map("credit_sales")
+}
+
+/// Línea de una venta al crédito (copia histórica del producto).
+model CreditSaleItem {
+  id           String  @id @default(uuid())
+  creditSaleId String  @map("credit_sale_id")
+  productId    String? @map("product_id")
+  name         String
+  variant      String?
+  sku          String?
+  unitPrice    Decimal @map("unit_price") @db.Decimal(10, 2)
+  quantity     Int
+  lineTotal    Decimal @map("line_total") @db.Decimal(10, 2)
+
+  sale    CreditSale @relation(fields: [creditSaleId], references: [id], onDelete: Cascade)
+  product Product?   @relation(fields: [productId], references: [id])
+
+  @@index([creditSaleId])
+  @@map("credit_sale_items")
+}
+
+/// Abono de una clienta. Con creditSaleId va a esa venta; sin él se reparte
+/// entre las ventas pendientes, de la más antigua a la más nueva.
+model CreditPayment {
+  id               String              @id @default(uuid())
+  companyId        String              @map("company_id")
+  creditCustomerId String              @map("credit_customer_id")
+  creditSaleId     String?             @map("credit_sale_id")
+  amount           Decimal             @db.Decimal(10, 2)
+  method           CreditPaymentMethod @default(cash)
+  paidAt           DateTime            @default(now()) @map("paid_at")
+  note             String?
+  createdByUserId  String?             @map("created_by_user_id")
+  createdAt        DateTime            @default(now()) @map("created_at")
+
+  company  Company        @relation(fields: [companyId], references: [id])
+  customer CreditCustomer @relation(fields: [creditCustomerId], references: [id])
+  sale     CreditSale?    @relation(fields: [creditSaleId], references: [id])
+
+  @@index([companyId, paidAt])
+  @@index([creditCustomerId])
+  @@index([creditSaleId])
+  @@map("credit_payments")
 }
 
 /// Configuración global de la plataforma (fila única, id = 1).

@@ -433,7 +433,7 @@ export function Overlay({
         >
           ×
         </button>
-        <div className={`overflow-y-auto ${size === "wide" ? "p-5 sm:p-6" : "p-5"}`}>
+        <div className={`scroll-hidden overflow-y-auto ${size === "wide" ? "p-5 sm:p-6" : "p-5"}`}>
           {children}
         </div>
       </div>

@@ -26,6 +26,7 @@ import { InventoryModule } from './inventory/inventory.module';
 import { ReportsModule } from './reports/reports.module';
 import { ApiTokensModule } from './api-tokens/api-tokens.module';
 import { PublicApiModule } from './public-api/public-api.module';
+import { CreditsModule } from './credits/credits.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { TenancyMiddleware } from './tenancy/tenancy.middleware';
@@ -54,6 +55,7 @@ import { TenantAuditInterceptor } from './common/interceptors/tenant-audit.inter
     ReportsModule,
     ApiTokensModule,
     PublicApiModule,
+    CreditsModule,
   ],
   controllers: [AppController],
   providers: [

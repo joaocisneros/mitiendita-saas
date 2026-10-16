@@ -30,6 +30,7 @@ const MODULES: Record<string, string> = {
   'store-settings': 'store',
   settings: 'store',
   auth: 'profile',
+  credits: 'credit',
 };
 
 function resolveAudit(path: string, method: string) {
@@ -135,7 +136,9 @@ export class TenantAuditInterceptor implements NestInterceptor {
           ? [response.publicCode, response.serviceName, response.customerName]
           : module === 'subscription'
             ? [response.publicCode, response.planName, response.customerName]
-            : [response.name, response.title, response.storeName];
+            : module === 'credit'
+              ? [response.code, response.fullName]
+              : [response.name, response.title, response.storeName];
     return candidates.find(
       (value): value is string =>
         typeof value === 'string' && value.trim() !== '',
