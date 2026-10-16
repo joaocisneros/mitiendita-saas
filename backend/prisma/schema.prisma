@@ -622,3 +622,18 @@ model PlatformSettings {
 
   @@map("platform_settings")
 }
+
+/// Credenciales cifradas del proveedor de consultas RUC/DNI (singleton id = 1).
+model DocumentApiConfig {
+  id                 Int      @id @default(1)
+  provider           String   @default("cismafact")
+  baseUrl            String   @default("https://cismafact.alwaysdata.net/api") @map("base_url")
+  apiKeyEncrypted    String   @map("api_key_encrypted") @db.Text
+  apiSecretEncrypted String   @map("api_secret_encrypted") @db.Text
+  apiKeyLastFour     String   @map("api_key_last_four")
+  enabled            Boolean  @default(true)
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("document_api_config")
+}

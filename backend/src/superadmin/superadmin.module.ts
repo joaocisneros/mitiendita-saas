@@ -14,6 +14,7 @@ import { SaAuditsController } from './controllers/sa-audits.controller';
 import { SaSettingsController } from './controllers/sa-settings.controller';
 import { SaWhatsappController } from './controllers/sa-whatsapp.controller';
 import { SaApiTokensController } from './controllers/sa-api-tokens.controller';
+import { SaDocumentApiController } from './controllers/sa-document-api.controller';
 
 import { SaAuthService } from './services/sa-auth.service';
 import { SaStatsService } from './services/sa-stats.service';
@@ -24,6 +25,7 @@ import { SaUsersService } from './services/sa-users.service';
 import { SaAuditService } from './services/sa-audit.service';
 import { SaSettingsService } from './services/sa-settings.service';
 import { SaWhatsappService } from './services/sa-whatsapp.service';
+import { SaDocumentApiService } from './services/sa-document-api.service';
 
 @Module({
   imports: [JwtModule.register({}), WhatsappModule, ApiTokensModule],
@@ -39,6 +41,7 @@ import { SaWhatsappService } from './services/sa-whatsapp.service';
     SaSettingsController,
     SaWhatsappController,
     SaApiTokensController,
+    SaDocumentApiController,
   ],
   providers: [
     SaAuthService,
@@ -50,6 +53,7 @@ import { SaWhatsappService } from './services/sa-whatsapp.service';
     SaAuditService,
     SaSettingsService,
     SaWhatsappService,
+    SaDocumentApiService,
   ],
   exports: [
     SaCompaniesService,

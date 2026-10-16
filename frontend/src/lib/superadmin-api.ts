@@ -449,6 +449,33 @@ export const superApi = {
       summary: SaWhatsappDirectorySummary;
     }>(`/superadmin/whatsapp/directorio?${params.toString()}`);
   },
+  // ── Consultas de documentos peruanos mediante CismaFact ──
+  documentApiConfig: () =>
+    sfetch<DocumentApiConfig>("/superadmin/ruc-dni/config"),
+  updateDocumentApiConfig: (body: {
+    apiKey?: string;
+    apiSecret?: string;
+    enabled: boolean;
+  }) =>
+    sfetch<DocumentApiConfig>("/superadmin/ruc-dni/config", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  testDocumentApi: (body: { apiKey?: string; apiSecret?: string } = {}) =>
+    sfetch<{ ok: boolean; message: string; quota: DocumentApiQuota }>(
+      "/superadmin/ruc-dni/test",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    ),
+  documentApiQuota: () => sfetch<DocumentApiQuota>("/superadmin/ruc-dni/quota"),
+  consultRuc: (number: string) =>
+    sfetch<RucResult>(`/superadmin/ruc-dni/ruc/${number}`),
+  consultDni: (number: string) =>
+    sfetch<DniResult>(`/superadmin/ruc-dni/dni/${number}`),
   // ── Tokens de API de plataforma (self-service del superadmin) ──
   platformApiScopes: () =>
     sfetch<string[]>("/superadmin/api-tokens/platform-scopes"),
@@ -502,6 +529,56 @@ export const superApi = {
     }),
 };
 
+export interface DocumentApiConfig {
+  provider: string;
+  configured: boolean;
+  enabled: boolean;
+  apiKeyMasked: string | null;
+  updatedAt: string | null;
+}
+
+export interface DocumentApiQuota {
+  llave?: string;
+  entorno?: string;
+  plan?: string;
+  expira_en?: string | null;
+  renueva?: string | null;
+  servicios?: Array<{
+    servicio: string;
+    nombre: string;
+    disponible: boolean;
+    limite_mensual: number;
+    usadas: number;
+    restantes: number;
+  }>;
+}
+
+export interface RucResult {
+  valido: boolean;
+  numero: string;
+  tipo: "ruc";
+  nombre?: string;
+  estado?: string;
+  condicion?: string;
+  direccion?: string;
+  ubigeo?: string;
+  departamento?: string;
+  provincia?: string;
+  distrito?: string;
+  fuente?: string;
+}
+
+export interface DniResult {
+  valido: boolean;
+  numero: string;
+  tipo: "dni";
+  nombre?: string;
+  nombres?: string;
+  apellido_paterno?: string;
+  apellido_materno?: string;
+  fuente?: string;
+}
+
 export interface SaApiTokenRow {
   id: string;
   name: string;
@@ -544,12 +621,7 @@ export interface SaWhatsappDirectoryRow {
   rol: "Dueño" | "Cliente" | "Dueño y cliente";
   empresa: string;
   companyId: string;
-  status:
-    | "available"
-    | "incomplete"
-    | "missing"
-    | "name_review"
-    | "duplicate";
+  status: "available" | "incomplete" | "missing" | "name_review" | "duplicate";
   duplicateNames: string[];
 }
 

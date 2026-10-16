@@ -19,6 +19,7 @@ type IconName =
   | "flag"
   | "whatsapp"
   | "key"
+  | "idcard"
   | "copy"
   | "check"
   | "cart";
@@ -134,6 +135,13 @@ const paths: Record<IconName, React.ReactNode> = {
     <>
       <circle cx="8" cy="15" r="4" />
       <path d="M10.5 12.5 20 3M16 7l3 3M19 4l1.5 1.5" />
+    </>
+  ),
+  idcard: (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <circle cx="8" cy="11" r="2" />
+      <path d="M5.5 16c.7-1.6 1.5-2.4 2.5-2.4s1.8.8 2.5 2.4M13 10h5M13 14h5" />
     </>
   ),
   copy: (
