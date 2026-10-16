@@ -5,6 +5,7 @@ import {
   IsString,
   Max,
   MaxLength,
+  Matches,
   Min,
   ValidateIf,
 } from 'class-validator';
@@ -32,8 +33,10 @@ export class UpdatePlatformSettingsDto {
   currency?: string;
 
   @IsOptional()
-  @IsString()
-  @MaxLength(20)
+  @ValidateIf((o: UpdatePlatformSettingsDto) => o.supportWhatsapp !== '')
+  @Matches(/^519\d{8}$/, {
+    message: 'El WhatsApp de soporte debe ser un celular peruano de 9 dígitos.',
+  })
   supportWhatsapp?: string;
 
   @IsOptional()
@@ -51,6 +54,23 @@ export class UpdatePlatformSettingsDto {
   @IsString()
   @MaxLength(20000)
   privacy?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(191)
+  legalName?: string;
+
+  @IsOptional()
+  @ValidateIf((o: UpdatePlatformSettingsDto) => o.legalRuc !== '')
+  @Matches(/^(10|15|17|20)\d{9}$/, {
+    message: 'El RUC debe tener 11 dígitos y empezar con 10, 15, 17 o 20.',
+  })
+  legalRuc?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  legalAddress?: string;
 
   @IsOptional()
   @IsInt()

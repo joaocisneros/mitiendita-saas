@@ -286,11 +286,13 @@ export default async function Home() {
           <span className="text-lg font-extrabold tracking-tight">
             Mi<span className="text-violet-600">Tiendita</span>
           </span>
-          <nav className="flex items-center gap-5 text-sm font-medium text-slate-600">
+          <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm font-medium text-slate-600">
             <Link href="/registro" className="hover:text-violet-700">Crear tienda</Link>
             <Link href="/panel/login" className="hover:text-violet-700">Ingresar</Link>
             <Link href="#precios" className="hover:text-violet-700">Precios</Link>
             <Link href="/api-docs" className="hover:text-violet-700">Documentación de la API</Link>
+            <Link href="/terminos" className="hover:text-violet-700">Términos</Link>
+            <Link href="/privacidad" className="hover:text-violet-700">Privacidad</Link>
             <a href={whatsappLink()} target="_blank" rel="noopener noreferrer" className="font-bold text-green-600 hover:text-green-700">
               WhatsApp
             </a>

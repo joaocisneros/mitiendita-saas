@@ -8,6 +8,7 @@ import { SaStatsController } from './controllers/sa-stats.controller';
 import { SaCompaniesController } from './controllers/sa-companies.controller';
 import { SaPlansController } from './controllers/sa-plans.controller';
 import { PublicPlansController } from './controllers/public-plans.controller';
+import { PublicLegalController } from './controllers/public-legal.controller';
 import { SaSubscriptionsController } from './controllers/sa-subscriptions.controller';
 import { SaUsersController } from './controllers/sa-users.controller';
 import { SaAuditsController } from './controllers/sa-audits.controller';
@@ -35,6 +36,7 @@ import { SaDocumentApiService } from './services/sa-document-api.service';
     SaCompaniesController,
     SaPlansController,
     PublicPlansController,
+    PublicLegalController,
     SaSubscriptionsController,
     SaUsersController,
     SaAuditsController,

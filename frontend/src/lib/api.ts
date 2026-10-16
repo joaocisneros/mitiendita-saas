@@ -172,6 +172,24 @@ export async function getPublicPlans(): Promise<PublicPlan[]> {
   }
 }
 
+export interface PublicLegal {
+  platformName: string;
+  legalName: string | null;
+  legalRuc: string | null;
+  legalAddress: string | null;
+  supportEmail: string | null;
+  supportWhatsapp: string | null;
+}
+
+/** Titular de la plataforma y contacto de soporte. Devuelve null si el backend no responde. */
+export async function getPublicLegal(): Promise<PublicLegal | null> {
+  try {
+    return await get<PublicLegal>("/public/legal", 300);
+  } catch {
+    return null;
+  }
+}
+
 export const storefrontApi = {
   seoIndex: () => get<Array<{ subdomain: string; updatedAt: string }>>("/public/stores/seo/index", 300),
   getStore: (subdomain: string) =>

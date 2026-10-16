@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { superApi, type PlatformSettings } from "@/lib/superadmin-api";
 
 const CONTROL = "h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-400 focus:border-violet-600 focus:ring-4 focus:ring-violet-100";
-const TEXTAREA = "min-h-48 w-full resize-y rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm leading-6 text-slate-950 outline-none placeholder:text-slate-400 focus:border-violet-600 focus:ring-4 focus:ring-violet-100";
 
 export default function PlatformConfigPage() {
   const [settings, setSettings] = useState<PlatformSettings | null>(null);
@@ -26,18 +25,24 @@ export default function PlatformConfigPage() {
 
   async function save() {
     if (!settings) return;
+    const phone = localPhone(settings.supportWhatsapp);
+    if (phone && !/^9\d{8}$/.test(phone)) {
+      setError("El WhatsApp de soporte debe tener 9 dígitos y empezar con 9.");
+      setSaved(false);
+      return;
+    }
     setSaving(true);
     setError("");
     setSaved(false);
     try {
       const result = await superApi.updateSettings({
         platformName: settings.platformName,
-        mainDomain: settings.mainDomain,
         currency: settings.currency,
-        supportWhatsapp: settings.supportWhatsapp ?? undefined,
+        supportWhatsapp: phone ? `51${phone}` : "",
         supportEmail: settings.supportEmail ?? undefined,
-        terms: settings.terms ?? undefined,
-        privacy: settings.privacy ?? undefined,
+        legalName: settings.legalName ?? "",
+        legalRuc: settings.legalRuc ?? "",
+        legalAddress: settings.legalAddress ?? "",
         trialDays: Number(settings.trialDays),
       });
       setSettings(result);
@@ -53,7 +58,7 @@ export default function PlatformConfigPage() {
   if (!settings) return <div className="h-48 animate-pulse rounded-2xl bg-white ring-1 ring-slate-200" />;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 pb-24">
+    <div className="w-full space-y-6 pb-24">
       <header>
         <p className="text-sm font-bold text-violet-700">Plataforma</p>
         <h1 className="mt-1 text-xl font-black text-slate-950">Configuración general</h1>
@@ -67,22 +72,35 @@ export default function PlatformConfigPage() {
           <Field label="Nombre de la plataforma">
             <input value={settings.platformName} onChange={(event) => update("platformName", event.target.value)} className={CONTROL} />
           </Field>
-          <Field label="Dominio principal" help="Ejemplo: mitiendita.com. Cada empresa utilizará un subdominio propio.">
-            <input value={settings.mainDomain} onChange={(event) => update("mainDomain", event.target.value)} className={CONTROL} />
+          <Field label="Dirección de la web" help="Automática: la define el hosting">
+            <div className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-700">
+              <span className="truncate">{window.location.host}</span>
+              <span className="ml-auto shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-black text-emerald-800">En uso</span>
+            </div>
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Moneda">
+            <Field label="Moneda" help="Referencial">
               <input value={settings.currency} onChange={(event) => update("currency", event.target.value.toUpperCase())} maxLength={3} className={CONTROL} />
             </Field>
-            <Field label="Días de prueba gratuita">
-              <input type="number" min={1} value={settings.trialDays} onChange={(event) => update("trialDays", Number(event.target.value))} className={CONTROL} />
+            <Field label="Días de prueba gratuita" help="Toda tienda nueva">
+              <input type="number" min={0} max={365} value={settings.trialDays} onChange={(event) => update("trialDays", Number(event.target.value))} className={CONTROL} />
             </Field>
           </div>
         </Section>
 
-        <Section title="Soporte" description="Datos visibles para que las empresas contacten al equipo de la plataforma.">
-          <Field label="WhatsApp de soporte" help="Incluye código de país, por ejemplo: 51987654321.">
-            <input inputMode="tel" value={settings.supportWhatsapp ?? ""} onChange={(event) => update("supportWhatsapp", event.target.value)} className={CONTROL} placeholder="51987654321" />
+        <Section title="Soporte" description="Se muestran como contacto en las páginas públicas de Términos y Privacidad.">
+          <Field label="WhatsApp de soporte" help="Celular de 9 dígitos">
+            <div className="flex">
+              <span className="flex items-center rounded-l-xl border border-r-0 border-slate-300 bg-slate-50 px-3 text-sm font-bold text-slate-600">+51</span>
+              <input
+                inputMode="numeric"
+                maxLength={9}
+                value={localPhone(settings.supportWhatsapp)}
+                onChange={(event) => update("supportWhatsapp", event.target.value.replace(/\D/g, "").slice(0, 9))}
+                className={`${CONTROL} rounded-l-none`}
+                placeholder="987654321"
+              />
+            </div>
           </Field>
           <Field label="Correo de soporte">
             <input type="email" value={settings.supportEmail ?? ""} onChange={(event) => update("supportEmail", event.target.value)} className={CONTROL} placeholder="soporte@mitiendita.com" />
@@ -93,20 +111,39 @@ export default function PlatformConfigPage() {
         </Section>
 
         <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 lg:col-span-2 sm:p-6">
-          <div className="mb-5 border-b border-slate-200 pb-4">
-            <h2 className="text-lg font-black text-slate-950">Documentos legales</h2>
-            <p className="mt-1 text-sm font-medium leading-6 text-slate-600">
-              Los campos amplios permiten redactar textos largos sin comprimir el contenido. Puedes redimensionarlos verticalmente.
+          <div className="mb-5 flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-4">
+            <div>
+              <h2 className="text-lg font-black text-slate-950">Titular legal de la plataforma</h2>
+              <p className="mt-1 max-w-3xl text-sm font-medium leading-6 text-slate-600">
+                La Ley N.° 29733 y el Código del Consumidor exigen identificar a quien opera la plataforma. Estos datos se
+                insertan automáticamente en los Términos y la Política de privacidad que ven tus clientes.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <a href="/terminos" target="_blank" rel="noopener noreferrer" className="rounded-lg bg-violet-50 px-3 py-2 text-xs font-bold text-violet-700 ring-1 ring-violet-200 hover:bg-violet-100">
+                Ver Términos ↗
+              </a>
+              <a href="/privacidad" target="_blank" rel="noopener noreferrer" className="rounded-lg bg-violet-50 px-3 py-2 text-xs font-bold text-violet-700 ring-1 ring-violet-200 hover:bg-violet-100">
+                Ver Privacidad ↗
+              </a>
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-[2fr_1fr_3fr]">
+            <Field label="Nombre o razón social" help="Persona natural o empresa">
+              <input value={settings.legalName ?? ""} onChange={(event) => update("legalName", event.target.value)} className={CONTROL} placeholder="Ej.: Juan Pérez Gómez o Mi Empresa S.A.C." />
+            </Field>
+            <Field label="RUC" help="11 dígitos">
+              <input inputMode="numeric" maxLength={11} value={settings.legalRuc ?? ""} onChange={(event) => update("legalRuc", event.target.value.replace(/\D/g, ""))} className={CONTROL} placeholder="10XXXXXXXXX" />
+            </Field>
+            <Field label="Domicilio legal">
+              <input value={settings.legalAddress ?? ""} onChange={(event) => update("legalAddress", event.target.value)} className={CONTROL} placeholder="Av. Ejemplo 123, Distrito, Lima" />
+            </Field>
+          </div>
+          {!(settings.legalName && settings.legalRuc && settings.legalAddress) && (
+            <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-900">
+              Completa los tres datos: mientras falten, los documentos legales no identifican plenamente al titular.
             </p>
-          </div>
-          <div className="grid gap-5 xl:grid-cols-2">
-            <Field label="Términos y condiciones" help={`${(settings.terms ?? "").length} caracteres`}>
-              <textarea value={settings.terms ?? ""} onChange={(event) => update("terms", event.target.value)} className={TEXTAREA} placeholder="Escribe aquí los términos y condiciones de uso…" />
-            </Field>
-            <Field label="Política de privacidad" help={`${(settings.privacy ?? "").length} caracteres`}>
-              <textarea value={settings.privacy ?? ""} onChange={(event) => update("privacy", event.target.value)} className={TEXTAREA} placeholder="Escribe aquí la política de privacidad…" />
-            </Field>
-          </div>
+          )}
         </section>
       </div>
 
@@ -146,4 +183,10 @@ function Field({ label, help, children }: { label: string; help?: string; childr
       {children}
     </label>
   );
+}
+
+/** Número guardado (51XXXXXXXXX) → los 9 dígitos que se escriben en el campo. */
+function localPhone(value: string | null) {
+  const digits = (value ?? "").replace(/\D/g, "");
+  return digits.length > 9 && digits.startsWith("51") ? digits.slice(2) : digits;
 }
