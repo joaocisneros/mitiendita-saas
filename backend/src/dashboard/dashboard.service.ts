@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { VALID_ORDER } from '../common/utils/valid-order.util';
 
 const LOW_STOCK_THRESHOLD = 5;
 
@@ -94,7 +95,28 @@ export class DashboardService {
         _count: { _all: true },
       }),
       this.prisma.customer.count({
-        where: { companyId, firstPurchaseAt: { gte: startOfMonth } },
+        where: {
+          companyId,
+          OR: [
+            // Primera compra completada en este mes.
+            {
+              AND: [
+                {
+                  orders: {
+                    some: { ...VALID_ORDER, createdAt: { gte: startOfMonth } },
+                  },
+                },
+                {
+                  orders: {
+                    none: { ...VALID_ORDER, createdAt: { lt: startOfMonth } },
+                  },
+                },
+              ],
+            },
+            // Clientes de citas o suscripciones (sin pedidos) llegados este mes.
+            { orders: { none: {} }, firstPurchaseAt: { gte: startOfMonth } },
+          ],
+        },
       }),
     ]);
 

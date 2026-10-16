@@ -96,20 +96,13 @@ describe('Panel de pedidos del dueño (e2e)', () => {
       .expect(404);
   });
 
-  it('lista automáticamente al cliente creado por checkout', async () => {
+  it('un checkout sin compra completada NO aparece en Clientes', async () => {
     const res = await http().get('/api/customers').set(A()).expect(200);
-    expect(res.body.total).toBeGreaterThanOrEqual(1);
     expect(
       res.body.items.some((customer: { phone: string }) =>
         customer.phone.includes('987000000'),
       ),
-    ).toBe(true);
-  });
-
-  it('otra empresa NO puede consultar el detalle del cliente', async () => {
-    const list = await http().get('/api/customers').set(A()).expect(200);
-    const customerId = list.body.items[0].id as string;
-    await http().get(`/api/customers/${customerId}`).set(B()).expect(404);
+    ).toBe(false);
   });
 
   it('aprobar el pago confirma el pedido y compromete el stock', async () => {
@@ -138,6 +131,60 @@ describe('Panel de pedidos del dueño (e2e)', () => {
       .get(`/api/public/stores/${subA}/products/prod-adm`)
       .expect(200);
     expect(prod.body.available).toBe(3);
+  });
+
+  it('con la compra aprobada, la persona aparece en Clientes', async () => {
+    const res = await http().get('/api/customers').set(A()).expect(200);
+    const customer = (
+      res.body.items as { phone: string; ordersCount: number }[]
+    ).find((item) => item.phone.includes('987000000'));
+    expect(customer?.ordersCount).toBe(1);
+  });
+
+  it('un intento cancelado con el mismo celular no cambia el nombre del cliente', async () => {
+    const attemptId = (
+      await http()
+        .post(`/api/public/stores/${subA}/checkout`)
+        .send({
+          customerName: 'Nombre Del Intento',
+          customerPhone: '+51987000000',
+          deliveryMethod: 'pickup',
+          address: 'Otra dirección',
+          items: [{ productId, quantity: 1 }],
+        })
+        .expect(201)
+    ).body.id as string;
+    await prisma.$transaction([
+      prisma.payment.update({
+        where: { orderId: attemptId },
+        data: {
+          status: 'proof_submitted',
+          proofUrl: 'https://test.local/x.png',
+        },
+      }),
+      prisma.order.update({
+        where: { id: attemptId },
+        data: { paymentStatus: 'proof_submitted', reservationExpiresAt: null },
+      }),
+    ]);
+    await http()
+      .post(`/api/admin/orders/${attemptId}/payment/reject`)
+      .set(A())
+      .send({ comment: 'Prueba cancelada' })
+      .expect(201);
+
+    const res = await http().get('/api/customers').set(A()).expect(200);
+    const customer = (
+      res.body.items as { phone: string; name: string; ordersCount: number }[]
+    ).find((item) => item.phone.includes('987000000'));
+    expect(customer?.name).toBe('Cliente Test');
+    expect(customer?.ordersCount).toBe(1);
+  });
+
+  it('otra empresa NO puede consultar el detalle del cliente', async () => {
+    const list = await http().get('/api/customers').set(A()).expect(200);
+    const customerId = list.body.items[0].id as string;
+    await http().get(`/api/customers/${customerId}`).set(B()).expect(404);
   });
 
   it('rechazar un pedido pendiente lo cancela y libera todo el stock reservado', async () => {
@@ -182,6 +229,27 @@ describe('Panel de pedidos del dueño (e2e)', () => {
     expect(afterReject.stock).toBe(3);
     expect(afterReject.reserved).toBe(0);
     expect(afterReject.available).toBe(3);
+
+    // "Todos" no muestra el rechazado; su pestaña sí. Y no es cliente.
+    const all = await http().get('/api/admin/orders').set(A()).expect(200);
+    const ids = (all.body.items as { id: string }[]).map((o) => o.id);
+    expect(ids).toContain(orderId);
+    expect(ids).not.toContain(rejectedOrderId);
+    const tab = await http()
+      .get('/api/admin/orders?paymentStatus=rejected')
+      .set(A())
+      .expect(200);
+    expect(
+      (tab.body.items as { id: string }[]).some(
+        (o) => o.id === rejectedOrderId,
+      ),
+    ).toBe(true);
+    const customers = await http().get('/api/customers').set(A());
+    expect(
+      (customers.body.items as { phone: string }[]).some((c) =>
+        c.phone.includes('987000001'),
+      ),
+    ).toBe(false);
   });
 
   it('incluye métricas y productos más vendidos en el dashboard', async () => {

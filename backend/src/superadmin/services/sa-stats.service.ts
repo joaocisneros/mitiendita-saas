@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { VALID_ORDER } from '../../common/utils/valid-order.util';
 
 /** Métricas globales del dashboard del superadmin. */
 @Injectable()
@@ -45,9 +46,9 @@ export class SaStatsService {
       this.prisma.company.count({
         where: { deletedAt: null, status: 'suspended' },
       }),
-      this.prisma.order.count(),
+      this.prisma.order.count({ where: VALID_ORDER }),
       this.prisma.order.aggregate({
-        where: { paymentStatus: 'approved' },
+        where: VALID_ORDER,
         _sum: { total: true },
       }),
       this.prisma.company.count({
@@ -129,6 +130,7 @@ export class SaStatsService {
                COALESCE(SUM(total), 0) AS total
         FROM orders
         WHERE payment_status = 'approved'
+          AND status NOT IN ('cancelled', 'expired')
           AND created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
         GROUP BY ym ORDER BY ym`,
       this.prisma.company.groupBy({

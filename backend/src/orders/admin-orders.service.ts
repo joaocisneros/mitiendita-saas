@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { MediaService } from '../media/media.service';
 import type { OrderStatus } from '../../generated/prisma/enums';
 import { adjustVariantStock } from './variant-stock.util';
+import { toTitleCase } from '../common/utils/text.util';
 
 // Transiciones permitidas (según la especificación).
 const TRANSITIONS: Record<string, OrderStatus[]> = {
@@ -96,7 +97,16 @@ export class AdminOrdersService {
             ? [{ paymentStatus: { in: paymentStatuses as never[] } }]
             : []),
       ],
-      ...(q.status ? { status: q.status as OrderStatus } : {}),
+      ...(q.status
+        ? { status: q.status as OrderStatus }
+        : // "Todos" muestra solo pedidos en proceso o completados; los
+          // rechazados y cancelados se revisan en sus propias pestañas.
+          !paymentStatuses?.length
+          ? {
+              status: { notIn: ['cancelled', 'expired'] as OrderStatus[] },
+              NOT: { paymentStatus: 'rejected' as const },
+            }
+          : {}),
       ...(q.search
         ? {
             OR: [
@@ -185,6 +195,18 @@ export class AdminOrdersService {
           validatedByUserId: userId,
         },
       });
+
+      // La compra quedó completada: el cliente toma los datos de este pedido.
+      if (order.customerId) {
+        await tx.customer.update({
+          where: { id: order.customerId },
+          data: {
+            name: toTitleCase(order.customerName),
+            ...(order.address ? { address: order.address } : {}),
+            lastPurchaseAt: new Date(),
+          },
+        });
+      }
 
       // Si estaba pendiente, lo confirmamos y comprometemos el stock.
       if (order.status === 'pending') {

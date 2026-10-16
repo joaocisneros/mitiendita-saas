@@ -8,6 +8,10 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
+import {
+  BUYER_CUSTOMER,
+  VALID_ORDER,
+} from '../../common/utils/valid-order.util';
 import { normalizePhone } from '../../common/utils/phone.util';
 import { toTitleCase } from '../../common/utils/text.util';
 import {
@@ -154,7 +158,13 @@ export class SaCompaniesService {
             take: 1,
             include: { user: { select: { name: true, email: true } } },
           },
-          _count: { select: { orders: true, products: true, customers: true } },
+          _count: {
+            select: {
+              orders: { where: VALID_ORDER },
+              products: true,
+              customers: { where: BUYER_CUSTOMER },
+            },
+          },
         },
       }),
       this.prisma.company.count({ where }),
@@ -213,7 +223,13 @@ export class SaCompaniesService {
             },
           },
         },
-        _count: { select: { orders: true, products: true, customers: true } },
+        _count: {
+          select: {
+            orders: { where: VALID_ORDER },
+            products: true,
+            customers: { where: BUYER_CUSTOMER },
+          },
+        },
       },
     });
     if (!company) throw new NotFoundException('Empresa no encontrada.');

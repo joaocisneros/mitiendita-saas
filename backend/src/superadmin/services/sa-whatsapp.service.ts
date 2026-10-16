@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { BUYER_CUSTOMER } from '../../common/utils/valid-order.util';
 import { WhatsappService } from '../../whatsapp/whatsapp.service';
 import { UpdateWhatsappSettingsDto } from '../dto/whatsapp.dto';
 import { SaAuditService } from './sa-audit.service';
@@ -76,6 +77,7 @@ export class SaWhatsappService {
   /** Clientes (nombre y teléfono) del módulo Clientes, de todas las tiendas. */
   async listCustomers() {
     const customers = await this.prisma.customer.findMany({
+      where: BUYER_CUSTOMER,
       orderBy: { createdAt: 'desc' },
       take: 500,
       include: { company: { select: { name: true } } },
@@ -111,6 +113,7 @@ export class SaWhatsappService {
         },
       }),
       this.prisma.customer.findMany({
+        where: BUYER_CUSTOMER,
         orderBy: { createdAt: 'desc' },
         take: 2000,
         include: { company: { select: { name: true } } },

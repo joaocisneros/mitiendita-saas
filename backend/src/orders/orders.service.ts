@@ -133,13 +133,11 @@ export class OrdersService {
     const order = await this.prisma.$transaction(async (tx) => {
       // 1) Crear o actualizar al cliente.
       const now = new Date();
+      // Un intento de compra no cambia los datos de un cliente existente:
+      // nombre, dirección y "última compra" se actualizan al aprobar el pago.
       const customer = await tx.customer.upsert({
         where: { companyId_phone: { companyId: company.id, phone } },
-        update: {
-          name: customerName,
-          address: dto.address ?? undefined,
-          lastPurchaseAt: now,
-        },
+        update: {},
         create: {
           companyId: company.id,
           name: customerName,
