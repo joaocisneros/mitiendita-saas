@@ -129,7 +129,7 @@ export default function OrderPage() {
         {order.paymentStatus !== "approved" && (
           <div className="rounded-2xl bg-white p-4 ring-1 ring-black/5">
             <h2 className="mb-2 font-bold text-violet-700">💳 Realiza tu pago</h2>
-            {!order.proofUrl || order.paymentStatus === "rejected" ? (
+            {!order.hasProof || order.paymentStatus === "rejected" ? (
               store.yapeQrUrl || store.yapeNumber || store.plinQrUrl || store.plinNumber ? (
                 <>
                   <PayOptions
@@ -159,7 +159,7 @@ export default function OrderPage() {
                   El comprobante fue rechazado. Verifica el pago y envía una nueva captura.
                 </p>
               )}
-              {order.proofUrl && order.paymentStatus !== "rejected" ? (
+              {order.hasProof && order.paymentStatus !== "rejected" ? (
                 <p className="rounded-lg bg-green-50 p-3 text-center text-sm text-green-700">
                   ✅ Comprobante enviado. El negocio validará tu pago pronto.
                 </p>
@@ -234,7 +234,7 @@ function buildWhatsappMessage(order: OrderView, storeName: string): string {
   }
   lines.push(`*Total: ${formatPrice(order.total, order.currency)}*`);
   if (order.customerNote) lines.push(`📝 ${order.customerNote}`);
-  if (order.proofUrl) {
+  if (order.hasProof) {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
     lines.push("");
     lines.push(`✅ *Ya pagué.* Comprobante: ${origin}/c/${order.code}`);

@@ -120,4 +120,34 @@ describe('Pedidos / checkout (e2e)', () => {
       .expect(200);
     expect(res.body.code).toBe(created.body.code);
   });
+
+  it('con solo el código, un extraño ve los datos del cliente a medias', async () => {
+    const created = await http()
+      .post(`/api/public/stores/${subdomain}/checkout`)
+      .send(
+        co([{ productId, quantity: 1 }], {
+          customerName: 'Rosa Huamán Torres',
+          customerPhone: '+51 912 345 678',
+          deliveryMethod: 'delivery',
+          address: 'Av. Giráldez 450, Huancayo',
+          reference: 'Frente a la plaza',
+        }),
+      )
+      .expect(201);
+    // Quien acaba de comprar ve lo que escribió.
+    expect(created.body.customerPhone).toBe('51912345678');
+    expect(created.body.address).toBe('Av. Giráldez 450, Huancayo');
+
+    const res = await http()
+      .get(`/api/public/stores/${subdomain}/orders/${created.body.code}`)
+      .expect(200);
+    expect(res.body).toMatchObject({
+      customerName: 'Rosa H.',
+      customerPhone: '912 *** 678',
+      address: 'Av. Giráldez …',
+      reference: null,
+      proofUrl: null,
+      hasProof: false,
+    });
+  });
 });

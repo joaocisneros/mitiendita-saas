@@ -14,6 +14,7 @@ import { analyzePaymentProof } from '../common/utils/yape-ocr.util';
 import { findDuplicateOperation } from '../common/utils/duplicate-proof.util';
 import { CheckoutDto } from './dto/checkout.dto';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
+import { maskAddress, maskName, maskPhone } from '../common/utils/privacy.util';
 import { adjustVariantStock, variantLabel } from './variant-stock.util';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -256,7 +257,7 @@ export class OrdersService {
       include: { items: true, payment: true },
     });
     if (!order) throw new NotFoundException('Pedido no encontrado.');
-    return this.format(order, company.settings?.currency ?? 'PEN');
+    return this.format(order, company.settings?.currency ?? 'PEN', 'public');
   }
 
   /**
@@ -335,6 +336,7 @@ export class OrdersService {
     const formatted = this.format(
       updated!,
       company.settings?.currency ?? 'PEN',
+      'uploader',
     );
     const whatsappNotification = await this.whatsapp.sendProofNotification({
       recipient: company.settings?.whatsappNumber,
@@ -401,18 +403,28 @@ export class OrdersService {
       } | null;
     },
     currency: string,
+    /**
+     * buyer: quien acaba de hacer el pedido (ve lo que escribió).
+     * public: cualquiera con el código → datos a medias, sin comprobante.
+     * uploader: quien sube el comprobante → datos a medias + su captura.
+     */
+    view: 'buyer' | 'public' | 'uploader' = 'buyer',
   ) {
+    const masked = view !== 'buyer';
     return {
       id: order.id,
       code: order.publicCode,
       status: order.status,
       paymentStatus: order.paymentStatus,
-      proofUrl: order.payment?.proofUrl ?? null,
+      hasProof: Boolean(order.payment?.proofUrl),
+      proofUrl: view === 'public' ? null : (order.payment?.proofUrl ?? null),
       deliveryMethod: order.deliveryMethod,
-      customerName: order.customerName,
-      customerPhone: order.customerPhone,
-      address: order.address,
-      reference: order.reference,
+      customerName: masked ? maskName(order.customerName) : order.customerName,
+      customerPhone: masked
+        ? maskPhone(order.customerPhone)
+        : order.customerPhone,
+      address: masked ? maskAddress(order.address) : order.address,
+      reference: masked ? null : order.reference,
       customerNote: order.customerNote,
       currency,
       subtotal: String(order.subtotal),

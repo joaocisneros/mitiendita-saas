@@ -154,7 +154,15 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
     setError("");
     try {
       const updated = await storefrontApi.submitProof(subdomain, order.code, file);
-      setOrder(updated);
+      // La respuesta trae los datos a medias; se conservan los que la clienta
+      // escribió para que el WhatsApp a la tienda salga completo.
+      setOrder({
+        ...updated,
+        customerName: order.customerName,
+        customerPhone: order.customerPhone,
+        address: order.address,
+        reference: order.reference,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error al subir.");
     } finally {

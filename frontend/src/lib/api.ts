@@ -71,6 +71,8 @@ export interface OrderView {
   code: string;
   status: string;
   paymentStatus: string;
+  /** Si ya se envió comprobante (la foto no se muestra en la vista pública). */
+  hasProof?: boolean;
   proofUrl: string | null;
   deliveryMethod: string;
   customerName: string;
