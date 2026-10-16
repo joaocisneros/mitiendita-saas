@@ -464,7 +464,11 @@ function buildWaMessage(order: OrderView, storeName: string): string {
   if (order.proofUrl) {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
     lines.push("");
-    lines.push(`✅ *Ya pagué.* Comprobante: ${origin}/c/${order.code}`);
+    lines.push(
+      order.proofKey
+        ? `✅ *Ya pagué.* Comprobante: ${origin}/c/${order.code}?k=${order.proofKey}`
+        : "✅ *Ya pagué.* Envié mi comprobante desde la tienda.",
+    );
   }
   return lines.join("\n");
 }

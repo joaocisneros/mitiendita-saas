@@ -15,6 +15,7 @@ import { findDuplicateOperation } from '../common/utils/duplicate-proof.util';
 import { CheckoutDto } from './dto/checkout.dto';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
 import { maskAddress, maskName, maskPhone } from '../common/utils/privacy.util';
+import { proofKey } from '../common/utils/proof-link.util';
 import { adjustVariantStock, variantLabel } from './variant-stock.util';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -131,27 +132,28 @@ export class OrdersService {
     );
 
     // ── Transacción: cliente + reserva de stock + pedido + pago ──
-    const order = await this.prisma.$transaction(async (tx) => {
-      // 1) Crear o actualizar al cliente.
-      const now = new Date();
-      // Un intento de compra no cambia los datos de un cliente existente:
-      // nombre, dirección y "última compra" se actualizan al aprobar el pago.
-      const customer = await tx.customer.upsert({
-        where: { companyId_phone: { companyId: company.id, phone } },
-        update: {},
-        create: {
-          companyId: company.id,
-          name: customerName,
-          phone,
-          address: dto.address ?? null,
-          firstPurchaseAt: now,
-          lastPurchaseAt: now,
-        },
-      });
+    const order = await this.prisma
+      .$transaction(async (tx) => {
+        // 1) Crear o actualizar al cliente.
+        const now = new Date();
+        // Un intento de compra no cambia los datos de un cliente existente:
+        // nombre, dirección y "última compra" se actualizan al aprobar el pago.
+        const customer = await tx.customer.upsert({
+          where: { companyId_phone: { companyId: company.id, phone } },
+          update: {},
+          create: {
+            companyId: company.id,
+            name: customerName,
+            phone,
+            address: dto.address ?? null,
+            firstPurchaseAt: now,
+            lastPurchaseAt: now,
+          },
+        });
 
-      // 2) Reservar stock de forma atómica (previene sobreventa).
-      for (const line of lines) {
-        const affected = await tx.$executeRaw`
+        // 2) Reservar stock de forma atómica (previene sobreventa).
+        for (const line of lines) {
+          const affected = await tx.$executeRaw`
           UPDATE products
           SET reserved = reserved + ${line.quantity}
           WHERE id = ${line.productId}
@@ -159,76 +161,91 @@ export class OrdersService {
             AND deleted_at IS NULL
             AND is_active = 1
             AND (stock - reserved) >= ${line.quantity}`;
-        if (affected === 0) {
-          throw new ConflictException(
-            `Stock insuficiente para "${line.name}".`,
+          if (affected === 0) {
+            throw new ConflictException(
+              `Stock insuficiente para "${line.name}".`,
+            );
+          }
+          await adjustVariantStock(
+            tx,
+            line.productId,
+            line.variant,
+            line.quantity,
+            'reserve',
           );
         }
-        await adjustVariantStock(
-          tx,
-          line.productId,
-          line.variant,
-          line.quantity,
-          'reserve',
-        );
-      }
 
-      // 3) Código público único.
-      let publicCode = generateOrderCode();
-      for (let i = 0; i < 5; i++) {
-        const clash = await tx.order.findUnique({ where: { publicCode } });
-        if (!clash) break;
-        publicCode = generateOrderCode();
-      }
+        // 3) Código público único.
+        let publicCode = generateOrderCode();
+        for (let i = 0; i < 5; i++) {
+          const clash = await tx.order.findUnique({ where: { publicCode } });
+          if (!clash) break;
+          publicCode = generateOrderCode();
+        }
 
-      // 4) Crear el pedido con sus líneas (copia histórica).
-      const created = await tx.order.create({
-        data: {
-          companyId: company.id,
-          customerId: customer.id,
-          publicCode,
-          status: 'pending',
-          paymentStatus: 'pending',
-          deliveryMethod: dto.deliveryMethod,
-          customerName: dto.customerName,
-          customerPhone: phone,
-          address: dto.address ?? null,
-          reference: dto.reference ?? null,
-          customerNote: dto.customerNote ?? null,
-          subtotal,
-          deliveryFee,
-          total,
-          currency,
-          idempotencyKey: idempotencyKey ?? null,
-          reservationExpiresAt,
-          items: {
-            create: lines.map((l) => ({
-              productId: l.productId,
-              name: l.name,
-              variant: l.variant,
-              sku: l.sku,
-              unitPrice: l.unitPrice,
-              quantity: l.quantity,
-              lineTotal: l.lineTotal,
-            })),
-          },
-          payment: {
-            create: {
-              companyId: company.id,
-              method: 'yape',
-              expectedAmount: total,
-              status: 'pending',
+        // 4) Crear el pedido con sus líneas (copia histórica).
+        const created = await tx.order.create({
+          data: {
+            companyId: company.id,
+            customerId: customer.id,
+            publicCode,
+            status: 'pending',
+            paymentStatus: 'pending',
+            deliveryMethod: dto.deliveryMethod,
+            customerName,
+            customerPhone: phone,
+            address: dto.address ?? null,
+            reference: dto.reference ?? null,
+            customerNote: dto.customerNote ?? null,
+            subtotal,
+            deliveryFee,
+            total,
+            currency,
+            idempotencyKey: idempotencyKey ?? null,
+            reservationExpiresAt,
+            items: {
+              create: lines.map((l) => ({
+                productId: l.productId,
+                name: l.name,
+                variant: l.variant,
+                sku: l.sku,
+                unitPrice: l.unitPrice,
+                quantity: l.quantity,
+                lineTotal: l.lineTotal,
+              })),
+            },
+            payment: {
+              create: {
+                companyId: company.id,
+                method: 'yape',
+                expectedAmount: total,
+                status: 'pending',
+              },
+            },
+            history: {
+              create: { fromStatus: null, toStatus: 'pending' },
             },
           },
-          history: {
-            create: { fromStatus: null, toStatus: 'pending' },
-          },
-        },
-        include: { items: true, payment: true },
-      });
+          include: { items: true, payment: true },
+        });
 
-      return created;
-    });
+        return created;
+      })
+      .catch(async (error: unknown) => {
+        // Doble envío simultáneo con la misma Idempotency-Key: la base de datos
+        // rechaza el segundo y se devuelve el pedido que ya se creó.
+        const duplicated =
+          (error as { code?: string })?.code === 'P2002' && idempotencyKey;
+        if (!duplicated) throw error;
+        const existing = await this.prisma.order.findUnique({
+          where: {
+            companyId_idempotencyKey: { companyId: company.id, idempotencyKey },
+          },
+          include: { items: true, payment: true },
+        });
+        if (!existing) throw error;
+        return existing;
+      });
 
     // Aviso "nuevo pedido" al WhatsApp del dueño (desde la plataforma). No bloquea el checkout.
     void this.whatsapp.sendOrderNotification({
@@ -418,6 +435,11 @@ export class OrdersService {
       paymentStatus: order.paymentStatus,
       hasProof: Boolean(order.payment?.proofUrl),
       proofUrl: view === 'public' ? null : (order.payment?.proofUrl ?? null),
+      // Enlace firmado /c/CODE?k=... para enviar el comprobante por WhatsApp.
+      proofKey:
+        view === 'uploader' && order.payment?.proofUrl
+          ? proofKey('c', order.publicCode)
+          : null,
       deliveryMethod: order.deliveryMethod,
       customerName: masked ? maskName(order.customerName) : order.customerName,
       customerPhone: masked

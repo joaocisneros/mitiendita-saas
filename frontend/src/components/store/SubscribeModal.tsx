@@ -70,10 +70,11 @@ export function SubscribeModal({
   const buildWaLink = useCallback((proofUrl?: string | null) => {
     if (!phoneDigits) return null;
     const proofCode = subscription?.publicCode ?? subscription?.id;
+    const proofKey = subscription?.proofKey;
     const shortProofUrl =
-      proofUrl && proofCode && typeof window !== "undefined"
-        ? `${window.location.origin}/s/${proofCode}`
-        : proofUrl;
+      proofUrl && proofCode && proofKey && typeof window !== "undefined"
+        ? `${window.location.origin}/s/${proofCode}?k=${proofKey}`
+        : "enviado desde la tienda";
     const message = proofUrl
       ? [
           `📦 *Suscripción* — ${storeName}`,
@@ -86,7 +87,7 @@ export function SubscribeModal({
         ].join("\n")
       : `Hola ${storeName}, quiero suscribirme al plan *${planName}*. Mi nombre es ${name}.`;
     return `https://wa.me/${phoneDigits}?text=${encodeURIComponent(message)}`;
-  }, [amountLabel, name, phone, phoneDigits, planName, storeName, subscription?.id, subscription?.publicCode]);
+  }, [amountLabel, name, phone, phoneDigits, planName, storeName, subscription?.id, subscription?.publicCode, subscription?.proofKey]);
 
   const waLink = useMemo(
     () => buildWaLink(subscription?.proofUrl),

@@ -228,7 +228,11 @@ export function ServiceReserveModal({
         const origin = typeof window !== "undefined" ? window.location.origin : "";
         lines.push("");
         lines.push(`💰 Adelanto: ${advanceLabel ?? "Por confirmar"}`);
-        lines.push(`✅ *Ya pagué.* Comprobante: ${origin}/ad/${appointment.publicCode}`);
+        lines.push(
+          appointment.proofKey
+            ? `✅ *Ya pagué.* Comprobante: ${origin}/ad/${appointment.publicCode}?k=${appointment.proofKey}`
+            : "✅ *Ya pagué.* Envié mi comprobante desde la tienda.",
+        );
       } else if (appointment?.paymentMode === "advance") {
         lines.push("");
         lines.push(`💰 Adelanto elegido: ${advanceLabel ?? "Por confirmar"}`);

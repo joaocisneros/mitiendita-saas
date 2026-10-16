@@ -235,9 +235,15 @@ function buildWhatsappMessage(order: OrderView, storeName: string): string {
   lines.push(`*Total: ${formatPrice(order.total, order.currency)}*`);
   if (order.customerNote) lines.push(`📝 ${order.customerNote}`);
   if (order.hasProof) {
+    // Con la firma (recién subido desde aquí) va el enlace a la foto; si solo
+    // se abrió el seguimiento con el código, no se comparte la foto.
     const origin = typeof window !== "undefined" ? window.location.origin : "";
     lines.push("");
-    lines.push(`✅ *Ya pagué.* Comprobante: ${origin}/c/${order.code}`);
+    lines.push(
+      order.proofKey
+        ? `✅ *Ya pagué.* Comprobante: ${origin}/c/${order.code}?k=${order.proofKey}`
+        : "✅ *Ya pagué.* Envié mi comprobante desde la tienda.",
+    );
   }
   return lines.join("\n");
 }

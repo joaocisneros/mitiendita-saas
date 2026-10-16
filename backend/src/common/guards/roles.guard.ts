@@ -25,6 +25,13 @@ export class RolesGuard implements CanActivate {
       return true;
     }
     const user = context.switchToHttp().getRequest<{ user?: AuthUser }>().user;
+    // El superadmin no pertenece a ninguna tienda: para revisar una usa el
+    // modo soporte, que emite una sesión propia de esa tienda.
+    if (user?.scope === 'super') {
+      throw new ForbiddenException(
+        'Para ver una tienda entra en modo soporte desde el panel de superadmin.',
+      );
+    }
     if (!user || !required.includes(user.role)) {
       throw new ForbiddenException('No tienes permiso para esta acción');
     }

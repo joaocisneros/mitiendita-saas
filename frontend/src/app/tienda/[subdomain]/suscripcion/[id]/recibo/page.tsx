@@ -111,13 +111,13 @@ export default function SubscriptionReceiptPage() {
             </p>
           )}
 
-          {subscription.renewalProofUrl && (
+          {(subscription.renewalProofUrl || subscription.renewalSubmittedAt) && (
             <p className="mx-auto mt-4 max-w-[320px] rounded-xl bg-amber-50 p-3 text-center text-sm font-semibold text-amber-700 ring-1 ring-amber-200 print:hidden">
               🕒 Tu renovación está en revisión. El negocio te confirmará por WhatsApp.
             </p>
           )}
 
-          {!subscription.renewalProofUrl && canRenew && (
+          {!subscription.renewalProofUrl && !subscription.renewalSubmittedAt && canRenew && (
             <div className="mx-auto mt-4 max-w-[320px] print:hidden">
               <RenewalForm
                 subdomain={subdomain}

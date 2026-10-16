@@ -74,6 +74,8 @@ export interface OrderView {
   /** Si ya se envió comprobante (la foto no se muestra en la vista pública). */
   hasProof?: boolean;
   proofUrl: string | null;
+  /** Firma del enlace /c/CODE?k=... (solo para quien subió el comprobante). */
+  proofKey?: string | null;
   deliveryMethod: string;
   customerName: string;
   customerPhone: string;
@@ -116,6 +118,7 @@ export interface AppointmentView {
   advanceAmount?: string | null;
   paymentStatus?: string;
   proofUrl?: string | null;
+  proofKey?: string | null;
   proofSubmittedAt?: string | null;
   rejectionComment?: string | null;
   createdAt?: string;
@@ -138,6 +141,7 @@ export interface SubscriptionView {
   startsAt?: string | null;
   endsAt?: string | null;
   proofUrl?: string | null;
+  proofKey?: string | null;
   proofSubmittedAt?: string | null;
   price?: string | null;
   renewalMonths?: number | null;

@@ -14,6 +14,8 @@ import { AppointmentStatus, PaymentStatus } from '../../generated/prisma/enums';
 import { generateAppointmentCode } from '../common/utils/order-code.util';
 import { analyzePaymentProof } from '../common/utils/yape-ocr.util';
 import { findDuplicateOperation } from '../common/utils/duplicate-proof.util';
+import { maskName, maskPhone } from '../common/utils/privacy.util';
+import { proofKey } from '../common/utils/proof-link.util';
 
 type AppointmentRow = {
   id: string;
@@ -219,7 +221,7 @@ export class AppointmentsService {
       void this.media.deleteByUrl(appointment.proofUrl, company.id);
     }
 
-    return this.format(updated);
+    return this.publicFormat(updated, 'uploader');
   }
 
   /** Lista de citas del negocio (panel del dueño). */
@@ -349,7 +351,7 @@ export class AppointmentsService {
       where: { id, company: { subdomain, deletedAt: null } },
     });
     if (!appointment) throw new NotFoundException('Cita no encontrada.');
-    return this.format(appointment);
+    return this.publicFormat(appointment, 'public');
   }
 
   /** Resuelve id + subdominio a partir del código corto (para el link corto del recibo). */
@@ -369,6 +371,26 @@ export class AppointmentsService {
       select: { proofUrl: true },
     });
     return appointment?.proofUrl ?? null;
+  }
+
+  /**
+   * Vista sin login (recibo, quien sube el adelanto): datos del cliente a
+   * medias y, salvo para quien subió el comprobante, sin la foto del pago.
+   */
+  private publicFormat(a: AppointmentRow, view: 'public' | 'uploader') {
+    return {
+      ...this.format(a),
+      customerName: maskName(a.customerName),
+      customerPhone: maskPhone(a.customerPhone),
+      hasProof: Boolean(a.proofUrl),
+      proofUrl: view === 'uploader' ? a.proofUrl : null,
+      proofKey:
+        view === 'uploader' && a.proofUrl && a.publicCode
+          ? proofKey('ad', a.publicCode)
+          : null,
+      operationNumber: null,
+      detectedMethod: null,
+    };
   }
 
   private format(a: AppointmentRow) {

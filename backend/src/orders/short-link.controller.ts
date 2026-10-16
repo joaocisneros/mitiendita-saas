@@ -1,8 +1,9 @@
-import { Controller, Get, Param, Res } from '@nestjs/common';
+import { Controller, Get, Param, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { OrdersService } from './orders.service';
 import { Public } from '../common/decorators/public.decorator';
+import { isValidProofKey } from '../common/utils/proof-link.util';
 
 /**
  * Link corto del comprobante: /api/c/:code → redirige a la foto (Cloudinary).
@@ -16,8 +17,15 @@ export class ShortLinkController {
 
   @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @Get(':code')
-  async redirectToProof(@Param('code') code: string, @Res() res: Response) {
-    const url = await this.orders.getProofUrlByCode(code);
+  async redirectToProof(
+    @Param('code') code: string,
+    @Query('k') key: string | undefined,
+    @Res() res: Response,
+  ) {
+    // Sin la firma del enlace no se muestra la foto del pago.
+    const url = isValidProofKey('c', code, key)
+      ? await this.orders.getProofUrlByCode(code)
+      : null;
     if (!url) {
       res.status(404).type('html').send(this.notFoundPage());
       return;

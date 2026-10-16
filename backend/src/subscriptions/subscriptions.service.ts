@@ -13,6 +13,8 @@ import { MediaService } from '../media/media.service';
 import { generateSubscriptionCode } from '../common/utils/order-code.util';
 import { analyzePaymentProof } from '../common/utils/yape-ocr.util';
 import { findDuplicateOperation } from '../common/utils/duplicate-proof.util';
+import { maskName, maskPhone } from '../common/utils/privacy.util';
+import { proofKey } from '../common/utils/proof-link.util';
 
 const DAY = 86_400_000;
 const EXPIRING_DAYS = 7; // "por vencer" si vence en 7 días o menos
@@ -239,7 +241,7 @@ export class SubscriptionsService {
         proofUrl: uploaded.url,
       });
 
-    return { ...this.format(updated), whatsappNotification };
+    return { ...this.publicFormat(updated, 'uploader'), whatsappNotification };
   }
 
   /** El cliente pide renovar desde su link público: queda pendiente de aprobar, sin pisar el comprobante original. */
@@ -313,7 +315,7 @@ export class SubscriptionsService {
       void this.media.deleteByUrl(sub.renewalProofUrl, company.id);
     }
 
-    return this.format(updated);
+    return this.publicFormat(updated, 'uploader');
   }
 
   /** Aprueba la renovación pedida por el cliente: extiende el vencimiento y limpia el pedido. */
@@ -482,7 +484,29 @@ export class SubscriptionsService {
       where: { id, company: { subdomain, deletedAt: null } },
     });
     if (!sub) throw new NotFoundException('Suscripción no encontrada.');
-    return this.format(sub);
+    return this.publicFormat(sub, 'public');
+  }
+
+  /**
+   * Vista sin login (recibo, renovación): datos del cliente a medias y, salvo
+   * para quien subió el comprobante, sin fotos ni números de operación.
+   */
+  private publicFormat(s: SubRow, view: 'public' | 'uploader') {
+    const uploader = view === 'uploader';
+    const code = s.publicCode ?? s.id;
+    return {
+      ...this.format(s),
+      customerName: maskName(s.customerName),
+      customerPhone: maskPhone(s.customerPhone),
+      hasProof: Boolean(s.proofUrl),
+      proofUrl: uploader ? s.proofUrl : null,
+      proofKey: uploader && s.proofUrl ? proofKey('s', code) : null,
+      renewalProofUrl: uploader ? s.renewalProofUrl : null,
+      operationNumber: null,
+      detectedMethod: null,
+      renewalOperationNumber: null,
+      renewalDetectedMethod: null,
+    };
   }
 
   private format(s: SubRow) {
