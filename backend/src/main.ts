@@ -197,14 +197,19 @@ async function bootstrap() {
     .map((origin) => origin.trim())
     .filter(Boolean);
 
+  // En producción solo los dominios de CORS_ORIGINS (el frontend de Vercel
+  // llama por su propio proxy /api). Localhost y la red local, solo en desarrollo.
+  const devOrigins =
+    process.env.NODE_ENV === 'production'
+      ? []
+      : [
+          /\.mitiendita\.localhost(:\d+)?$/,
+          /^http:\/\/localhost(:\d+)?$/,
+          /^http:\/\/192\.168\.\d+\.\d+(:\d+)?$/,
+          /^http:\/\/10\.\d+\.\d+\.\d+(:\d+)?$/,
+        ];
   app.enableCors({
-    origin: [
-      ...prodOrigins,
-      /\.mitiendita\.localhost(:\d+)?$/,
-      /^http:\/\/localhost(:\d+)?$/,
-      /^http:\/\/192\.168\.\d+\.\d+(:\d+)?$/,
-      /^http:\/\/10\.\d+\.\d+\.\d+(:\d+)?$/,
-    ],
+    origin: [...prodOrigins, ...devOrigins],
     credentials: true,
   });
 

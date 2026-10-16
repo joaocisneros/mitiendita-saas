@@ -76,10 +76,13 @@ export class ApiTokenGuard implements CanActivate {
       scopes,
     } satisfies ApiTokenContext;
 
-    void this.prisma.apiToken.update({
-      where: { id: record.id },
-      data: { lastUsedAt: new Date() },
-    });
+    // Registro secundario: si falla, no debe dejar un error suelto.
+    void this.prisma.apiToken
+      .update({
+        where: { id: record.id },
+        data: { lastUsedAt: new Date() },
+      })
+      .catch(() => undefined);
 
     return true;
   }

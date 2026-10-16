@@ -47,7 +47,7 @@ describe('Pedidos / checkout (e2e)', () => {
       await request(app.getHttpServer())
         .post('/api/products')
         .set('Authorization', `Bearer ${ownerToken}`)
-        .send({ name: 'Producto Test', price: 10, stock: 5 })
+        .send({ name: 'Producto Test', price: 10, stock: 10 })
     ).body.id;
   });
 
@@ -74,11 +74,11 @@ describe('Pedidos / checkout (e2e)', () => {
     expect(res.body.status).toBe('pending');
   });
 
-  it('reserva el stock (disponible baja de 5 a 3)', async () => {
+  it('reserva el stock (disponible baja de 10 a 8)', async () => {
     const res = await http()
       .get(`/api/public/stores/${subdomain}/products/producto-test`)
       .expect(200);
-    expect(res.body.available).toBe(3);
+    expect(res.body.available).toBe(8);
   });
 
   it('es idempotente con Idempotency-Key', async () => {
@@ -94,6 +94,23 @@ describe('Pedidos / checkout (e2e)', () => {
       .send(co([{ productId, quantity: 1 }]))
       .expect(201);
     expect(b.body.code).toBe(a.body.code); // no duplica
+  });
+
+  it('dos envíos simultáneos con la misma clave crean un solo pedido', async () => {
+    const key = `doble-${tag}`;
+    const [a, b] = await Promise.all(
+      [1, 2].map(() =>
+        http()
+          .post(`/api/public/stores/${subdomain}/checkout`)
+          .set('Idempotency-Key', key)
+          .send(
+            co([{ productId, quantity: 1 }], { customerName: 'PRUEBA doble' }),
+          ),
+      ),
+    );
+    expect([a.status, b.status]).toEqual([201, 201]);
+    expect(b.body.code).toBe(a.body.code);
+    expect(a.body.customerName).toBe('Prueba Doble');
   });
 
   it('previene la sobreventa', async () => {

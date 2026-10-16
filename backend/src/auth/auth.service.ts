@@ -243,12 +243,22 @@ export class AuthService {
   async logout(rawToken: string) {
     const parsed = this.parseRefreshToken(rawToken);
     if (!parsed) return { ok: true };
-    await this.prisma.refreshToken
-      .update({
-        where: { id: parsed.id },
-        data: { revokedAt: new Date() },
-      })
-      .catch(() => undefined); // si no existe, no pasa nada
+    const stored = await this.prisma.refreshToken.findUnique({
+      where: { id: parsed.id },
+      select: { tokenHash: true, revokedAt: true },
+    });
+    // Solo quien tiene el token completo (id + secreto) puede cerrarlo.
+    if (
+      !stored ||
+      stored.revokedAt ||
+      !(await bcrypt.compare(parsed.secret, stored.tokenHash))
+    ) {
+      return { ok: true };
+    }
+    await this.prisma.refreshToken.update({
+      where: { id: parsed.id },
+      data: { revokedAt: new Date() },
+    });
     return { ok: true };
   }
 

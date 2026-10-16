@@ -132,4 +132,30 @@ describe('Auth y multi-tenant (e2e)', () => {
       .send({ refreshToken: refreshA })
       .expect(401);
   });
+  it('cerrar sesión con un token incompleto o falso no cierra la sesión real', async () => {
+    const login = await http()
+      .post('/api/auth/login')
+      .send({ email: companyA.email, password: companyA.password })
+      .expect(200);
+    const real = login.body.refreshToken as string;
+    const [id] = real.split('.');
+    await http()
+      .post('/api/auth/logout')
+      .send({ refreshToken: `${id}.secreto-inventado` })
+      .expect(200);
+    // La sesión real sigue viva y se puede renovar.
+    const renewed = await http()
+      .post('/api/auth/refresh')
+      .send({ refreshToken: real })
+      .expect(200);
+    // Con el token completo sí se cierra.
+    await http()
+      .post('/api/auth/logout')
+      .send({ refreshToken: renewed.body.refreshToken })
+      .expect(200);
+    await http()
+      .post('/api/auth/refresh')
+      .send({ refreshToken: renewed.body.refreshToken })
+      .expect(401);
+  });
 });
