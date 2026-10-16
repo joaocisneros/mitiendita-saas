@@ -481,4 +481,23 @@ describe('Ventas al crédito (e2e)', () => {
       .send({})
       .expect(404);
   });
+  it('las clientas de Créditos aparecen en el directorio de WhatsApp del superadmin', async () => {
+    const superToken = (
+      await http().post('/api/superadmin/login').send({
+        email: 'admin@mitiendita.localhost',
+        password: 'Admin12345',
+      })
+    ).body.accessToken as string;
+    const res = await http()
+      .get('/api/superadmin/whatsapp/directorio?role=Crédito&search=987111222')
+      .set('Authorization', `Bearer ${superToken}`)
+      .expect(200);
+    expect(res.body.items[0]).toMatchObject({
+      nombre: 'Maria Quispe Rojas',
+      telefono: '51987111222',
+      rol: 'Cliente',
+      credito: true,
+    });
+    expect(res.body.summary.credit).toBeGreaterThanOrEqual(1);
+  });
 });

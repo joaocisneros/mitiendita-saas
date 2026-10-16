@@ -8,7 +8,7 @@ import {
 } from "@/lib/superadmin-api";
 import { DashboardIcon } from "@/components/DashboardIcon";
 
-const ROLE_TABS = ["Todos", "Dueño", "Cliente"] as const;
+const ROLE_TABS = ["Todos", "Dueño", "Cliente", "Crédito"] as const;
 
 /** Muestra todos los números con el mismo formato: +51 999 999 999. */
 function formatPhone(raw: string | null): string {
@@ -217,9 +217,14 @@ export default function WhatsappSettingsPage() {
                   <tr key={r.id} className="text-slate-800">
                     <td className="p-4 font-bold text-slate-950">
                       <span className="block truncate">{r.nombre}</span>
-                      {r.status === "duplicate" && r.duplicateNames.length > 0 && (
-                        <span className="mt-1 block text-xs font-medium text-rose-700">
-                          También registrado como {r.duplicateNames.join(", ")}
+                      {r.duplicateNames.length > 0 && (
+                        // Un número = una fila con el nombre más completo; los demás
+                        // nombres con que se registró quedan en la etiqueta (al pasar el mouse).
+                        <span
+                          className="mt-1 inline-block cursor-help rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500"
+                          title={`También registrado como: ${r.duplicateNames.join(", ")}`}
+                        >
+                          Unificado · +{r.duplicateNames.length} {r.duplicateNames.length === 1 ? "nombre" : "nombres"}
                         </span>
                       )}
                     </td>
@@ -230,6 +235,11 @@ export default function WhatsappSettingsPage() {
                       >
                         {r.rol}
                       </span>
+                      {r.credito && (
+                        <span className="ml-1.5 inline-block rounded-full bg-amber-100 px-2 py-1 text-[10px] font-bold text-amber-800" title="Registrada en el módulo Créditos">
+                          Crédito
+                        </span>
+                      )}
                     </td>
                     <td className="truncate p-4 font-semibold text-slate-800">
                       {formatPhone(r.telefono)}

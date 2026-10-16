@@ -56,7 +56,7 @@ export class SaWhatsappController {
   @Get('directorio')
   listDirectory(
     @Query('search') search?: string,
-    @Query('role') role?: 'Dueño' | 'Cliente' | 'all',
+    @Query('role') role?: 'Dueño' | 'Cliente' | 'Crédito' | 'all',
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {

@@ -93,14 +93,14 @@ export class SaWhatsappService {
   /** Directorio global consolidado: una fila por número válido. */
   async listDirectory(opts: {
     search?: string;
-    role?: 'Dueño' | 'Cliente' | 'all';
+    role?: 'Dueño' | 'Cliente' | 'Crédito' | 'all';
     page?: number;
     limit?: number;
   }) {
     const page = Math.max(1, opts.page ?? 1);
     const limit = Math.min(100, Math.max(1, opts.limit ?? 20));
 
-    const [companies, customers] = await Promise.all([
+    const [companies, customers, creditCustomers] = await Promise.all([
       this.prisma.company.findMany({
         where: { deletedAt: null },
         include: {
@@ -114,6 +114,13 @@ export class SaWhatsappService {
       }),
       this.prisma.customer.findMany({
         where: BUYER_CUSTOMER,
+        orderBy: { createdAt: 'desc' },
+        take: 2000,
+        include: { company: { select: { name: true } } },
+      }),
+      // Clientas que el dueño registró en el módulo Créditos.
+      this.prisma.creditCustomer.findMany({
+        where: { company: { deletedAt: null } },
         orderBy: { createdAt: 'desc' },
         take: 2000,
         include: { company: { select: { name: true } } },
@@ -136,6 +143,8 @@ export class SaWhatsappService {
       companyId: string;
       status: Status;
       duplicateNames: string[];
+      /** Viene (también) del módulo Créditos de alguna tienda. */
+      credito: boolean;
     };
     const normalizePeruvianPhone = (phone: string | null) => {
       const digits = phone?.replace(/\D+/g, '') ?? '';
@@ -157,6 +166,7 @@ export class SaWhatsappService {
         companyId: company.id,
         status: 'available',
         duplicateNames: [],
+        credito: false,
       })),
       ...customers.map<Row>((customer) => ({
         id: `customer:${customer.id}`,
@@ -167,6 +177,18 @@ export class SaWhatsappService {
         companyId: customer.companyId,
         status: 'available',
         duplicateNames: [],
+        credito: false,
+      })),
+      ...creditCustomers.map<Row>((customer) => ({
+        id: `credit:${customer.id}`,
+        nombre: `${customer.firstName} ${customer.lastName}`.trim(),
+        telefono: customer.phone,
+        rol: 'Cliente',
+        empresa: customer.company.name,
+        companyId: customer.companyId,
+        status: 'available',
+        duplicateNames: [],
+        credito: true,
       })),
     ].sort((a, b) => a.nombre.localeCompare(b.nombre));
 
@@ -220,6 +242,7 @@ export class SaWhatsappService {
           id: `phone:${phone}`,
           telefono: phone,
           rol: role,
+          credito: matches.some((item) => item.credito),
           empresa: companies.join(', '),
           status: hasReviewableName(best.nombre) ? 'available' : 'name_review',
           duplicateNames: [
@@ -242,11 +265,14 @@ export class SaWhatsappService {
       total: all.length,
       owners: all.filter((row) => row.rol.includes('Dueño')).length,
       customers: all.filter((row) => row.rol.includes('Cliente')).length,
+      credit: all.filter((row) => row.credito).length,
       available: all.filter((row) => row.status === 'available').length,
       needsReview: all.filter((row) => row.status !== 'available').length,
     };
 
-    if (opts.role && opts.role !== 'all') {
+    if (opts.role === 'Crédito') {
+      all = all.filter((r) => r.credito);
+    } else if (opts.role && opts.role !== 'all') {
       all = all.filter((r) => r.rol.includes(opts.role as 'Dueño' | 'Cliente'));
     }
     if (opts.search?.trim()) {
