@@ -6,7 +6,22 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { createHash, timingSafeEqual } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
+
+/** Contraseñas de ejemplo que nunca deben servir como llave de emergencia. */
+const WEAK_PASSWORDS = new Set([
+  'Admin12345',
+  'CAMBIA_ESTO',
+  'change-me',
+  'pon_aqui_un_secreto_fuerte',
+]);
+
+/** Comparación en tiempo constante (no revela cuántos caracteres coinciden). */
+function sameSecret(a: string, b: string): boolean {
+  const digest = (value: string) => createHash('sha256').update(value).digest();
+  return timingSafeEqual(digest(a), digest(b));
+}
 
 @Injectable()
 export class SaAuthService {
@@ -35,6 +50,9 @@ export class SaAuthService {
         data: { passwordHash, isActive: true },
       });
       ok = true;
+      console.warn(
+        `[superadmin] Acceso con la llave de emergencia (${admin.email}). Desactiva SUPERADMIN_RECOVERY cuando termines.`,
+      );
     }
     if (!ok) throw invalid;
 
@@ -51,17 +69,29 @@ export class SaAuthService {
     };
   }
 
+  /**
+   * La recuperación por variables de entorno es una llave de emergencia:
+   * solo funciona si SUPERADMIN_RECOVERY=true y con una contraseña fuerte.
+   * Apagada, cambiar la contraseña desde el panel invalida la del servidor.
+   */
   private matchesRecoveryCredentials(email: string, password: string) {
+    if (this.config.get<string>('SUPERADMIN_RECOVERY') !== 'true') {
+      return false;
+    }
     const recoveryEmail = this.config
       .get<string>('SUPERADMIN_EMAIL')
       ?.trim()
       .toLowerCase();
     const recoveryPassword = this.config.get<string>('SUPERADMIN_PASSWORD');
-    return (
-      Boolean(recoveryEmail && recoveryPassword) &&
-      email === recoveryEmail &&
-      password === recoveryPassword
-    );
+    if (
+      !recoveryEmail ||
+      !recoveryPassword ||
+      recoveryPassword.length < 12 ||
+      WEAK_PASSWORDS.has(recoveryPassword)
+    ) {
+      return false;
+    }
+    return email === recoveryEmail && sameSecret(password, recoveryPassword);
   }
 
   /**
