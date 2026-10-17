@@ -359,6 +359,8 @@ model Product {
   brand                   String?   @db.VarChar(120)
   material                String?   @db.Text
   sizeGuide               String?   @map("size_guide") @db.Text
+  // Tipo elegido en el formulario (ropa, calzado, anillos…): decide qué cajas se muestran.
+  productType             String?   @map("product_type") @db.VarChar(20)
   sizes                   String?   @db.Text // opciones de talla separadas por coma (ej. "S,M,L,XL"). Vacío = sin tallas.
   colors                  String?   @db.Text // opciones de color separadas por coma (ej. "Negro,Blanco"). Vacío = sin colores.
   variantStocks           Json?     @map("variant_stocks") // [{size,color,stock,reserved}]

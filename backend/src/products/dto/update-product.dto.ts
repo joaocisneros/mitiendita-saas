@@ -14,6 +14,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { PRODUCT_TYPES } from '../product-types';
 import { ProductVariantStockDto } from './create-product.dto';
 
 /** Todos los campos opcionales. `categoryId: null` desasigna la categoría. */
@@ -71,6 +72,10 @@ export class UpdateProductDto {
   @IsString()
   @MaxLength(1000)
   material?: string;
+
+  @IsOptional()
+  @IsIn(PRODUCT_TYPES)
+  productType?: string;
 
   @IsOptional()
   @IsString()

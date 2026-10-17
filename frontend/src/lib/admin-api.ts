@@ -333,6 +333,14 @@ export const adminApi = {
     authFetch("/admin/inventory/products").then((r) =>
       jsonOrThrow<InventoryProduct[]>(r, "Error"),
     ),
+  inventoryReservations: () =>
+    authFetch("/admin/inventory/reservations").then((r) =>
+      jsonOrThrow<UnpaidReservation[]>(r, "No se pudieron cargar las reservas."),
+    ),
+  releaseReservation: (orderId: string) =>
+    authFetch(`/admin/inventory/reservations/${orderId}/release`, { method: "POST" }).then((r) =>
+      jsonOrThrow<{ ok: boolean }>(r, "No se pudo liberar la reserva."),
+    ),
   inventoryMovements: (productId?: string, page = 1) => {
     const q = new URLSearchParams();
     if (productId) q.set("productId", productId);
@@ -474,6 +482,10 @@ export const adminApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }).then((r) => jsonOrThrow<{ balance: string }>(r, "No se pudo corregir el abono.")),
+  deleteCreditCustomer: (id: string) =>
+    authFetch(`/admin/credits/customers/${id}`, { method: "DELETE" }).then((r) =>
+      jsonOrThrow<{ ok: boolean }>(r, "No se pudo eliminar a la clienta."),
+    ),
   deleteCreditPayment: (paymentId: string) =>
     authFetch(`/admin/credits/payments/${paymentId}`, { method: "DELETE" }).then((r) =>
       jsonOrThrow<{ ok: boolean }>(r, "No se pudo eliminar el abono."),
@@ -525,6 +537,17 @@ export interface AdminSubscription {
   createdAt: string;
 }
 
+/** Pedido sin pagar que aparta stock hasta `expiresAt`. */
+export interface UnpaidReservation {
+  id: string;
+  code: string;
+  customerName: string;
+  total: string;
+  createdAt: string;
+  expiresAt: string;
+  items: { productId: string | null; name: string; variant: string | null; quantity: number }[];
+}
+
 export interface InventoryProduct {
   id: string;
   name: string;
@@ -532,6 +555,9 @@ export interface InventoryProduct {
   stock: number;
   reserved: number;
   available: number;
+  /** Parte de lo separado que es una reserva sin pagar (vuelve sola). */
+  unpaidReserved?: number;
+  unpaidUntil?: string | null;
   isActive: boolean;
 }
 export interface StockMovementRow {
@@ -567,6 +593,7 @@ export interface AdminProduct {
   brand: string | null;
   material: string | null;
   sizeGuide: string | null;
+  productType?: string | null;
   sizes: string | null;
   colors: string | null;
   variantStocks: ProductVariantStock[] | null;
@@ -589,6 +616,7 @@ export interface ProductInput {
   brand?: string;
   material?: string;
   sizeGuide?: string;
+  productType?: string;
   sizes?: string;
   colors?: string;
   variantStocks?: Array<{ size?: string; color?: string; stock: number }>;

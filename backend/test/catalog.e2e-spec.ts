@@ -159,4 +159,79 @@ describe('Catálogo y aislamiento (e2e)', () => {
       .send({ name: 'Agua nueva', price: 1.5, stock: 5, sku: `SL-${tag}` })
       .expect(201);
   });
+
+  it('el índice SEO lista los productos activos de la tienda (para el sitemap)', async () => {
+    const subdomain = `seo-${tag}`;
+    const token = (
+      await http()
+        .post('/api/auth/register')
+        .send({ ...mkCompany('seo'), subdomain })
+        .expect(201)
+    ).body.accessToken as string;
+    await http()
+      .post('/api/products')
+      .set(auth(token))
+      .send({ name: 'Polo Visible', price: 30, stock: 5 })
+      .expect(201);
+    const hidden = (
+      await http()
+        .post('/api/products')
+        .set(auth(token))
+        .send({ name: 'Polo Borrado', price: 30, stock: 5 })
+        .expect(201)
+    ).body.id as string;
+    await http().delete(`/api/products/${hidden}`).set(auth(token)).expect(200);
+
+    const res = await http().get('/api/public/stores/seo/index').expect(200);
+    const store = (
+      res.body as { subdomain: string; products: { slug: string }[] }[]
+    ).find((s) => s.subdomain === subdomain)!;
+    expect(store.products.map((p) => p.slug)).toEqual(['polo-visible']);
+  });
+
+  it('guarda categorías y productos escritos en mayúsculas con formato normal', async () => {
+    const category = await http()
+      .post('/api/categories')
+      .set(auth(tokenA))
+      .send({ name: 'PRODUCTO DE ASEOS' })
+      .expect(201);
+    expect(category.body.name).toBe('Producto de Aseos');
+    const product = await http()
+      .post('/api/products')
+      .set(auth(tokenA))
+      .send({ name: 'CREMA NIVEA 200ML', price: 12, stock: 3 })
+      .expect(201);
+    expect(product.body.name).toBe('Crema Nivea 200ML');
+    const edited = await http()
+      .patch(`/api/products/${product.body.id}`)
+      .set(auth(tokenA))
+      .send({ name: 'iPhone 15' })
+      .expect(200);
+    expect(edited.body.name).toBe('iPhone 15');
+  });
+
+  it('guarda el tipo de producto y rechaza uno inventado', async () => {
+    const ring = await http()
+      .post('/api/products')
+      .set(auth(tokenA))
+      .send({
+        name: 'Anillo Plata',
+        price: 50,
+        stock: 0,
+        productType: 'anillos',
+        sizes: '6, 7',
+        variantStocks: [
+          { size: '6', stock: 2 },
+          { size: '7', stock: 1 },
+        ],
+      })
+      .expect(201);
+    expect(ring.body.productType).toBe('anillos');
+    expect(ring.body.stock).toBe(3);
+    await http()
+      .post('/api/products')
+      .set(auth(tokenA))
+      .send({ name: 'Raro', price: 5, stock: 1, productType: 'cohete' })
+      .expect(400);
+  });
 });

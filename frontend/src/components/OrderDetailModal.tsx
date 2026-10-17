@@ -416,7 +416,7 @@ export function Overlay({
 }: {
   children: React.ReactNode;
   onClose: () => void;
-  size?: "default" | "medium" | "wide";
+  size?: "default" | "medium" | "wide" | "xl";
 }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -435,7 +435,7 @@ export function Overlay({
     >
       <div
         className={`relative flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl ${
-          size === "wide" ? "sm:max-w-5xl" : size === "medium" ? "sm:max-w-3xl" : "max-w-lg"
+          size === "xl" ? "sm:h-[min(94vh,860px)] sm:max-h-[94vh] sm:max-w-7xl" : size === "wide" ? "sm:max-w-5xl" : size === "medium" ? "sm:max-w-3xl" : "max-w-lg"
         }`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -446,7 +446,7 @@ export function Overlay({
         >
           ×
         </button>
-        <div className={`scroll-hidden overflow-y-auto ${size === "wide" ? "p-5 sm:p-6" : "p-5"}`}>
+        <div className={`scroll-hidden min-h-0 flex-1 overflow-y-auto ${size === "wide" || size === "xl" ? "p-5 sm:p-6" : "p-5"}`}>
           {children}
         </div>
       </div>

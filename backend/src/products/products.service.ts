@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { MediaService } from '../media/media.service';
 import { slugify } from '../common/utils/slug.util';
+import { toCatalogName } from '../common/utils/text.util';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { QueryProductsDto } from './dto/query-products.dto';
@@ -75,7 +76,8 @@ export class ProductsService {
     }
     await this.assertCategory(companyId, dto.categoryId);
     await this.assertSkuFree(companyId, dto.sku);
-    const slug = await this.uniqueSlug(companyId, slugify(dto.name));
+    const name = toCatalogName(dto.name);
+    const slug = await this.uniqueSlug(companyId, slugify(name));
     // La portada (imageUrl) siempre es la primera foto de la galería.
     const images =
       dto.images?.slice(0, 6) ?? (dto.imageUrl ? [dto.imageUrl] : []);
@@ -88,7 +90,7 @@ export class ProductsService {
       data: {
         companyId,
         categoryId: dto.categoryId ?? null,
-        name: dto.name,
+        name,
         slug,
         description: dto.description ?? null,
         price: dto.price,
@@ -99,6 +101,7 @@ export class ProductsService {
         brand: dto.brand?.trim() || null,
         material: dto.material?.trim() || null,
         sizeGuide: dto.sizeGuide?.trim() || null,
+        productType: dto.productType ?? null,
         sizes: dto.sizes ?? null,
         colors: dto.colors ?? null,
         variantStocks,
@@ -156,6 +159,7 @@ export class ProductsService {
 
     const data: Record<string, unknown> = { ...dto };
     if (dto.name) {
+      data.name = toCatalogName(dto.name);
       data.slug = await this.uniqueSlug(companyId, slugify(dto.name), id);
     }
     const currentImages =

@@ -14,6 +14,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { PRODUCT_TYPES } from '../product-types';
 
 export class ProductVariantStockDto {
   @IsOptional()
@@ -82,6 +83,10 @@ export class CreateProductDto {
   @IsString()
   @MaxLength(1000)
   material?: string;
+
+  @IsOptional()
+  @IsIn(PRODUCT_TYPES)
+  productType?: string;
 
   @IsOptional()
   @IsString()

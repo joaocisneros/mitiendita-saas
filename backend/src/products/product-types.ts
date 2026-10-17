@@ -1,0 +1,22 @@
+/** Tipos de producto del formulario del panel (deben coincidir con el frontend). */
+export const PRODUCT_TYPES = [
+  'simple',
+  'ropa',
+  'pantalon',
+  'lenceria',
+  'ropa_grande',
+  'interior',
+  'uniformes',
+  'calzado_mujer',
+  'calzado_hombre',
+  'calzado',
+  'calzado_ninos',
+  'ninos',
+  'bebe',
+  'anillos',
+  'pulseras',
+  'correas',
+  'gorras',
+  'colores',
+  'otro',
+];
