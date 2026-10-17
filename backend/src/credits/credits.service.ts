@@ -7,7 +7,12 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import type { Prisma } from '../../generated/prisma/client';
 import { normalizePhone } from '../common/utils/phone.util';
-import { toTitleCase } from '../common/utils/text.util';
+import {
+  toAddress,
+  toCatalogName,
+  toSentence,
+  toTitleCase,
+} from '../common/utils/text.util';
 import { generateCreditCode } from '../common/utils/order-code.util';
 import { adjustVariantStock, variantLabel } from '../orders/variant-stock.util';
 import {
@@ -55,9 +60,15 @@ export class CreditsService {
         _sum: { amount: true },
       }),
       this.prisma.creditCustomer.count({
-        where: { companyId, sales: { some: { status: 'pending' } } },
+        where: {
+          companyId,
+          isActive: true,
+          sales: { some: { status: 'pending' } },
+        },
       }),
-      this.prisma.creditCustomer.count({ where: { companyId } }),
+      this.prisma.creditCustomer.count({
+        where: { companyId, isActive: true },
+      }),
     ]);
     return {
       receivable: money(
@@ -84,6 +95,7 @@ export class CreditsService {
     const search = opts.search?.trim();
     const where: Prisma.CreditCustomerWhereInput = {
       companyId,
+      isActive: opts.status !== 'inactive',
       ...(search
         ? {
             OR: [
@@ -149,6 +161,25 @@ export class CreditsService {
     };
   }
 
+  /**
+   * Elimina a una clienta registrada por error. Solo si no tiene ventas (ni
+   * anuladas) ni abonos: con historial se desactiva para no perderlo.
+   */
+  async deleteCustomer(companyId: string, id: string) {
+    const customer = await this.prisma.creditCustomer.findFirst({
+      where: { id, companyId },
+      select: { id: true, _count: { select: { sales: true, payments: true } } },
+    });
+    if (!customer) throw new NotFoundException('Clienta no encontrada.');
+    if (customer._count.sales > 0 || customer._count.payments > 0) {
+      throw new ConflictException(
+        'Esta clienta tiene ventas o abonos registrados. Desactívala para ocultarla y conservar su historial.',
+      );
+    }
+    await this.prisma.creditCustomer.delete({ where: { id } });
+    return { ok: true };
+  }
+
   async createCustomer(companyId: string, dto: CreateCreditCustomerDto) {
     const phone = this.validPhone(dto.phone);
     await this.assertPhoneFree(companyId, phone);
@@ -162,9 +193,11 @@ export class CreditsService {
           firstName: toTitleCase(requiredText(dto.firstName, 'nombres')),
           lastName: toTitleCase(requiredText(dto.lastName, 'apellidos')),
           phone,
-          address: requiredText(dto.address, 'dirección'),
-          reference: dto.reference?.trim() || null,
-          note: dto.note?.trim() || null,
+          address: toAddress(requiredText(dto.address, 'dirección')),
+          reference: dto.reference?.trim()
+            ? toCatalogName(dto.reference)
+            : null,
+          note: dto.note?.trim() ? toSentence(dto.note) : null,
           creditLimit: dto.creditLimit ?? null,
         },
       })
@@ -184,10 +217,13 @@ export class CreditsService {
     if (dto.lastName !== undefined)
       data.lastName = toTitleCase(requiredText(dto.lastName, 'apellidos'));
     if (dto.address !== undefined)
-      data.address = requiredText(dto.address, 'dirección');
+      data.address = toAddress(requiredText(dto.address, 'dirección'));
     if (dto.reference !== undefined)
-      data.reference = dto.reference.trim() || null;
-    if (dto.note !== undefined) data.note = dto.note.trim() || null;
+      data.reference = dto.reference.trim()
+        ? toCatalogName(dto.reference)
+        : null;
+    if (dto.note !== undefined)
+      data.note = dto.note.trim() ? toSentence(dto.note) : null;
     if (dto.creditLimit !== undefined) data.creditLimit = dto.creditLimit;
     if (
       dto.documentNumber !== undefined &&
@@ -350,7 +386,7 @@ export class CreditsService {
             productId: line.productId,
             type: 'sale',
             quantity: -line.quantity,
-            reason: `Venta al crédito ${code}`,
+            reason: `Venta al crédito ${code} · ${customer.firstName} ${customer.lastName}`,
             createdByUserId: userId,
           },
         });
@@ -393,7 +429,11 @@ export class CreditsService {
     if (!sale) throw new NotFoundException('Venta no encontrada.');
 
     const updated = await this.prisma.$transaction(async (tx) => {
-      await this.lockCustomer(tx, companyId, sale.creditCustomerId);
+      const customer = await this.lockCustomer(
+        tx,
+        companyId,
+        sale.creditCustomerId,
+      );
       const current = await tx.creditSale.findUniqueOrThrow({
         where: { id: saleId },
         include: { items: { include: ITEM_PRODUCT } },
@@ -426,7 +466,7 @@ export class CreditsService {
             productId: item.productId,
             type: 'return',
             quantity: item.quantity,
-            reason: `Anulación crédito ${current.code}`,
+            reason: `Anulación crédito ${current.code} · ${customer.firstName} ${customer.lastName}`,
             createdByUserId: userId,
           },
         });

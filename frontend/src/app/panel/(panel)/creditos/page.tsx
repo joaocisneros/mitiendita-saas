@@ -12,6 +12,7 @@ const FILTERS = [
   { id: "all", label: "Todas" },
   { id: "debt", label: "Con deuda" },
   { id: "clear", label: "Al día" },
+  { id: "inactive", label: "Desactivadas" },
 ] as const;
 type FilterId = (typeof FILTERS)[number]["id"];
 

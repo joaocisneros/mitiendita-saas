@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { adminApi, type CreditCustomer } from "@/lib/admin-api";
 import { Overlay } from "@/components/OrderDetailModal";
+import { toAddress, toCatalogName, toSentence } from "@/lib/text";
 
 /** "MARIA QUISPE" → "Maria Quispe" (el resto en minúscula). */
 const titleCase = (value: string) =>
@@ -93,9 +94,9 @@ export function CreditCustomerForm({
       firstName: titleCase(form.firstName.trim()),
       lastName: titleCase(form.lastName.trim()),
       phone: form.phone,
-      address: form.address.trim(),
-      reference: form.reference.trim(),
-      note: form.note.trim(),
+      address: toAddress(form.address),
+      reference: toCatalogName(form.reference),
+      note: toSentence(form.note),
       creditLimit: form.creditLimit.trim() === "" ? null : Number(form.creditLimit),
     };
     try {
@@ -152,15 +153,15 @@ export function CreditCustomerForm({
 
         <Section title="Dónde se le cobra">
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Dirección" value={form.address} onChange={set("address")} placeholder="Ej: Jr. Las Flores 123, El Tambo" required />
-            <Field label="Referencia" value={form.reference} onChange={set("reference")} placeholder="Ej: frente al mercado, puesto 12" />
+            <Field label="Dirección" value={form.address} onChange={set("address")} onBlur={() => set("address")(toAddress(form.address))} placeholder="Ej: Jr. Las Flores 123, El Tambo" required />
+            <Field label="Referencia" value={form.reference} onChange={set("reference")} onBlur={() => set("reference")(toCatalogName(form.reference))} placeholder="Ej: frente al mercado, puesto 12" />
           </div>
         </Section>
 
         <Section title="Condiciones (opcional)">
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Límite de crédito S/" value={form.creditLimit} onChange={(v) => set("creditLimit")(v.replace(/[^\d.]/g, ""))} placeholder="Sin límite" inputMode="decimal" />
-            <Field label="Nota" value={form.note} onChange={set("note")} placeholder="Ej: cobrar los sábados" />
+            <Field label="Nota" value={form.note} onChange={set("note")} onBlur={() => set("note")(toSentence(form.note))} placeholder="Ej: cobrar los sábados" />
           </div>
         </Section>
 

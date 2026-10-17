@@ -16,6 +16,7 @@ type Dialog =
   | { type: "edit" }
   | { type: "cancelSale"; id: string; code: string }
   | { type: "deletePayment"; id: string; amount: string }
+  | { type: "deleteCustomer" }
   | null;
 
 const SALE_STATUS = {
@@ -300,6 +301,20 @@ export function CreditCustomerModal({
                 >
                   {data.isActive ? "Desactivar clienta" : "Activar clienta"}
                 </button>
+                {data.sales.length === 0 && data.payments.length === 0 ? (
+                  <button
+                    onClick={() => setDialog({ type: "deleteCustomer" })}
+                    className="w-full rounded-xl border border-red-200 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50"
+                  >
+                    Eliminar clienta
+                  </button>
+                ) : (
+                  data.isActive && (
+                    <p className="text-center text-[11px] font-medium leading-4 text-slate-400">
+                      Tiene historial de ventas: al desactivarla se oculta de la lista y su historial se conserva.
+                    </p>
+                  )
+                )}
               </div>
             </aside>
           </div>
@@ -326,6 +341,26 @@ export function CreditCustomerModal({
           danger
           onCancel={() => setDialog(null)}
           onConfirm={() => run(() => adminApi.cancelCreditSale(dialog.id))}
+        />
+      )}
+      {dialog?.type === "deleteCustomer" && (
+        <ConfirmDialog
+          title={`¿Eliminar a ${data.fullName}?`}
+          message="Se borrará definitivamente. No tiene ventas ni abonos, así que no se pierde ningún historial."
+          confirmLabel="Eliminar clienta"
+          danger
+          onCancel={() => setDialog(null)}
+          onConfirm={async () => {
+            setError("");
+            try {
+              await adminApi.deleteCreditCustomer(data.id);
+              onChanged();
+              onClose();
+            } catch (reason) {
+              setDialog(null);
+              setError(reason instanceof Error ? reason.message : "No se pudo eliminar a la clienta.");
+            }
+          }}
         />
       )}
       {dialog?.type === "deletePayment" && (

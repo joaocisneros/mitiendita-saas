@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { MediaService } from '../media/media.service';
 import { slugify } from '../common/utils/slug.util';
+import { toCatalogName } from '../common/utils/text.util';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 
@@ -13,11 +14,12 @@ export class CategoriesService {
   ) {}
 
   async create(companyId: string, dto: CreateCategoryDto) {
-    const slug = await this.uniqueSlug(companyId, slugify(dto.name));
+    const name = toCatalogName(dto.name);
+    const slug = await this.uniqueSlug(companyId, slugify(name));
     return this.prisma.category.create({
       data: {
         companyId,
-        name: dto.name,
+        name,
         slug,
         description: dto.description ?? null,
         imageUrl: dto.imageUrl ?? null,
@@ -48,6 +50,7 @@ export class CategoriesService {
     const current = await this.findOne(companyId, id); // valida pertenencia
     const data: Record<string, unknown> = { ...dto };
     if (dto.name) {
+      data.name = toCatalogName(dto.name);
       data.slug = await this.uniqueSlug(companyId, slugify(dto.name), id);
     }
     const updated = await this.prisma.category.update({ where: { id }, data });

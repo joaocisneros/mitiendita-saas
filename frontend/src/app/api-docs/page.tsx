@@ -248,7 +248,7 @@ export default function ApiDocsPage() {
               scope="creditos"
               desc="Ventas al crédito: resumen de cobranza y clientas con lo vendido, lo abonado y el saldo pendiente."
               params={[
-                { name: "status", detail: "debt (con deuda) · clear (al día)" },
+                { name: "status", detail: "debt (con deuda) · clear (al día) · inactive (desactivadas). Por defecto, solo activas" },
                 { name: "search", detail: "Busca por nombre, celular o DNI" },
                 { name: "page / limit", detail: "Paginación (límite máx. 100)" },
               ]}

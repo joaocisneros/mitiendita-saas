@@ -500,4 +500,85 @@ describe('Ventas al crédito (e2e)', () => {
     });
     expect(res.body.summary.credit).toBeGreaterThanOrEqual(1);
   });
+
+  it('solo lista activas por defecto; las desactivadas van en su propio filtro', async () => {
+    const id = (
+      await http()
+        .post('/api/admin/credits/customers')
+        .set(A())
+        .send({
+          firstName: 'Inés',
+          lastName: 'Oculta',
+          phone: '987555111',
+          address: 'Jr. Uno 1',
+        })
+        .expect(201)
+    ).body.id as string;
+    await http()
+      .patch(`/api/admin/credits/customers/${id}`)
+      .set(A())
+      .send({ isActive: false })
+      .expect(200);
+
+    const ids = (body: { items: { id: string }[] }) =>
+      body.items.map((c) => c.id);
+    const active = await http()
+      .get('/api/admin/credits/customers?limit=100')
+      .set(A())
+      .expect(200);
+    expect(ids(active.body)).not.toContain(id);
+    const inactive = await http()
+      .get('/api/admin/credits/customers?status=inactive&limit=100')
+      .set(A())
+      .expect(200);
+    expect(ids(inactive.body)).toContain(id);
+  });
+
+  it('elimina a una clienta sin historial, pero no a una con ventas', async () => {
+    // Con ventas: se rechaza y se pide desactivarla.
+    await http()
+      .delete(`/api/admin/credits/customers/${customerId}`)
+      .set(A())
+      .expect(409);
+
+    const id = (
+      await http()
+        .post('/api/admin/credits/customers')
+        .set(A())
+        .send({
+          firstName: 'Registro',
+          lastName: 'Por Error',
+          phone: '987555222',
+          address: 'Jr. Dos 2',
+        })
+        .expect(201)
+    ).body.id as string;
+    // Otra empresa no puede borrarla.
+    await http()
+      .delete(`/api/admin/credits/customers/${id}`)
+      .set(B())
+      .expect(404);
+    await http()
+      .delete(`/api/admin/credits/customers/${id}`)
+      .set(A())
+      .expect(200);
+    await http().get(`/api/admin/credits/customers/${id}`).set(A()).expect(404);
+  });
+
+  it('guarda nombre, dirección y referencia escritos en mayúsculas con formato normal', async () => {
+    const res = await http()
+      .post('/api/admin/credits/customers')
+      .set(A())
+      .send({
+        firstName: 'ROSA',
+        lastName: 'HUAMÁN TORRES',
+        phone: '987555333',
+        address: 'AV. GIRÁLDEZ 450, HUANCAYO',
+        reference: 'FRENTE AL PARQUE',
+      })
+      .expect(201);
+    expect(res.body.fullName).toBe('Rosa Huamán Torres');
+    expect(res.body.address).toBe('Av. Giráldez 450, Huancayo');
+    expect(res.body.reference).toBe('Frente al Parque');
+  });
 });

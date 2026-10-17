@@ -92,6 +92,14 @@ export class CreditsController {
     return this.credits.updateCustomer(companyId, id, dto);
   }
 
+  @Delete('customers/:id')
+  deleteCustomer(
+    @CurrentUser('companyId') companyId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.credits.deleteCustomer(companyId, id);
+  }
+
   @Post('customers/:id/sales')
   createSale(
     @CurrentUser('companyId') companyId: string,
