@@ -53,8 +53,15 @@ export function ProductCard({
             </span>
           )}
           {!product.inStock && (
-            <span className="absolute inset-0 flex items-center justify-center bg-white/60 text-sm font-black text-slate-700 backdrop-blur-[1px]">
-              Agotado
+            <span className="absolute inset-0 flex flex-col items-center justify-center bg-white/60 text-center text-sm font-black text-slate-700 backdrop-blur-[1px]">
+              {product.onHold ? (
+                <>
+                  Apartado
+                  <span className="mt-0.5 px-2 text-[11px] font-semibold text-slate-500">Vuelve si no lo pagan en minutos</span>
+                </>
+              ) : (
+                "Agotado"
+              )}
             </span>
           )}
         </button>
@@ -65,13 +72,18 @@ export function ProductCard({
               {product.category.name}
             </span>
           )}
-          <button
-            type="button"
-            onClick={() => setShowDetail(true)}
+          <a
+            href={`/tienda/${subdomain}/producto/${product.slug}`}
+            onClick={(event) => {
+              // Ctrl/Cmd + clic o clic central: abre la página del producto en otra pestaña.
+              if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+              event.preventDefault();
+              setShowDetail(true);
+            }}
             className="line-clamp-2 min-h-[2.75rem] text-left text-[15px] font-bold leading-snug text-slate-900 transition hover:opacity-75"
           >
             {product.name}
-          </button>
+          </a>
           <p className="mt-1 text-xl font-black tracking-tight" style={{ color: accent }}>
             {formatPrice(product.price, currency)}
           </p>

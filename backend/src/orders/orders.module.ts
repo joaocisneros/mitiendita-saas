@@ -18,6 +18,6 @@ import { WhatsappModule } from '../whatsapp/whatsapp.module';
     AdminOrdersController,
   ],
   providers: [OrdersService, AdminOrdersService, OrderExpirationService],
-  exports: [OrdersService, AdminOrdersService],
+  exports: [OrdersService, AdminOrdersService, OrderExpirationService],
 })
 export class OrdersModule {}

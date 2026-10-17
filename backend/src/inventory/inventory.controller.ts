@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+} from '@nestjs/common';
 import {
   IsIn,
   IsInt,
@@ -37,6 +45,20 @@ export class InventoryController {
   @Get('products')
   products(@CurrentUser('companyId') companyId: string) {
     return this.inventory.products(companyId);
+  }
+
+  /** Pedidos sin pagar que apartan stock (se liberan solos al vencer). */
+  @Get('reservations')
+  reservations(@CurrentUser('companyId') companyId: string) {
+    return this.inventory.unpaidReservations(companyId);
+  }
+
+  @Post('reservations/:id/release')
+  releaseReservation(
+    @CurrentUser('companyId') companyId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.inventory.releaseReservation(companyId, id);
   }
 
   @Get('movements')

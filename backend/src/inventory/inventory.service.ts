@@ -4,14 +4,22 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { OrderExpirationService } from '../orders/order-expiration.service';
 import type { StockMovementType } from '../../generated/prisma/enums';
 
 @Injectable()
 export class InventoryService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly expiration: OrderExpirationService,
+  ) {}
 
   /** Productos con su stock para la vista de inventario. */
   async products(companyId: string) {
+    // Lo "separado" que ve la dueña ya no incluye reservas vencidas.
+    await this.expiration
+      .expireStaleReservations(companyId)
+      .catch(() => undefined);
     const rows = await this.prisma.product.findMany({
       where: { companyId, deletedAt: null },
       orderBy: { name: 'asc' },
@@ -24,7 +32,91 @@ export class InventoryService {
         isActive: true,
       },
     });
-    return rows.map((p) => ({ ...p, available: p.stock - p.reserved }));
+    // Parte de lo separado que es solo una reserva sin pagar (vuelve sola).
+    const holds = await this.unpaidReservations(companyId);
+    const byProduct = new Map<string, { quantity: number; until: Date }>();
+    for (const hold of holds) {
+      for (const item of hold.items) {
+        if (!item.productId) continue;
+        const prev = byProduct.get(item.productId);
+        byProduct.set(item.productId, {
+          quantity: (prev?.quantity ?? 0) + item.quantity,
+          until:
+            prev && prev.until > hold.expiresAt ? prev.until : hold.expiresAt,
+        });
+      }
+    }
+    return rows.map((p) => ({
+      ...p,
+      available: p.stock - p.reserved,
+      unpaidReserved: byProduct.get(p.id)?.quantity ?? 0,
+      unpaidUntil: byProduct.get(p.id)?.until ?? null,
+    }));
+  }
+
+  /**
+   * Pedidos que apartan stock sin haber pagado (sin comprobante): la dueña
+   * los ve para entender lo "separado" y puede liberarlos antes de tiempo.
+   */
+  async unpaidReservations(companyId: string) {
+    const orders = await this.prisma.order.findMany({
+      where: {
+        companyId,
+        status: 'pending',
+        paymentStatus: 'pending',
+        reservationExpiresAt: { not: null },
+      },
+      orderBy: { reservationExpiresAt: 'asc' },
+      take: 50,
+      select: {
+        id: true,
+        publicCode: true,
+        customerName: true,
+        total: true,
+        createdAt: true,
+        reservationExpiresAt: true,
+        items: {
+          select: {
+            productId: true,
+            name: true,
+            variant: true,
+            quantity: true,
+          },
+        },
+      },
+    });
+    return orders.map((order) => ({
+      id: order.id,
+      code: order.publicCode,
+      customerName: order.customerName,
+      total: order.total.toString(),
+      createdAt: order.createdAt,
+      expiresAt: order.reservationExpiresAt!,
+      items: order.items,
+    }));
+  }
+
+  /** La dueña libera ya una reserva sin pagar (el pedido queda cancelado). */
+  async releaseReservation(companyId: string, orderId: string) {
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, companyId },
+      select: { id: true, status: true, paymentStatus: true },
+    });
+    if (!order) throw new NotFoundException('Pedido no encontrado.');
+    if (order.status !== 'pending' || order.paymentStatus !== 'pending') {
+      throw new BadRequestException(
+        'Este pedido ya no es una reserva sin pagar.',
+      );
+    }
+    await this.prisma.$transaction((tx) =>
+      this.expiration.releaseReservation(
+        tx,
+        order.id,
+        'cancelled',
+        'Reserva liberada por la tienda (sin pago)',
+      ),
+    );
+    return { ok: true };
   }
 
   /** Historial paginado de movimientos. */

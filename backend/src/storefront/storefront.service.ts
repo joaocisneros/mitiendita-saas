@@ -30,11 +30,23 @@ export class StorefrontService {
         ],
       },
       orderBy: { updatedAt: 'desc' },
-      select: { subdomain: true, updatedAt: true },
+      select: {
+        subdomain: true,
+        updatedAt: true,
+        // Para el sitemap: Google llega a cada producto aunque la tienda
+        // lo abra en una ventana. Tope por tienda para no inflar el sitemap.
+        products: {
+          where: { isActive: true, deletedAt: null },
+          orderBy: { updatedAt: 'desc' },
+          take: 500,
+          select: { slug: true, updatedAt: true },
+        },
+      },
     });
     return rows.map((row) => ({
       subdomain: row.subdomain,
       updatedAt: row.updatedAt,
+      products: row.products,
     }));
   }
 
@@ -231,6 +243,9 @@ export class StorefrontService {
           : undefined,
       available,
       inStock: available > 0,
+      // Sin unidades libres pero con stock: está apartado en un pedido sin pagar
+      // y vuelve si no lo pagan (no es "agotado").
+      onHold: available === 0 && p.stock > 0,
     };
   }
 }

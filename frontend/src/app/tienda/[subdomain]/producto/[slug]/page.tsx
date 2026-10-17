@@ -14,6 +14,7 @@ import {
   storeAccent,
 } from "@/lib/business-categories";
 import { formatPrice } from "@/lib/format";
+import { metaDescription } from "@/lib/seo";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://mitiendita-saas.vercel.app").replace(/\/$/, "");
 
@@ -30,7 +31,7 @@ export async function generateMetadata({
       storefrontApi.getStore(subdomain),
     ]);
     const description =
-      product.description?.replace(/\s+/g, " ").slice(0, 160) || `${product.name}, disponible en ${storeData.store.name}. Compra o consulta por internet.`;
+      metaDescription(product.description) || `${product.name}, disponible en ${storeData.store.name}. Compra o consulta por internet.`;
     const socialImage = product.images?.[0] || product.imageUrl;
     const images = socialImage ? [{ url: socialImage, alt: product.name }] : undefined;
     const canonical = `${SITE_URL}/tienda/${encodeURIComponent(subdomain)}/producto/${encodeURIComponent(slug)}`;
@@ -143,10 +144,10 @@ export default async function ProductDetailPage({
           </p>
           <p
             className={`mt-2 text-sm font-bold ${
-              product.inStock ? "text-emerald-700" : "text-red-700"
+              product.inStock ? "text-emerald-700" : product.onHold ? "text-amber-700" : "text-red-700"
             }`}
           >
-            {product.inStock ? `${product.available} disponibles` : "Producto agotado"}
+            {product.inStock ? `${product.available} disponibles` : product.onHold ? "Apartado por otro cliente: vuelve a estar disponible si no lo paga en unos minutos" : "Producto agotado"}
           </p>
           {product.description ? (
             <p className="mt-5 whitespace-pre-line text-sm font-medium leading-6 text-slate-700">

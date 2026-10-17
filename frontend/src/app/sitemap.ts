@@ -4,7 +4,7 @@ import { storefrontApi } from "@/lib/api";
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://mitiendita-saas.vercel.app").replace(/\/$/, "");
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  let stores: Array<{ subdomain: string; updatedAt: string }> = [];
+  let stores: Awaited<ReturnType<typeof storefrontApi.seoIndex>> = [];
   try {
     stores = await storefrontApi.seoIndex();
   } catch {
@@ -14,11 +14,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: SITE_URL, changeFrequency: "weekly", priority: 1 },
     { url: `${SITE_URL}/terminos`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${SITE_URL}/privacidad`, changeFrequency: "yearly", priority: 0.3 },
-    ...stores.map((store) => ({
-      url: `${SITE_URL}/tienda/${encodeURIComponent(store.subdomain)}`,
-      lastModified: new Date(store.updatedAt),
-      changeFrequency: "daily" as const,
-      priority: 0.8,
-    })),
+    ...stores.flatMap((store) => {
+      const base = `${SITE_URL}/tienda/${encodeURIComponent(store.subdomain)}`;
+      return [
+        { url: base, lastModified: new Date(store.updatedAt), changeFrequency: "daily" as const, priority: 0.8 },
+        ...(store.products ?? []).map((product) => ({
+          url: `${base}/producto/${encodeURIComponent(product.slug)}`,
+          lastModified: new Date(product.updatedAt),
+          changeFrequency: "weekly" as const,
+          priority: 0.6,
+        })),
+      ];
+    }),
   ];
 }

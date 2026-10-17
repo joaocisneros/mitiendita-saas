@@ -56,6 +56,8 @@ export interface PublicProduct {
   isFeatured: boolean;
   available: number;
   inStock: boolean;
+  /** Apartado por un pedido aún sin pagar: puede volver en minutos. */
+  onHold?: boolean;
   description?: string | null;
   category?: { name: string; slug: string } | null;
   sizes?: string | null;

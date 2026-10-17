@@ -5,7 +5,19 @@ import {
   adminApi,
   type InventoryProduct,
   type StockMovementRow,
+  type UnpaidReservation,
 } from "@/lib/admin-api";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+
+/** Las ventas y anulaciones ya traen su texto ("Venta al crédito CR-…"); no se repite el tipo. */
+function movementText(type: string, reason: string | null) {
+  const label = TYPE_LABEL[type] ?? type;
+  if (!reason) return label;
+  return /^(Venta|Anulación|Cancelación)/.test(reason) ? reason : `${label} · ${reason}`;
+}
+
+const hour = (value: string) =>
+  new Date(value).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" });
 import { Overlay } from "@/components/OrderDetailModal";
 
 const TYPE_LABEL: Record<string, string> = {
@@ -18,6 +30,8 @@ const TYPE_LABEL: Record<string, string> = {
 
 export default function InventoryPage() {
   const [products, setProducts] = useState<InventoryProduct[]>([]);
+  const [holds, setHolds] = useState<UnpaidReservation[]>([]);
+  const [releasing, setReleasing] = useState<UnpaidReservation | null>(null);
   const [movements, setMovements] = useState<StockMovementRow[]>([]);
   const [editing, setEditing] = useState<InventoryProduct | null>(null);
   const [type, setType] = useState("entry");
@@ -36,6 +50,7 @@ export default function InventoryPage() {
 
   const load = useCallback(() => {
     adminApi.inventoryProducts().then(setProducts).catch(() => {});
+    adminApi.inventoryReservations().then(setHolds).catch(() => {});
     adminApi.inventoryMovements().then((d) => setMovements(d.items)).catch(() => {});
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -96,6 +111,42 @@ export default function InventoryPage() {
         </button>
       </div>
 
+      {/* Reservas sin pagar: explican lo "separado" y se pueden liberar. */}
+      {holds.length > 0 && (
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-black text-amber-900">
+            ⏳ {holds.length === 1 ? "Hay 1 pedido sin pagar" : `Hay ${holds.length} pedidos sin pagar`} apartando stock
+          </p>
+          <p className="mt-0.5 text-xs font-medium text-amber-800">
+            Tu stock no se perdió: si el cliente no paga, vuelve solo a la venta a la hora indicada. Si sabes que no va a
+            comprar, puedes liberarlo ahora.
+          </p>
+          <div className="mt-3 space-y-2">
+            {holds.map((hold) => (
+              <div key={hold.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white p-3 ring-1 ring-amber-200">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-slate-900">
+                    {hold.customerName} <span className="font-mono text-xs font-semibold text-slate-400">· {hold.code}</span>
+                  </p>
+                  <p className="truncate text-xs text-slate-600">
+                    {hold.items.map((item) => `${item.quantity}× ${item.name}${item.variant ? ` (${item.variant})` : ""}`).join(", ")}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-bold text-amber-800">Vuelve a las {hour(hold.expiresAt)}</span>
+                  <button
+                    onClick={() => setReleasing(hold)}
+                    className="rounded-lg bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-900 hover:bg-amber-200"
+                  >
+                    Liberar ahora
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Stock actual */}
       <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
         <div className="overflow-x-auto">
@@ -114,7 +165,14 @@ export default function InventoryPage() {
                 <tr key={p.id} className="text-slate-800">
                   <td className="p-4 font-bold text-slate-950">{p.name}</td>
                   <td className="p-4">{p.stock}</td>
-                  <td className="p-4 text-slate-500">{p.reserved}</td>
+                  <td className="p-4 text-slate-500">
+                    {p.reserved}
+                    {(p.unpaidReserved ?? 0) > 0 && p.unpaidUntil && (
+                      <span className="block text-[11px] font-bold text-amber-700">
+                        {p.unpaidReserved} sin pagar · vuelve {hour(p.unpaidUntil)}
+                      </span>
+                    )}
+                  </td>
                   <td className="p-4">
                     <span className={`font-bold ${p.available <= 5 ? "text-amber-600" : "text-emerald-700"}`}>
                       {p.available}
@@ -153,7 +211,7 @@ export default function InventoryPage() {
                   <div className="min-w-0 sm:grid sm:grid-cols-[1fr_1.2fr] sm:items-center sm:gap-4">
                     <p className="truncate font-bold text-slate-900">{m.productName}</p>
                     <div className="min-w-0 text-xs text-slate-500">
-                      <p className="truncate">{TYPE_LABEL[m.type] ?? m.type}{m.reason ? ` · ${m.reason}` : ""}</p>
+                      <p className="truncate" title={m.reason ?? undefined}>{movementText(m.type, m.reason)}</p>
                       <time>{new Date(m.createdAt).toLocaleString("es-PE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</time>
                     </div>
                   </div>
@@ -170,7 +228,7 @@ export default function InventoryPage() {
               <p className="text-xs font-medium text-slate-500">Página {historyPage} de {historyPages} · {movements.length} cambios</p>
               <div className="flex gap-2">
                 <button type="button" disabled={historyPage === 1} onClick={() => setHistoryPage((page) => page - 1)} className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 disabled:opacity-40">Anterior</button>
-                <button type="button" disabled={historyPage === historyPages} onClick={() => setHistoryPage((page) => page + 1)} className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-40">Siguiente</button>
+                <button type="button" disabled={historyPage === historyPages} onClick={() => setHistoryPage((page) => page + 1)} className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-bold text-white disabled:bg-slate-100 disabled:text-slate-400">Siguiente</button>
               </div>
             </div>
           )}
@@ -219,6 +277,19 @@ export default function InventoryPage() {
             </div>
           </div>
         </Overlay>
+      )}
+      {releasing && (
+        <ConfirmDialog
+          title={`¿Liberar el pedido ${releasing.code}?`}
+          message={`El stock apartado por ${releasing.customerName} vuelve a la venta y el pedido se cancela. Hazlo solo si sabes que no va a pagar.`}
+          confirmLabel="Liberar stock"
+          onCancel={() => setReleasing(null)}
+          onConfirm={async () => {
+            await adminApi.releaseReservation(releasing.id).catch(() => undefined);
+            setReleasing(null);
+            load();
+          }}
+        />
       )}
     </div>
   );

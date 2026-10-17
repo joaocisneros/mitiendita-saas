@@ -256,7 +256,7 @@ export class AdminOrdersService {
               productId: item.productId,
               type: 'sale',
               quantity: -item.quantity,
-              reason: `Venta pedido ${order.publicCode}`,
+              reason: `Venta pedido ${order.publicCode} · ${order.customerName}`,
               createdByUserId: userId,
             },
           });
@@ -436,7 +436,7 @@ export class AdminOrdersService {
                 productId: item.productId,
                 type: 'cancellation',
                 quantity: item.quantity,
-                reason: `Cancelación pedido ${order.publicCode}`,
+                reason: `Cancelación pedido ${order.publicCode} · ${order.customerName}`,
                 createdByUserId: userId,
               },
             });

@@ -2,6 +2,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
+import { PrismaService } from '../src/prisma/prisma.service';
 
 /**
  * Fase 4: flujo de pedido (checkout público).
@@ -165,6 +166,93 @@ describe('Pedidos / checkout (e2e)', () => {
       reference: null,
       proofUrl: null,
       hasProof: false,
+    });
+  });
+
+  describe('pedidos abandonados antes de pagar', () => {
+    let lonelyId = '';
+    const available = async () =>
+      (
+        await http()
+          .get(`/api/public/stores/${subdomain}/products/producto-abandono`)
+          .expect(200)
+      ).body.available as number;
+
+    beforeAll(async () => {
+      lonelyId = (
+        await http()
+          .post('/api/products')
+          .set('Authorization', `Bearer ${ownerToken}`)
+          .send({ name: 'Producto Abandono', price: 5, stock: 3 })
+          .expect(201)
+      ).body.id as string;
+    });
+
+    it('el cliente cancela antes de pagar y el stock vuelve al instante', async () => {
+      const order = await http()
+        .post(`/api/public/stores/${subdomain}/checkout`)
+        .send(co([{ productId: lonelyId, quantity: 2 }]))
+        .expect(201);
+      expect(await available()).toBe(1);
+
+      const cancelled = await http()
+        .post(
+          `/api/public/stores/${subdomain}/orders/${order.body.code}/cancel`,
+        )
+        .expect(201);
+      expect(cancelled.body.status).toBe('cancelled');
+      expect(await available()).toBe(3);
+
+      // Repetir no devuelve stock dos veces.
+      await http()
+        .post(
+          `/api/public/stores/${subdomain}/orders/${order.body.code}/cancel`,
+        )
+        .expect(201);
+      expect(await available()).toBe(3);
+    });
+
+    it('con comprobante enviado ya no puede cancelar solo', async () => {
+      const order = await http()
+        .post(`/api/public/stores/${subdomain}/checkout`)
+        .send(co([{ productId: lonelyId, quantity: 1 }]))
+        .expect(201);
+      await app.get(PrismaService).order.update({
+        where: { publicCode: order.body.code },
+        data: { paymentStatus: 'proof_submitted', reservationExpiresAt: null },
+      });
+      await http()
+        .post(
+          `/api/public/stores/${subdomain}/orders/${order.body.code}/cancel`,
+        )
+        .expect(400);
+      expect(await available()).toBe(2);
+    });
+
+    it('una reserva vencida se libera al abrir el inventario aunque el cron no haya corrido', async () => {
+      const order = await http()
+        .post(`/api/public/stores/${subdomain}/checkout`)
+        .send(co([{ productId: lonelyId, quantity: 2 }]))
+        .expect(201);
+      expect(await available()).toBe(0);
+      // Con todo apartado se muestra "apartado", no "agotado".
+      const held = await http()
+        .get(`/api/public/stores/${subdomain}/products/producto-abandono`)
+        .expect(200);
+      expect(held.body).toMatchObject({ inStock: false, onHold: true });
+      await app.get(PrismaService).order.update({
+        where: { publicCode: order.body.code },
+        data: { reservationExpiresAt: new Date(Date.now() - 60_000) },
+      });
+      await http()
+        .get('/api/admin/inventory/products')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+      expect(await available()).toBe(2);
+      const view = await http()
+        .get(`/api/public/stores/${subdomain}/orders/${order.body.code}`)
+        .expect(200);
+      expect(view.body.status).toBe('expired');
     });
   });
 });

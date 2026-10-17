@@ -191,7 +191,11 @@ export async function getPublicLegal(): Promise<PublicLegal | null> {
 }
 
 export const storefrontApi = {
-  seoIndex: () => get<Array<{ subdomain: string; updatedAt: string }>>("/public/stores/seo/index", 300),
+  seoIndex: () =>
+    get<Array<{ subdomain: string; updatedAt: string; products?: Array<{ slug: string; updatedAt: string }> }>>(
+      "/public/stores/seo/index",
+      300,
+    ),
   getStore: (subdomain: string) =>
     get<StoreResponse>(`/public/stores/${subdomain}`),
 
@@ -320,6 +324,17 @@ export const storefrontApi = {
     );
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(errorMessage(data, "Pedido no encontrado."));
+    return data as OrderView;
+  },
+
+  /** El cliente cancela su pedido antes de pagar (el stock vuelve al instante). */
+  async cancelOrder(subdomain: string, code: string): Promise<OrderView> {
+    const res = await safeFetch(
+      `${API}/public/stores/${subdomain}/orders/${code}/cancel`,
+      { method: "POST" },
+    );
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(errorMessage(data, "No se pudo cancelar el pedido."));
     return data as OrderView;
   },
 

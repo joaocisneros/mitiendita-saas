@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCart } from "@/lib/cart-context";
 import { storefrontApi, type OrderView } from "@/lib/api";
 import { storeAccent } from "@/lib/business-categories";
@@ -19,10 +19,20 @@ const PAYMENT_LABEL: Record<string, string> = {
 
 /** Pago en modal centrado: formulario + confirmación/Yape, todo en la misma pantalla. */
 export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClose: () => void }) {
-  const { items, subtotal, clear } = useCart();
+  const { items, subtotal, clear, add } = useCart();
 
   const [store, setStore] = useState<StoreBrand | null>(null);
   const [order, setOrder] = useState<OrderView | null>(null);
+  // Copia del carrito al crear el pedido: si lo cancela, vuelve al carrito.
+  const [placed, setPlaced] = useState<typeof items>([]);
+  // Al cerrar sin pagar se pregunta qué hacer (no quedan reservas olvidadas).
+  const [askLeave, setAskLeave] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const unpaid = Boolean(order && !order.hasProof && order.status === "pending");
+  const requestClose = useCallback(() => {
+    if (unpaid) setAskLeave(true);
+    else onClose();
+  }, [unpaid, onClose]);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [method, setMethod] = useState<"pickup" | "delivery">("pickup");
@@ -66,14 +76,14 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
   }, [subdomain]);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && requestClose();
     window.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
     return () => {
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
     };
-  }, [onClose]);
+  }, [requestClose]);
 
   const deliveryFee = useMemo(
     () => (method === "delivery" ? Number(store?.deliveryFee ?? 0) : 0),
@@ -139,12 +149,30 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
         },
         idemKey.current,
       );
+      setPlaced(items.map((item) => ({ ...item })));
       clear();
       setOrder(created); // → muestra la confirmación en el mismo modal
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error al crear el pedido.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function cancelOrder() {
+    if (!order) return;
+    setCancelling(true);
+    setError("");
+    try {
+      await storefrontApi.cancelOrder(subdomain, order.code);
+      // Devuelve los productos al carrito por si quería cambiar algo.
+      for (const { quantity, ...item } of placed) add(item, quantity);
+      onClose();
+    } catch (e) {
+      setAskLeave(false);
+      setError(e instanceof Error ? e.message : "No se pudo cancelar el pedido.");
+    } finally {
+      setCancelling(false);
     }
   }
 
@@ -178,7 +206,7 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
   return (
     <div
       className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/60 p-0 sm:items-center sm:p-4"
-      onClick={onClose}
+      onClick={requestClose}
     >
       <div
         className="relative flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl"
@@ -187,7 +215,7 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
         {/* Encabezado: cambia entre "Finalizar" y "Pedido creado" */}
         {order ? (
           <header className="relative px-5 py-2.5 text-center text-white" style={{ background: `linear-gradient(135deg, ${accent}, #0f172a)` }}>
-            <button onClick={onClose} className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-white/20 hover:bg-white/30" aria-label="Cerrar">✕</button>
+            <button onClick={requestClose} className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-white/20 hover:bg-white/30" aria-label="Cerrar">✕</button>
             <h2 className="text-base font-black">✓ ¡Pedido creado! <span className="font-semibold text-white/80">· {order.code}</span></h2>
           </header>
         ) : (
@@ -411,14 +439,46 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
                   </>
                 ) : null}
 
-                <button onClick={onClose} className="block w-full py-1 text-center text-sm font-semibold text-gray-500 hover:text-gray-700">
-                  Seguir comprando
-                </button>
+                <div className="flex items-center justify-center gap-4">
+                  <button onClick={requestClose} className="py-1 text-sm font-semibold text-gray-500 hover:text-gray-700">
+                    Seguir comprando
+                  </button>
+                  {unpaid && (
+                    <button onClick={() => setAskLeave(true)} className="py-1 text-sm font-semibold text-red-500 hover:text-red-700">
+                      Cancelar pedido
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
             </>
           )}
         </div>
+
+        {askLeave && order && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/50 p-4" onClick={() => setAskLeave(false)}>
+            <div className="w-full max-w-sm rounded-2xl bg-white p-5 text-center shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <p className="text-base font-black text-slate-900">Aún no pagaste tu pedido</p>
+              <p className="mt-1 text-sm text-slate-600">
+                Te guardamos los productos{order?.reservationExpiresAt
+                  ? ` hasta las ${new Date(order.reservationExpiresAt).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" })}`
+                  : ""}
+                <span className="mt-1 block">¿Qué deseas hacer?</span>
+              </p>
+              <div className="mt-4 grid gap-2">
+                <button onClick={onClose} className="rounded-xl py-2.5 text-sm font-bold text-white" style={{ backgroundColor: accent }}>
+                  Pagaré después
+                </button>
+                <button onClick={cancelOrder} disabled={cancelling} className="rounded-xl py-2.5 text-sm font-bold text-red-600 ring-1 ring-red-200 hover:bg-red-50 disabled:opacity-60">
+                  {cancelling ? "Cancelando…" : "Cancelar pedido"}
+                </button>
+                <button onClick={() => setAskLeave(false)} className="py-1 text-sm font-semibold text-slate-500 hover:text-slate-700">
+                  Volver al pago
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <style>{`.cm-input{width:100%;border-radius:0.75rem;border:1px solid #e5e7eb;padding:0.6rem 0.75rem;font-size:0.95rem;outline:none}.cm-input:focus{border-color:#94a3b8}`}</style>
       </div>

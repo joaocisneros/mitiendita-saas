@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { OrderExpirationService } from './order-expiration.service';
 import { MediaService } from '../media/media.service';
 import { normalizePhone } from '../common/utils/phone.util';
 import { toTitleCase } from '../common/utils/text.util';
@@ -26,6 +27,7 @@ export class OrdersService {
     private readonly prisma: PrismaService,
     private readonly media: MediaService,
     private readonly whatsapp: WhatsappService,
+    private readonly expiration: OrderExpirationService,
   ) {}
 
   /**
@@ -39,6 +41,10 @@ export class OrdersService {
       include: { settings: true },
     });
     if (!company) throw new NotFoundException('Tienda no encontrada.');
+    // Libera reservas vencidas de esta tienda antes de revisar el stock.
+    await this.expiration
+      .expireStaleReservations(company.id)
+      .catch(() => undefined);
     if (company.status !== 'active') {
       throw new ForbiddenException('Esta tienda no está disponible.');
     }
@@ -126,7 +132,8 @@ export class OrdersService {
     const phone = normalizePhone(dto.customerPhone);
     const customerName = toTitleCase(dto.customerName);
 
-    const reservationMinutes = Number(process.env.RESERVATION_MINUTES ?? 30);
+    // Tiempo para pagar antes de que el stock apartado vuelva a la venta.
+    const reservationMinutes = Number(process.env.RESERVATION_MINUTES ?? 15);
     const reservationExpiresAt = new Date(
       Date.now() + reservationMinutes * 60_000,
     );
@@ -262,6 +269,40 @@ export class OrdersService {
   }
 
   /** Estado público del pedido por su código (para la página de seguimiento). */
+  /**
+   * El cliente cancela su pedido antes de pagar: el stock reservado vuelve
+   * al instante. Con comprobante enviado ya no puede (lo resuelve la tienda).
+   */
+  async cancelUnpaid(subdomain: string, code: string) {
+    const company = await this.prisma.company.findFirst({
+      where: { subdomain, deletedAt: null },
+      select: { id: true },
+    });
+    if (!company) throw new NotFoundException('Tienda no encontrada.');
+    const order = await this.prisma.order.findFirst({
+      where: { companyId: company.id, publicCode: code },
+      select: { id: true, status: true, paymentStatus: true },
+    });
+    if (!order) throw new NotFoundException('Pedido no encontrado.');
+    if (order.status === 'cancelled' || order.status === 'expired') {
+      return this.getByCode(subdomain, code); // ya estaba cerrado
+    }
+    if (order.status !== 'pending' || order.paymentStatus !== 'pending') {
+      throw new BadRequestException(
+        'Ya enviaste tu comprobante. Para cancelar, escribe al negocio por WhatsApp.',
+      );
+    }
+    await this.prisma.$transaction((tx) =>
+      this.expiration.releaseReservation(
+        tx,
+        order.id,
+        'cancelled',
+        'Cancelado por el cliente antes de pagar',
+      ),
+    );
+    return this.getByCode(subdomain, code);
+  }
+
   async getByCode(subdomain: string, code: string) {
     const company = await this.prisma.company.findFirst({
       where: { subdomain, deletedAt: null },

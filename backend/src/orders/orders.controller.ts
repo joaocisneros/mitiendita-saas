@@ -42,6 +42,13 @@ export class OrdersController {
     return this.orders.getByCode(subdomain, code);
   }
 
+  /** El cliente cancela su pedido antes de pagar (libera el stock). */
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('orders/:code/cancel')
+  cancel(@Param('subdomain') subdomain: string, @Param('code') code: string) {
+    return this.orders.cancelUnpaid(subdomain, code);
+  }
+
   /** El cliente sube su comprobante de pago Yape (imagen). */
   @Throttle({ default: { limit: 15, ttl: 60_000 } })
   @Post('orders/:code/proof')

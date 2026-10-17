@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { metaDescription } from "@/lib/seo";
 import { notFound } from "next/navigation";
 import { storefrontApi } from "@/lib/api";
 import {
@@ -29,7 +30,9 @@ export async function generateMetadata({
     const { store } = await storefrontApi.getStore(subdomain);
     const title = store.seoTitle?.trim() || `${store.name} | Tienda online`;
     const description =
-      store.seoDescription?.trim() || store.description || `Conoce ${store.name}: haz tu pedido o reserva por internet, fácil y rápido.`;
+      metaDescription(store.seoDescription) ||
+      metaDescription(store.description) ||
+      `Conoce ${store.name}: haz tu pedido o reserva por internet, fácil y rápido.`;
     const socialImage = store.socialImageUrl || store.logoUrl;
     const images = socialImage ? [{ url: socialImage, alt: store.name }] : undefined;
     const canonical = `${SITE_URL}/tienda/${encodeURIComponent(subdomain)}`;
