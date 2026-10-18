@@ -8,6 +8,7 @@ import { Overlay } from "@/components/OrderDetailModal";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CreditCustomerForm } from "@/components/credits/CreditCustomerForm";
 import { CreditPaymentForm, CreditSaleForm, PAYMENT_METHODS } from "@/components/credits/CreditForms";
+import { PriceChange } from "@/components/credits/PriceChange";
 
 type Dialog =
   | { type: "sale" }
@@ -215,6 +216,7 @@ export function CreditCustomerModal({
                               <p className="text-xs font-medium text-slate-500">
                                 {item.variant ? `${item.variant} · ` : ""}{item.quantity} x {formatPrice(item.unitPrice)}
                               </p>
+                              <PriceChange price={Number(item.unitPrice)} listPrice={item.listPrice === null || item.listPrice === undefined ? null : Number(item.listPrice)} compact />
                             </div>
                             <span className="shrink-0 text-sm font-black text-slate-900">{formatPrice(item.lineTotal)}</span>
                           </li>

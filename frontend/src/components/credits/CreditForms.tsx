@@ -6,6 +6,7 @@ import { adminApi, type AdminProduct, type CreditPayment, type CreditPaymentMeth
 import { formatPrice } from "@/lib/format";
 import { Overlay } from "@/components/OrderDetailModal";
 import { Field } from "@/components/credits/CreditCustomerForm";
+import { PriceChange } from "@/components/credits/PriceChange";
 
 export const PAYMENT_METHODS: { id: CreditPaymentMethod; label: string }[] = [
   { id: "cash", label: "Efectivo" },
@@ -289,6 +290,11 @@ export function CreditSaleForm({
                         </div>
                         <span className="ml-auto text-sm font-black text-slate-950">{formatPrice((Number(line.unitPrice) || 0) * line.quantity)}</span>
                       </div>
+                      {line.unitPrice !== "" && (
+                        <div className="mt-2">
+                          <PriceChange price={Number(line.unitPrice)} listPrice={Number(line.product.price)} />
+                        </div>
+                      )}
                     </div>
                   );
                 })

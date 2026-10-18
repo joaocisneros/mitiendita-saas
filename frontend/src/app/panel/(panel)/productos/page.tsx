@@ -10,7 +10,7 @@ import {
 import { formatPrice } from "@/lib/format";
 import { Overlay } from "@/components/OrderDetailModal";
 import { archetypeOf, resolveCategory } from "@/lib/business-categories";
-import { PRODUCT_TYPES, type ProductTypeId } from "@/lib/product-types";
+import { PRODUCT_TYPE_GROUPS, PRODUCT_TYPES, typeHasOptions, type ProductTypeId } from "@/lib/product-types";
 
 const EMPTY = {
   name: "",
@@ -87,7 +87,7 @@ function joinPlanDescription(shortDescription: string, benefits: string) {
 
 /** Atajos para el campo de presentación (cremas, perfumes…) o material (ropa, calzado…). */
 const PRESENTATION_CHIPS = ["Frasco", "Tubo", "Pote", "Spray", "Sachet", "Barra", "Roll-on"];
-const MATERIAL_CHIPS = ["Algodón", "Cuero", "Sintético", "Jean", "Plata", "Acero"];
+const MATERIAL_CHIPS = ["Cuero", "Sintético", "Algodón", "Acero", "Plata", "Jean"];
 
 const splitSizes = (value: string) => value.split(",").map((item) => item.trim()).filter(Boolean);
 
@@ -137,11 +137,11 @@ export default function ProductosPage() {
   const [productType, setProductType] = useState<ProductTypeId>("simple");
   const typeInfo = PRODUCT_TYPES.find((type) => type.id === productType) ?? PRODUCT_TYPES[0];
   // Atajos: presentaciones para cremas, perfumes, envases; materiales para ropa, calzado, joyas.
-  const usesMaterial = typeInfo.sizes !== null;
+  const usesMaterial = typeInfo.group !== "Sin tallas ni colores" && typeInfo.group !== "Belleza";
   const materialChips = usesMaterial ? MATERIAL_CHIPS : PRESENTATION_CHIPS;
   // Productos físicos: siempre 3 columnas (datos | tallas y colores | fotos).
   const isPhysical = !isDigital && !isService;
-  const hasOptions = isPhysical && productType !== "simple";
+  const hasOptions = isPhysical && typeHasOptions(typeInfo);
   // El formulario se llena en orden: nombre → precio y cantidad → categoría y tipo.
   const nameDone = form.name.trim().length > 0;
   const basicsDone = nameDone && form.price !== "" && form.stock !== "";
@@ -577,8 +577,12 @@ export default function ProductosPage() {
                       disabled={!basicsDone}
                       className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm outline-none focus:border-violet-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
                     >
-                      {PRODUCT_TYPES.map((type) => (
-                        <option key={type.id} value={type.id}>{type.label}</option>
+                      {PRODUCT_TYPE_GROUPS.map((group) => (
+                        <optgroup key={group} label={group}>
+                          {PRODUCT_TYPES.filter((type) => type.group === group).map((type) => (
+                            <option key={type.id} value={type.id}>{type.label}</option>
+                          ))}
+                        </optgroup>
                       ))}
                     </select>
                     <span className={`mt-1 line-clamp-2 block h-8 text-xs leading-4 ${basicsDone ? "text-slate-500" : "font-semibold text-amber-700"}`}>
@@ -634,7 +638,7 @@ export default function ProductosPage() {
                   <p className="mt-2 text-sm font-bold text-slate-800">Este producto no usa tallas ni colores</p>
                   <p className="mt-1 text-xs text-slate-500">¿Sí los tiene? Elige qué es y aparecen las opciones:</p>
                   <div className="mt-3 flex flex-wrap justify-center gap-1.5">
-                    {PRODUCT_TYPES.filter((type) => type.id !== "simple").map((type) => (
+                    {PRODUCT_TYPES.filter(typeHasOptions).map((type) => (
                       <button
                         key={type.id}
                         type="button"

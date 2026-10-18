@@ -194,8 +194,34 @@ export class CreditsService {
       debtors.set(c.id, row);
     }
 
+    // Rebajas: lo que se dejó de cobrar frente al precio normal del producto.
+    const pricedItems = await this.prisma.creditSaleItem.findMany({
+      where: {
+        listPrice: { not: null },
+        sale: { companyId, status: { not: 'cancelled' }, soldAt: range },
+      },
+      select: {
+        creditSaleId: true,
+        unitPrice: true,
+        listPrice: true,
+        quantity: true,
+      },
+    });
+    const discounted = pricedItems.filter(
+      (item) => Number(item.listPrice) - Number(item.unitPrice) > 0.004,
+    );
+    const discountsTotal = discounted.reduce(
+      (sum, item) =>
+        sum + (Number(item.listPrice) - Number(item.unitPrice)) * item.quantity,
+      0,
+    );
+
     return {
       soldTotal: money(sales.reduce((sum, s) => sum + Number(s.total), 0)),
+      discounts: {
+        total: money(discountsTotal),
+        sales: new Set(discounted.map((item) => item.creditSaleId)).size,
+      },
       salesCount: sales.length,
       collected: money(payments.reduce((sum, p) => sum + Number(p.amount), 0)),
       paymentsCount: payments.length,
@@ -504,13 +530,15 @@ export class CreditsService {
         if (!product) {
           throw new BadRequestException('Uno de los productos ya no existe.');
         }
-        const unitPrice = round2(item.unitPrice ?? Number(product.price));
+        const listPrice = round2(Number(product.price));
+        const unitPrice = round2(item.unitPrice ?? listPrice);
         return {
           productId: product.id,
           name: product.name,
           variant: variantLabel(item.size, item.color),
           sku: product.sku,
           unitPrice,
+          listPrice,
           quantity: item.quantity,
           lineTotal: round2(unitPrice * item.quantity),
         };
@@ -987,6 +1015,7 @@ export class CreditsService {
       name: string;
       variant: string | null;
       unitPrice: unknown;
+      listPrice?: unknown;
       quantity: number;
       lineTotal: unknown;
       product?: { imageUrl: string | null; images: unknown } | null;
@@ -1010,6 +1039,11 @@ export class CreditsService {
         name: item.name,
         variant: item.variant,
         unitPrice: money(Number(item.unitPrice)),
+        // Precio normal al venderlo (null en ventas anteriores a este dato).
+        listPrice:
+          item.listPrice === null || item.listPrice === undefined
+            ? null
+            : money(Number(item.listPrice)),
         quantity: item.quantity,
         lineTotal: money(Number(item.lineTotal)),
         imageUrl: productImage(item.product),

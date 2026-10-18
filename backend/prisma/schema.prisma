@@ -695,6 +695,7 @@ model CreditSaleItem {
   variant      String?
   sku          String?
   unitPrice    Decimal @map("unit_price") @db.Decimal(10, 2)
+  listPrice    Decimal? @map("list_price") @db.Decimal(10, 2) // precio normal del producto al venderlo (para ver rebajas)
   quantity     Int
   lineTotal    Decimal @map("line_total") @db.Decimal(10, 2)
 

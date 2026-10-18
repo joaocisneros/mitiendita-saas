@@ -625,6 +625,57 @@ describe('Ventas al crédito (e2e)', () => {
     expect((await store()).creditRequests).toBe(true);
   });
 
+  it('guarda el precio normal y muestra la rebaja sin cambiar el precio del producto', async () => {
+    const product = (
+      await http()
+        .post('/api/products')
+        .set(A())
+        .send({ name: 'Crema Rebaja', price: 150, stock: 3 })
+        .expect(201)
+    ).body as { id: string };
+    const customer = (
+      await http()
+        .post('/api/admin/credits/customers')
+        .set(A())
+        .send({
+          firstName: 'Rosa',
+          lastName: 'Rebaja',
+          phone: '987555222',
+          address: 'Jr. Lima 456',
+        })
+        .expect(201)
+    ).body as { id: string };
+    await http()
+      .post(`/api/admin/credits/customers/${customer.id}/sales`)
+      .set(A())
+      .send({ items: [{ productId: product.id, quantity: 1, unitPrice: 140 }] })
+      .expect(201);
+
+    const detail = await http()
+      .get(`/api/admin/credits/customers/${customer.id}`)
+      .set(A())
+      .expect(200);
+    const item = detail.body.sales[0].items[0] as {
+      unitPrice: string;
+      listPrice: string;
+    };
+    expect(item.unitPrice).toBe('140.00');
+    expect(item.listPrice).toBe('150.00');
+    expect(detail.body.balance).toBe('140.00');
+
+    const still = await http()
+      .get(`/api/products/${product.id}`)
+      .set(A())
+      .expect(200);
+    expect(Number(still.body.price)).toBe(150);
+
+    const report = await http().get('/api/admin/reports').set(A()).expect(200);
+    expect(Number(report.body.credits.discounts.total)).toBeGreaterThanOrEqual(
+      10,
+    );
+    expect(report.body.credits.discounts.sales).toBeGreaterThanOrEqual(1);
+  });
+
   it('reportes y resumen incluyen las ventas al crédito', async () => {
     const report = await http().get('/api/admin/reports').set(A()).expect(200);
     expect(report.body.credits).toMatchObject({

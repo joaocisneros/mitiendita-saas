@@ -189,10 +189,15 @@ function CreditsSection({ credits }: { credits: CreditsReport }) {
         hint="Productos entregados para pagar en abonos. No se mezcla con la tienda virtual."
         action={<Link href="/panel/creditos" className="text-sm font-bold text-violet-700 hover:underline">Ir a Créditos →</Link>}
       />
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Stat label={`Cobrado en abonos (${credits.paymentsCount} ${credits.paymentsCount === 1 ? "abono" : "abonos"})`} value={formatPrice(credits.collected)} accentGreen />
         <Stat label={`Entregado al crédito (${credits.salesCount} ${credits.salesCount === 1 ? "venta" : "ventas"})`} value={formatPrice(credits.soldTotal)} />
         <Stat label={`Falta cobrar · ${credits.customersWithDebt} de ${credits.customers} clientas`} value={formatPrice(credits.receivable)} warn={Number(credits.receivable) > 0} />
+        <Stat
+          label={`Rebajas dadas${credits.discounts?.sales ? ` (en ${credits.discounts.sales} ${credits.discounts.sales === 1 ? "venta" : "ventas"})` : ""}`}
+          value={formatPrice(credits.discounts?.total ?? 0)}
+          warn={Number(credits.discounts?.total ?? 0) > 0}
+        />
         <Best
           label="Mejor clienta (la que más compró)"
           name={credits.topBuyers[0]?.name}

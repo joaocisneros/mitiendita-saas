@@ -610,6 +610,8 @@ export interface ReportsData {
 export interface CreditsReport {
   soldTotal: string;
   salesCount: number;
+  /** Rebajas dadas frente al precio normal (solo ventas que guardan ese precio). */
+  discounts?: { total: string; sales: number };
   collected: string;
   paymentsCount: number;
   receivable: string;
@@ -789,7 +791,8 @@ export interface CreditSale {
   soldAt: string;
   cancelledAt: string | null;
   cancelReason: string | null;
-  items: { productId: string | null; name: string; variant: string | null; unitPrice: string; quantity: number; lineTotal: string; imageUrl: string | null }[];
+  /** listPrice: precio normal del producto al venderlo (null en ventas antiguas). */
+  items: { productId: string | null; name: string; variant: string | null; unitPrice: string; listPrice?: string | null; quantity: number; lineTotal: string; imageUrl: string | null }[];
 }
 
 export interface CreditPayment {
