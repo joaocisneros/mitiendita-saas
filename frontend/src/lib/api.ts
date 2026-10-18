@@ -94,6 +94,8 @@ export interface OrderView {
     messageId?: string;
     reason?: string;
   };
+  /** El pedido aún no aparta stock: productos por agotarse o que otra persona compra. */
+  stockWarnings?: { name: string; available: number; othersBuying: number }[];
 }
 
 export interface AppointmentBody {

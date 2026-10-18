@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -236,19 +237,35 @@ export class AdminOrdersService {
 
       // Si estaba pendiente, lo confirmamos y comprometemos el stock.
       if (order.status === 'pending') {
+        const fresh = await tx.order.findUniqueOrThrow({
+          where: { id: order.id },
+          select: { stockReserved: true },
+        });
         for (const item of order.items) {
           if (!item.productId) continue;
-          await tx.$executeRaw`
-            UPDATE products
-            SET stock = GREATEST(0, stock - ${item.quantity}),
-                reserved = GREATEST(0, reserved - ${item.quantity})
-            WHERE id = ${item.productId} AND company_id = ${companyId}`;
+          if (fresh.stockReserved) {
+            await tx.$executeRaw`
+              UPDATE products
+              SET stock = GREATEST(0, stock - ${item.quantity}),
+                  reserved = GREATEST(0, reserved - ${item.quantity})
+              WHERE id = ${item.productId} AND company_id = ${companyId}`;
+          } else {
+            const affected = await tx.$executeRaw`
+              UPDATE products SET stock = stock - ${item.quantity}
+              WHERE id = ${item.productId} AND company_id = ${companyId}
+                AND (stock - reserved) >= ${item.quantity}`;
+            if (affected === 0) {
+              throw new ConflictException(
+                `No hay stock suficiente de "${item.name}" para confirmar este pedido.`,
+              );
+            }
+          }
           await adjustVariantStock(
             tx,
             item.productId,
             item.variant,
             item.quantity,
-            'commit',
+            fresh.stockReserved ? 'commit' : 'sell',
           );
           await tx.stockMovement.create({
             data: {
@@ -267,6 +284,7 @@ export class AdminOrdersService {
             status: 'confirmed',
             paymentStatus: 'approved',
             confirmedAt: new Date(),
+            stockReserved: false,
           },
         });
         await tx.orderStatusHistory.create({
@@ -318,7 +336,7 @@ export class AdminOrdersService {
         );
       }
 
-      for (const item of current.items) {
+      for (const item of current.stockReserved ? current.items : []) {
         if (!item.productId) continue;
         await tx.$executeRaw`
           UPDATE products
@@ -349,6 +367,7 @@ export class AdminOrdersService {
           status: 'cancelled',
           paymentStatus: 'rejected',
           reservationExpiresAt: null,
+          stockReserved: false,
           cancelledAt: now,
         },
       });
@@ -407,6 +426,8 @@ export class AdminOrdersService {
         for (const item of order.items) {
           if (!item.productId) continue;
           if (order.status === 'pending') {
+            // Sin comprobante no se apartó nada: no hay que devolver.
+            if (!order.stockReserved) continue;
             // Reserva aún viva: liberarla.
             await tx.$executeRaw`
               UPDATE products SET reserved = GREATEST(0, reserved - ${item.quantity})
@@ -447,7 +468,10 @@ export class AdminOrdersService {
       const data: Record<string, unknown> = { status: newStatus };
       if (newStatus === 'confirmed') data.confirmedAt = new Date();
       if (newStatus === 'delivered') data.deliveredAt = new Date();
-      if (newStatus === 'cancelled') data.cancelledAt = new Date();
+      if (newStatus === 'cancelled') {
+        data.cancelledAt = new Date();
+        data.stockReserved = false;
+      }
 
       await tx.order.update({ where: { id: order.id }, data });
       await tx.orderStatusHistory.create({

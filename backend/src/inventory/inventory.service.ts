@@ -32,41 +32,98 @@ export class InventoryService {
         isActive: true,
       },
     });
-    // Parte de lo separado que es solo una reserva sin pagar (vuelve sola).
+    // Lo separado viene de pedidos pagados que la tienda aún no confirma.
     const holds = await this.unpaidReservations(companyId);
-    const byProduct = new Map<string, { quantity: number; until: Date }>();
+    const byProduct = new Map<string, number>();
     for (const hold of holds) {
       for (const item of hold.items) {
         if (!item.productId) continue;
-        const prev = byProduct.get(item.productId);
-        byProduct.set(item.productId, {
-          quantity: (prev?.quantity ?? 0) + item.quantity,
-          until:
-            prev && prev.until > hold.expiresAt ? prev.until : hold.expiresAt,
-        });
+        byProduct.set(
+          item.productId,
+          (byProduct.get(item.productId) ?? 0) + item.quantity,
+        );
       }
     }
+
+    // Cuadre: lo "separado" de cada producto debe coincidir con los pedidos
+    // que de verdad lo apartan. Si no (datos viejos o de prueba), se corrige.
+    for (const row of rows) {
+      const expected = byProduct.get(row.id) ?? 0;
+      if (row.reserved === expected) continue;
+      await this.prisma.product.update({
+        where: { id: row.id },
+        data: {
+          reserved: expected,
+          ...(expected === 0 ? await this.clearVariantReserved(row.id) : {}),
+        },
+      });
+      row.reserved = expected;
+    }
+    // Vendido por canal (las anulaciones y cancelaciones restan).
+    const soldRows = await this.prisma.$queryRaw<
+      Array<{ productId: string; online: unknown; credit: unknown }>
+    >`
+      SELECT product_id AS productId,
+        SUM(CASE
+          WHEN (type = 'sale' AND reason LIKE 'Venta al cr%')
+            OR (type = 'return' AND reason LIKE 'Anulaci%n cr%') THEN -quantity
+          ELSE 0 END) AS credit,
+        SUM(CASE
+          WHEN (type = 'sale' AND (reason IS NULL OR reason NOT LIKE 'Venta al cr%'))
+            OR type = 'cancellation' THEN -quantity
+          ELSE 0 END) AS online
+      FROM stock_movements
+      WHERE company_id = ${companyId}
+      GROUP BY product_id`;
+    const sold = new Map(
+      soldRows.map((row) => [
+        row.productId,
+        {
+          online: Math.max(0, Number(row.online ?? 0)),
+          credit: Math.max(0, Number(row.credit ?? 0)),
+        },
+      ]),
+    );
+
     return rows.map((p) => ({
       ...p,
       available: p.stock - p.reserved,
-      unpaidReserved: byProduct.get(p.id)?.quantity ?? 0,
-      unpaidUntil: byProduct.get(p.id)?.until ?? null,
+      soldOnline: sold.get(p.id)?.online ?? 0,
+      soldCredit: sold.get(p.id)?.credit ?? 0,
+      // Lo que la dueña registró en total = lo que queda + lo vendido.
+      registered:
+        p.stock + (sold.get(p.id)?.online ?? 0) + (sold.get(p.id)?.credit ?? 0),
+      toConfirm: byProduct.get(p.id) ?? 0,
     }));
   }
 
+  /** Si ya no hay nada separado, las tallas tampoco deben tener separado. */
+  private async clearVariantReserved(productId: string) {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { variantStocks: true },
+    });
+    const rows = Array.isArray(product?.variantStocks)
+      ? (product.variantStocks as Array<Record<string, unknown>>)
+      : [];
+    if (!rows.some((row) => Number(row.reserved ?? 0) > 0)) return {};
+    return { variantStocks: rows.map((row) => ({ ...row, reserved: 0 })) };
+  }
+
   /**
-   * Pedidos que apartan stock sin haber pagado (sin comprobante): la dueña
-   * los ve para entender lo "separado" y puede liberarlos antes de tiempo.
+   * Pedidos pagados (comprobante enviado) que apartan stock hasta que la
+   * tienda los confirme o rechace en Pedidos.
    */
   async unpaidReservations(companyId: string) {
     const orders = await this.prisma.order.findMany({
+      // Lo que aparta stock: pedidos con comprobante enviado, esperando que
+      // la tienda confirme el pago (los que aún no pagan no apartan nada).
       where: {
         companyId,
         status: 'pending',
-        paymentStatus: 'pending',
-        reservationExpiresAt: { not: null },
+        stockReserved: true,
       },
-      orderBy: { reservationExpiresAt: 'asc' },
+      orderBy: { createdAt: 'asc' },
       take: 50,
       select: {
         id: true,
@@ -91,44 +148,48 @@ export class InventoryService {
       customerName: order.customerName,
       total: order.total.toString(),
       createdAt: order.createdAt,
-      expiresAt: order.reservationExpiresAt!,
+      expiresAt: order.reservationExpiresAt,
       items: order.items,
     }));
-  }
-
-  /** La dueña libera ya una reserva sin pagar (el pedido queda cancelado). */
-  async releaseReservation(companyId: string, orderId: string) {
-    const order = await this.prisma.order.findFirst({
-      where: { id: orderId, companyId },
-      select: { id: true, status: true, paymentStatus: true },
-    });
-    if (!order) throw new NotFoundException('Pedido no encontrado.');
-    if (order.status !== 'pending' || order.paymentStatus !== 'pending') {
-      throw new BadRequestException(
-        'Este pedido ya no es una reserva sin pagar.',
-      );
-    }
-    await this.prisma.$transaction((tx) =>
-      this.expiration.releaseReservation(
-        tx,
-        order.id,
-        'cancelled',
-        'Reserva liberada por la tienda (sin pago)',
-      ),
-    );
-    return { ok: true };
   }
 
   /** Historial paginado de movimientos. */
   async movements(
     companyId: string,
-    opts: { productId?: string; page?: number; limit?: number },
+    opts: {
+      productId?: string;
+      page?: number;
+      limit?: number;
+      channel?: string;
+    },
   ) {
-    const page = opts.page ?? 1;
-    const limit = opts.limit ?? 30;
+    const page = Number.isFinite(opts.page)
+      ? Math.max(1, Math.floor(opts.page!))
+      : 1;
+    const limit = Number.isFinite(opts.limit)
+      ? Math.min(100, Math.max(1, Math.floor(opts.limit!)))
+      : 30;
+    // Canal: tienda virtual, crédito o ajustes hechos a mano.
+    const CREDIT = [
+      { reason: { startsWith: 'Venta al crédito' } },
+      { reason: { startsWith: 'Anulación crédito' } },
+    ];
+    const STORE = [
+      { type: 'sale' as const, reason: { startsWith: 'Venta pedido' } },
+      { type: 'cancellation' as const },
+    ];
+    const byChannel =
+      opts.channel === 'credito'
+        ? { OR: CREDIT }
+        : opts.channel === 'tienda'
+          ? { OR: STORE }
+          : opts.channel === 'ajuste'
+            ? { NOT: [...CREDIT, ...STORE] }
+            : {};
     const where = {
       companyId,
       ...(opts.productId ? { productId: opts.productId } : {}),
+      ...byChannel,
     };
     const [items, total] = await Promise.all([
       this.prisma.stockMovement.findMany({
@@ -140,15 +201,63 @@ export class InventoryService {
       }),
       this.prisma.stockMovement.count({ where }),
     ]);
+    // Cliente de cada venta: del texto nuevo ("… · Nombre") o, en los
+    // movimientos antiguos, buscando el pedido o la venta por su código.
+    const codeOf = (reason: string | null) =>
+      reason?.match(/\b(MT|CR)-[A-Z0-9]+\b/)?.[0] ?? null;
+    const codes = items
+      .map((m) => codeOf(m.reason))
+      .filter(Boolean) as string[];
+    const [orders, creditSales] = await Promise.all([
+      this.prisma.order.findMany({
+        where: {
+          companyId,
+          publicCode: { in: codes.filter((c) => c.startsWith('MT-')) },
+        },
+        select: { publicCode: true, customerName: true },
+      }),
+      this.prisma.creditSale.findMany({
+        where: {
+          companyId,
+          code: { in: codes.filter((c) => c.startsWith('CR-')) },
+        },
+        select: {
+          code: true,
+          customer: { select: { firstName: true, lastName: true } },
+        },
+      }),
+    ]);
+    const customerByCode = new Map<string, string>([
+      ...orders.map((o) => [o.publicCode, o.customerName] as [string, string]),
+      ...creditSales.map(
+        (s) =>
+          [s.code, `${s.customer.firstName} ${s.customer.lastName}`] as [
+            string,
+            string,
+          ],
+      ),
+    ]);
+
     return {
-      items: items.map((m) => ({
-        id: m.id,
-        productName: m.product.name,
-        type: m.type,
-        quantity: m.quantity,
-        reason: m.reason,
-        createdAt: m.createdAt,
-      })),
+      items: items.map((m) => {
+        const code = codeOf(m.reason);
+        const channel = code?.startsWith('CR-')
+          ? 'credito'
+          : code?.startsWith('MT-') || m.type === 'cancellation'
+            ? 'tienda'
+            : 'ajuste';
+        return {
+          id: m.id,
+          productName: m.product.name,
+          type: m.type,
+          quantity: m.quantity,
+          reason: m.reason,
+          createdAt: m.createdAt,
+          channel,
+          code,
+          customerName: code ? (customerByCode.get(code) ?? null) : null,
+        };
+      }),
       total,
       page,
       limit,

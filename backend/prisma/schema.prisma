@@ -435,6 +435,8 @@ model Order {
 
   idempotencyKey       String?   @map("idempotency_key")
   reservationExpiresAt DateTime? @map("reservation_expires_at")
+  // El stock se aparta recién cuando el cliente sube su comprobante de pago.
+  stockReserved        Boolean        @default(false) @map("stock_reserved")
   confirmedAt          DateTime? @map("confirmed_at")
   deliveredAt          DateTime? @map("delivered_at")
   cancelledAt          DateTime? @map("cancelled_at")

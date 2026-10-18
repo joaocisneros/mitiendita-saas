@@ -75,11 +75,11 @@ describe('Pedidos / checkout (e2e)', () => {
     expect(res.body.status).toBe('pending');
   });
 
-  it('reserva el stock (disponible baja de 10 a 8)', async () => {
+  it('un pedido sin pagar NO aparta stock (sigue en 10)', async () => {
     const res = await http()
       .get(`/api/public/stores/${subdomain}/products/producto-test`)
       .expect(200);
-    expect(res.body.available).toBe(8);
+    expect(res.body.available).toBe(10);
   });
 
   it('es idempotente con Idempotency-Key', async () => {
@@ -169,78 +169,139 @@ describe('Pedidos / checkout (e2e)', () => {
     });
   });
 
-  describe('pedidos abandonados antes de pagar', () => {
+  describe('el stock se aparta al subir el Yape', () => {
     let lonelyId = '';
+    const prisma = () => app.get(PrismaService);
     const available = async () =>
       (
         await http()
           .get(`/api/public/stores/${subdomain}/products/producto-abandono`)
           .expect(200)
       ).body.available as number;
+    // Simula lo que hace "subir comprobante" (sin OCR ni imagen real).
+    const payWithProof = async (code: string) => {
+      const order = await prisma().order.findUniqueOrThrow({
+        where: { publicCode: code },
+        include: { items: true },
+      });
+      await prisma().$transaction(async (tx) => {
+        for (const item of order.items) {
+          const affected = await tx.$executeRaw`
+            UPDATE products SET reserved = reserved + ${item.quantity}
+            WHERE id = ${item.productId} AND (stock - reserved) >= ${item.quantity}`;
+          if (affected === 0) throw new Error('agotado');
+        }
+        await tx.order.update({
+          where: { id: order.id },
+          data: {
+            paymentStatus: 'proof_submitted',
+            reservationExpiresAt: null,
+            stockReserved: true,
+          },
+        });
+      });
+    };
 
     beforeAll(async () => {
       lonelyId = (
         await http()
           .post('/api/products')
           .set('Authorization', `Bearer ${ownerToken}`)
-          .send({ name: 'Producto Abandono', price: 5, stock: 3 })
+          .send({ name: 'Producto Abandono', price: 5, stock: 1 })
           .expect(201)
       ).body.id as string;
     });
 
-    it('el cliente cancela antes de pagar y el stock vuelve al instante', async () => {
-      const order = await http()
-        .post(`/api/public/stores/${subdomain}/checkout`)
-        .send(co([{ productId: lonelyId, quantity: 2 }]))
-        .expect(201);
-      expect(await available()).toBe(1);
-
-      const cancelled = await http()
-        .post(
-          `/api/public/stores/${subdomain}/orders/${order.body.code}/cancel`,
-        )
-        .expect(201);
-      expect(cancelled.body.status).toBe('cancelled');
-      expect(await available()).toBe(3);
-
-      // Repetir no devuelve stock dos veces.
-      await http()
-        .post(
-          `/api/public/stores/${subdomain}/orders/${order.body.code}/cancel`,
-        )
-        .expect(201);
-      expect(await available()).toBe(3);
-    });
-
-    it('con comprobante enviado ya no puede cancelar solo', async () => {
-      const order = await http()
+    it('dos clientes piden la última unidad: ninguno la aparta hasta pagar y se avisa', async () => {
+      const ana = await http()
         .post(`/api/public/stores/${subdomain}/checkout`)
         .send(co([{ productId: lonelyId, quantity: 1 }]))
         .expect(201);
-      await app.get(PrismaService).order.update({
-        where: { publicCode: order.body.code },
-        data: { paymentStatus: 'proof_submitted', reservationExpiresAt: null },
-      });
-      await http()
-        .post(
-          `/api/public/stores/${subdomain}/orders/${order.body.code}/cancel`,
-        )
-        .expect(400);
-      expect(await available()).toBe(2);
-    });
-
-    it('una reserva vencida se libera al abrir el inventario aunque el cron no haya corrido', async () => {
-      const order = await http()
+      expect(ana.body.stockWarnings).toEqual([
+        expect.objectContaining({ name: 'Producto Abandono', available: 1 }),
+      ]);
+      const beto = await http()
         .post(`/api/public/stores/${subdomain}/checkout`)
-        .send(co([{ productId: lonelyId, quantity: 2 }]))
+        .send(
+          co([{ productId: lonelyId, quantity: 1 }], {
+            customerPhone: '+51987000999',
+          }),
+        )
+        .expect(201);
+      expect(beto.body.stockWarnings[0].othersBuying).toBe(1);
+      expect(await available()).toBe(1);
+
+      // Ana paga primero: se le aparta. Beto ya no puede (se agotó).
+      await payWithProof(ana.body.code);
+      expect(await available()).toBe(0);
+      await expect(payWithProof(beto.body.code)).rejects.toThrow('agotado');
+
+      // Cancelar el pedido de Beto (sin pago) no toca el stock.
+      await http()
+        .post(`/api/public/stores/${subdomain}/orders/${beto.body.code}/cancel`)
         .expect(201);
       expect(await available()).toBe(0);
-      // Con todo apartado se muestra "apartado", no "agotado".
-      const held = await http()
-        .get(`/api/public/stores/${subdomain}/products/producto-abandono`)
+
+      // Con comprobante, Ana ya no puede cancelar sola.
+      await http()
+        .post(`/api/public/stores/${subdomain}/orders/${ana.body.code}/cancel`)
+        .expect(400);
+    });
+
+    it('corrige lo separado que no tiene un pedido real detrás', async () => {
+      const id = (
+        await http()
+          .post('/api/products')
+          .set('Authorization', `Bearer ${ownerToken}`)
+          .send({ name: 'Producto Trabado', price: 5, stock: 5 })
+          .expect(201)
+      ).body.id as string;
+      // Pedido viejo: pago rechazado pero quedó "pendiente" apartando 2.
+      const order = await http()
+        .post(`/api/public/stores/${subdomain}/checkout`)
+        .send(co([{ productId: id, quantity: 2 }]))
+        .expect(201);
+      await prisma().order.update({
+        where: { publicCode: order.body.code },
+        data: {
+          paymentStatus: 'rejected',
+          reservationExpiresAt: null,
+          stockReserved: true,
+        },
+      });
+      // Y 1 separado más sin ningún pedido (dato huérfano).
+      await prisma().product.update({
+        where: { id },
+        data: { reserved: 3 },
+      });
+
+      await http()
+        .get('/api/admin/inventory/products')
+        .set('Authorization', `Bearer ${ownerToken}`)
         .expect(200);
-      expect(held.body).toMatchObject({ inStock: false, onHold: true });
-      await app.get(PrismaService).order.update({
+      const product = await prisma().product.findUniqueOrThrow({
+        where: { id },
+      });
+      expect(product).toMatchObject({ stock: 5, reserved: 0 });
+      const view = await http()
+        .get(`/api/public/stores/${subdomain}/orders/${order.body.code}`)
+        .expect(200);
+      expect(view.body.status).toBe('cancelled');
+    });
+
+    it('un pedido sin pagar vence sin tocar el stock', async () => {
+      const extra = (
+        await http()
+          .post('/api/products')
+          .set('Authorization', `Bearer ${ownerToken}`)
+          .send({ name: 'Producto Vence', price: 5, stock: 2 })
+          .expect(201)
+      ).body.id as string;
+      const order = await http()
+        .post(`/api/public/stores/${subdomain}/checkout`)
+        .send(co([{ productId: extra, quantity: 2 }]))
+        .expect(201);
+      await prisma().order.update({
         where: { publicCode: order.body.code },
         data: { reservationExpiresAt: new Date(Date.now() - 60_000) },
       });
@@ -248,11 +309,14 @@ describe('Pedidos / checkout (e2e)', () => {
         .get('/api/admin/inventory/products')
         .set('Authorization', `Bearer ${ownerToken}`)
         .expect(200);
-      expect(await available()).toBe(2);
       const view = await http()
         .get(`/api/public/stores/${subdomain}/orders/${order.body.code}`)
         .expect(200);
       expect(view.body.status).toBe('expired');
+      const product = await prisma().product.findUniqueOrThrow({
+        where: { id: extra },
+      });
+      expect(product).toMatchObject({ stock: 2, reserved: 0 });
     });
   });
 });

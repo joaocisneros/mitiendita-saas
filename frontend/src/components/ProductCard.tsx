@@ -57,7 +57,7 @@ export function ProductCard({
               {product.onHold ? (
                 <>
                   Apartado
-                  <span className="mt-0.5 px-2 text-[11px] font-semibold text-slate-500">Vuelve si no lo pagan en minutos</span>
+                  <span className="mt-0.5 px-2 text-[11px] font-semibold text-slate-500">Puede volver si no se confirma un pedido</span>
                 </>
               ) : (
                 "Agotado"

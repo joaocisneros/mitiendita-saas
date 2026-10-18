@@ -96,6 +96,7 @@ export interface DashboardData {
   recentOrders: AdminOrderRow[];
   salesTrend: { date: string; value: number }[];
   ordersByStatus: { status: string; count: number }[];
+  credits?: CreditSummary;
 }
 export interface AdminOrderRow {
   id: string;
@@ -337,14 +338,12 @@ export const adminApi = {
     authFetch("/admin/inventory/reservations").then((r) =>
       jsonOrThrow<UnpaidReservation[]>(r, "No se pudieron cargar las reservas."),
     ),
-  releaseReservation: (orderId: string) =>
-    authFetch(`/admin/inventory/reservations/${orderId}/release`, { method: "POST" }).then((r) =>
-      jsonOrThrow<{ ok: boolean }>(r, "No se pudo liberar la reserva."),
-    ),
-  inventoryMovements: (productId?: string, page = 1) => {
+  inventoryMovements: (productId?: string, page = 1, opts: { limit?: number; channel?: string } = {}) => {
     const q = new URLSearchParams();
     if (productId) q.set("productId", productId);
     q.set("page", String(page));
+    if (opts.limit) q.set("limit", String(opts.limit));
+    if (opts.channel) q.set("channel", opts.channel);
     return authFetch(`/admin/inventory/movements?${q.toString()}`).then((r) =>
       jsonOrThrow<{ items: StockMovementRow[]; total: number; pages: number }>(r, "Error"),
     );
@@ -544,7 +543,7 @@ export interface UnpaidReservation {
   customerName: string;
   total: string;
   createdAt: string;
-  expiresAt: string;
+  expiresAt: string | null;
   items: { productId: string | null; name: string; variant: string | null; quantity: number }[];
 }
 
@@ -555,9 +554,12 @@ export interface InventoryProduct {
   stock: number;
   reserved: number;
   available: number;
-  /** Parte de lo separado que es una reserva sin pagar (vuelve sola). */
-  unpaidReserved?: number;
-  unpaidUntil?: string | null;
+  /** Unidades separadas por pedidos pagados que falta confirmar. */
+  toConfirm?: number;
+  /** Total que la dueña registró (lo que queda + lo vendido). */
+  registered?: number;
+  soldOnline?: number;
+  soldCredit?: number;
   isActive: boolean;
 }
 export interface StockMovementRow {
@@ -567,6 +569,10 @@ export interface StockMovementRow {
   quantity: number;
   reason: string | null;
   createdAt: string;
+  /** tienda = pedido online · credito = venta al crédito · ajuste = cambio a mano. */
+  channel?: "tienda" | "credito" | "ajuste";
+  code?: string | null;
+  customerName?: string | null;
 }
 export interface ReportsData {
   from: string;
@@ -577,6 +583,24 @@ export interface ReportsData {
   ordersByStatus: { status: string; count: number }[];
   topProducts: { name: string; units: number; revenue: string }[];
   frequentCustomers: { name: string; phone: string; orders: number; total: string }[];
+  credits?: CreditsReport;
+}
+
+/** Ventas al crédito dentro del periodo del reporte. */
+export interface CreditsReport {
+  soldTotal: string;
+  salesCount: number;
+  collected: string;
+  paymentsCount: number;
+  receivable: string;
+  customersWithDebt: number;
+  customers: number;
+  byDay: { date: string; sold: string; collected: string }[];
+  topDebtors: { name: string; phone: string; balance: string }[];
+  topPayers: { name: string; phone: string; payments: number; paid: string }[];
+  /** Las que más compraron al crédito en el periodo (para premiar). */
+  topBuyers: { name: string; phone: string; bought: string; units: number; balance: string }[];
+  topProducts: { name: string; units: number; total: string }[];
 }
 
 export interface AdminProduct {

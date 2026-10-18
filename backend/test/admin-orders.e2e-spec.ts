@@ -200,6 +200,39 @@ describe('Panel de pedidos del dueño (e2e)', () => {
         .expect(201)
     ).body.id as string;
 
+    // Sin comprobante no se aparta nada.
+    const notYet = await http()
+      .get('/api/admin/inventory/products')
+      .set(A())
+      .expect(200);
+    expect(
+      notYet.body.find((product: { id: string }) => product.id === productId)
+        .reserved,
+    ).toBe(0);
+
+    // El cliente sube su Yape: ahí recién se aparta (como hace el checkout real).
+    await prisma.$transaction([
+      prisma.payment.update({
+        where: { orderId: rejectedOrderId },
+        data: {
+          status: 'proof_submitted',
+          proofUrl: 'https://test.local/r.png',
+        },
+      }),
+      prisma.order.update({
+        where: { id: rejectedOrderId },
+        data: {
+          paymentStatus: 'proof_submitted',
+          reservationExpiresAt: null,
+          stockReserved: true,
+        },
+      }),
+      prisma.product.update({
+        where: { id: productId },
+        data: { reserved: { increment: 1 } },
+      }),
+    ]);
+
     const reserved = await http()
       .get('/api/admin/inventory/products')
       .set(A())

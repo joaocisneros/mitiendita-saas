@@ -83,7 +83,7 @@ export function ProductDetailModal({
               {formatPrice(product.price, currency)}
             </p>
             <p className={`mt-2 text-sm font-bold ${product.inStock ? "text-emerald-700" : product.onHold ? "text-amber-700" : "text-red-700"}`}>
-              {product.inStock ? `${product.available} disponibles` : product.onHold ? "Apartado por otro cliente: vuelve a estar disponible si no lo paga en unos minutos" : "Producto agotado"}
+              {product.inStock ? `${product.available} disponibles` : product.onHold ? "Apartado por un pedido pagado: puede volver a estar disponible si ese pedido no se confirma" : "Producto agotado"}
             </p>
             <p className="mt-5 whitespace-pre-line text-sm font-medium leading-6 text-slate-700">
               {product.description || "Sin descripción adicional."}

@@ -19,15 +19,17 @@ const PAYMENT_LABEL: Record<string, string> = {
 
 /** Pago en modal centrado: formulario + confirmación/Yape, todo en la misma pantalla. */
 export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClose: () => void }) {
-  const { items, subtotal, clear, add } = useCart();
+  const { items, subtotal, clear } = useCart();
 
   const [store, setStore] = useState<StoreBrand | null>(null);
   const [order, setOrder] = useState<OrderView | null>(null);
-  // Copia del carrito al crear el pedido: si lo cancela, vuelve al carrito.
-  const [placed, setPlaced] = useState<typeof items>([]);
   // Al cerrar sin pagar se pregunta qué hacer (no quedan reservas olvidadas).
   const [askLeave, setAskLeave] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  // Aviso central: el pedido no está asegurado hasta subir el Yape.
+  const [stockAlert, setStockAlert] = useState(false);
+  // Aviso central: se agotó antes de recibir su pago.
+  const [soldOut, setSoldOut] = useState<string | null>(null);
   const unpaid = Boolean(order && !order.hasProof && order.status === "pending");
   const requestClose = useCallback(() => {
     if (unpaid) setAskLeave(true);
@@ -149,9 +151,9 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
         },
         idemKey.current,
       );
-      setPlaced(items.map((item) => ({ ...item })));
       clear();
-      setOrder(created); // → muestra la confirmación en el mismo modal
+      setOrder(created);
+      if (created.stockWarnings?.length) setStockAlert(true); // → muestra la confirmación en el mismo modal
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error al crear el pedido.");
     } finally {
@@ -165,8 +167,7 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
     setError("");
     try {
       await storefrontApi.cancelOrder(subdomain, order.code);
-      // Devuelve los productos al carrito por si quería cambiar algo.
-      for (const { quantity, ...item } of placed) add(item, quantity);
+      // El carrito ya quedó vacío al crear el pedido: cancelar no deja nada pendiente.
       onClose();
     } catch (e) {
       setAskLeave(false);
@@ -192,7 +193,9 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
         reference: order.reference,
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error al subir.");
+      const message = e instanceof Error ? e.message : "Error al subir.";
+      if (/se agotó/i.test(message)) setSoldOut(message);
+      else setError(message);
     } finally {
       setUploading(false);
     }
@@ -460,10 +463,12 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
             <div className="w-full max-w-sm rounded-2xl bg-white p-5 text-center shadow-2xl" onClick={(e) => e.stopPropagation()}>
               <p className="text-base font-black text-slate-900">Aún no pagaste tu pedido</p>
               <p className="mt-1 text-sm text-slate-600">
-                Te guardamos los productos{order?.reservationExpiresAt
-                  ? ` hasta las ${new Date(order.reservationExpiresAt).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" })}`
+                Tu pedido se asegura cuando subes la captura de tu Yape
+                {order?.reservationExpiresAt
+                  ? ` (tienes hasta las ${new Date(order.reservationExpiresAt).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" })})`
                   : ""}
-                <span className="mt-1 block">¿Qué deseas hacer?</span>
+                . Si otra persona paga antes, el producto puede agotarse.
+                <span className="mt-1 block font-semibold text-slate-700">¿Qué deseas hacer?</span>
               </p>
               <div className="mt-4 grid gap-2">
                 <button onClick={onClose} className="rounded-xl py-2.5 text-sm font-bold text-white" style={{ backgroundColor: accent }}>
@@ -474,6 +479,59 @@ export function CheckoutModal({ subdomain, onClose }: { subdomain: string; onClo
                 </button>
                 <button onClick={() => setAskLeave(false)} className="py-1 text-sm font-semibold text-slate-500 hover:text-slate-700">
                   Volver al pago
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {stockAlert && order?.stockWarnings?.length ? (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 p-4" role="alertdialog" aria-modal="true">
+            <div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-2xl">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-3xl ring-1 ring-amber-100" aria-hidden>⚠️</div>
+              <p className="mt-3 text-lg font-black text-slate-950">Tu pedido aún no está asegurado</p>
+              <ul className="mt-2 space-y-1 text-sm text-slate-600">
+                {order.stockWarnings.map((w) => (
+                  <li key={w.name}>
+                    <b className="text-slate-900">{w.name}</b>:{" "}
+                    {w.othersBuying > 0
+                      ? `${w.othersBuying === 1 ? "otra persona" : `${w.othersBuying} personas`} también lo ${w.othersBuying === 1 ? "está" : "están"} comprando`
+                      : w.available <= 1
+                        ? "es la última unidad"
+                        : `quedan solo ${w.available}`}
+                    .
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm font-semibold text-amber-900">
+                Se aparta para ti cuando subas la captura de tu Yape. Si otra persona paga antes, puede agotarse.
+              </p>
+              <button onClick={() => setStockAlert(false)} className="mt-4 w-full rounded-xl py-3 text-sm font-bold text-white" style={{ backgroundColor: accent }}>
+                Entendido, voy a pagar ahora
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {soldOut && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 p-4" role="alertdialog" aria-modal="true">
+            <div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-2xl">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-3xl ring-1 ring-red-100" aria-hidden>😔</div>
+              <p className="mt-3 text-lg font-black text-slate-950">Se agotó antes de recibir tu pago</p>
+              <p className="mt-2 text-sm text-slate-600">{soldOut}</p>
+              <div className="mt-4 grid gap-2">
+                {store?.whatsappNumber && order && (
+                  <a
+                    href={`https://wa.me/${store.whatsappNumber.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola, hice el pedido ${order.code} y ya yapeé, pero el producto se agotó. ¿Me ayudan con la devolución o con otra opción?`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-xl bg-green-600 py-3 text-sm font-bold text-white hover:bg-green-700"
+                  >
+                    Escribir a la tienda por WhatsApp
+                  </a>
+                )}
+                <button onClick={() => setSoldOut(null)} className="py-1 text-sm font-semibold text-slate-500 hover:text-slate-700">
+                  Cerrar
                 </button>
               </div>
             </div>

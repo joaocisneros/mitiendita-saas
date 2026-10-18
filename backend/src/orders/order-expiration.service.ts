@@ -46,6 +46,29 @@ export class OrderExpirationService {
       );
       if (done) released++;
     }
+    // Pedidos de versiones antiguas: pago rechazado pero el pedido quedó
+    // "pendiente" apartando stock sin vencer nunca. Se cierran y devuelven.
+    const rejectedLeftovers = await this.prisma.order.findMany({
+      where: {
+        status: 'pending',
+        paymentStatus: 'rejected',
+        ...(companyId ? { companyId } : {}),
+      },
+      select: { id: true },
+      take: 50,
+    });
+    for (const { id } of rejectedLeftovers) {
+      const done = await this.prisma.$transaction((tx) =>
+        this.releaseReservation(
+          tx,
+          id,
+          'cancelled',
+          'Pago rechazado: se libera el stock (corrección automática)',
+        ),
+      );
+      if (done) released++;
+    }
+
     if (released) {
       this.logger.log(`${released} reserva(s) vencida(s) y liberada(s).`);
     }
@@ -67,12 +90,14 @@ export class OrderExpirationService {
       select: {
         status: true,
         companyId: true,
+        stockReserved: true,
         items: { select: { productId: true, variant: true, quantity: true } },
       },
     });
     if (order?.status !== 'pending') return false; // evita carreras
 
-    for (const item of order.items) {
+    // Un pedido sin comprobante nunca apartó stock: solo se cierra.
+    for (const item of order.stockReserved ? order.items : []) {
       if (!item.productId) continue;
       await tx.$executeRaw`
         UPDATE products SET reserved = GREATEST(0, reserved - ${item.quantity})
@@ -90,6 +115,7 @@ export class OrderExpirationService {
       data: {
         status: toStatus,
         reservationExpiresAt: null,
+        stockReserved: false,
         ...(toStatus === 'cancelled' ? { cancelledAt: new Date() } : {}),
       },
     });

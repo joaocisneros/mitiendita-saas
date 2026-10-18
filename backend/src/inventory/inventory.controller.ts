@@ -1,12 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  ParseUUIDPipe,
-  Post,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import {
   IsIn,
   IsInt,
@@ -47,18 +39,10 @@ export class InventoryController {
     return this.inventory.products(companyId);
   }
 
-  /** Pedidos sin pagar que apartan stock (se liberan solos al vencer). */
+  /** Pedidos pagados por confirmar que apartan stock. */
   @Get('reservations')
   reservations(@CurrentUser('companyId') companyId: string) {
     return this.inventory.unpaidReservations(companyId);
-  }
-
-  @Post('reservations/:id/release')
-  releaseReservation(
-    @CurrentUser('companyId') companyId: string,
-    @Param('id', ParseUUIDPipe) id: string,
-  ) {
-    return this.inventory.releaseReservation(companyId, id);
   }
 
   @Get('movements')
@@ -66,10 +50,14 @@ export class InventoryController {
     @CurrentUser('companyId') companyId: string,
     @Query('productId') productId?: string,
     @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('channel') channel?: string,
   ) {
     return this.inventory.movements(companyId, {
       productId,
       page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+      channel,
     });
   }
 

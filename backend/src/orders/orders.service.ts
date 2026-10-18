@@ -158,17 +158,19 @@ export class OrdersService {
           },
         });
 
-        // 2) Reservar stock de forma atómica (previene sobreventa).
+        // 2) Verificar que haya stock. NO se aparta: eso ocurre recién cuando
+        //    el cliente sube su comprobante (un pedido sin pagar no bloquea a nadie).
         for (const line of lines) {
-          const affected = await tx.$executeRaw`
-          UPDATE products
-          SET reserved = reserved + ${line.quantity}
-          WHERE id = ${line.productId}
-            AND company_id = ${company.id}
-            AND deleted_at IS NULL
-            AND is_active = 1
-            AND (stock - reserved) >= ${line.quantity}`;
-          if (affected === 0) {
+          const free = await tx.product.findFirst({
+            where: {
+              id: line.productId,
+              companyId: company.id,
+              deletedAt: null,
+              isActive: true,
+            },
+            select: { stock: true, reserved: true },
+          });
+          if (!free || free.stock - free.reserved < line.quantity) {
             throw new ConflictException(
               `Stock insuficiente para "${line.name}".`,
             );
@@ -178,7 +180,7 @@ export class OrdersService {
             line.productId,
             line.variant,
             line.quantity,
-            'reserve',
+            'check',
           );
         }
 
@@ -265,7 +267,58 @@ export class OrdersService {
       deliveryMethod: order.deliveryMethod,
     });
 
-    return this.format(order, currency);
+    return {
+      ...this.format(order, currency),
+      stockWarnings: await this.stockWarnings(order),
+    };
+  }
+
+  /**
+   * Avisos para el cliente que aún no paga: su pedido NO aparta stock, así que
+   * si quedan pocas unidades u otra persona compra lo mismo, puede agotarse.
+   */
+  private async stockWarnings(order: {
+    id: string;
+    companyId: string;
+    status: string;
+    paymentStatus: string;
+    items: Array<{ productId: string | null; name: string; quantity: number }>;
+  }) {
+    if (order.status !== 'pending' || order.paymentStatus !== 'pending') {
+      return [];
+    }
+    const warnings: Array<{
+      name: string;
+      available: number;
+      othersBuying: number;
+    }> = [];
+    for (const item of order.items) {
+      if (!item.productId) continue;
+      const [product, othersBuying] = await Promise.all([
+        this.prisma.product.findUnique({
+          where: { id: item.productId },
+          select: { stock: true, reserved: true },
+        }),
+        this.prisma.order.count({
+          where: {
+            companyId: order.companyId,
+            status: 'pending',
+            paymentStatus: 'pending',
+            id: { not: order.id },
+            items: { some: { productId: item.productId } },
+          },
+        }),
+      ]);
+      if (!product) continue;
+      const available = Math.max(0, product.stock - product.reserved);
+      const lastUnits = available <= item.quantity;
+      const contested =
+        othersBuying > 0 && available < item.quantity * (othersBuying + 1);
+      if (lastUnits || contested) {
+        warnings.push({ name: item.name, available, othersBuying });
+      }
+    }
+    return warnings;
   }
 
   /** Estado público del pedido por su código (para la página de seguimiento). */
@@ -315,7 +368,10 @@ export class OrdersService {
       include: { items: true, payment: true },
     });
     if (!order) throw new NotFoundException('Pedido no encontrado.');
-    return this.format(order, company.settings?.currency ?? 'PEN', 'public');
+    return {
+      ...this.format(order, company.settings?.currency ?? 'PEN', 'public'),
+      stockWarnings: await this.stockWarnings(order),
+    };
   }
 
   /**
@@ -368,24 +424,60 @@ export class OrdersService {
 
     const uploaded = await this.media.uploadImage(file, company.id, 'proofs');
 
-    await this.prisma.$transaction([
-      this.prisma.payment.update({
-        where: { orderId: order.id },
-        data: {
-          proofUrl: uploaded.url,
-          reportedAmount: reportedAmount ?? null,
-          status: 'proof_submitted',
-          submittedAt: new Date(),
-          operationNumber: proofCheck.operationNumber,
-          detectedMethod: proofCheck.detectedMethod,
-        },
-      }),
-      this.prisma.order.update({
-        where: { id: order.id },
-        // Pausar expiración: el pedido ya no vence mientras se valida el pago.
-        data: { paymentStatus: 'proof_submitted', reservationExpiresAt: null },
-      }),
-    ]);
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        // Con el pago enviado se aparta el stock (si aún no estaba apartado).
+        const current = await tx.order.findUniqueOrThrow({
+          where: { id: order.id },
+          select: { stockReserved: true, items: true },
+        });
+        if (!current.stockReserved) {
+          for (const item of current.items) {
+            if (!item.productId) continue;
+            const affected = await tx.$executeRaw`
+              UPDATE products SET reserved = reserved + ${item.quantity}
+              WHERE id = ${item.productId} AND company_id = ${company.id}
+                AND (stock - reserved) >= ${item.quantity}`;
+            if (affected === 0) {
+              throw new ConflictException(
+                `Lo sentimos: "${item.name}" se agotó antes de recibir tu pago. Escribe a la tienda por WhatsApp para que te devuelvan el dinero o te ofrezcan otra opción.`,
+              );
+            }
+            await adjustVariantStock(
+              tx,
+              item.productId,
+              item.variant,
+              item.quantity,
+              'reserve',
+            );
+          }
+        }
+        await tx.payment.update({
+          where: { orderId: order.id },
+          data: {
+            proofUrl: uploaded.url,
+            reportedAmount: reportedAmount ?? null,
+            status: 'proof_submitted',
+            submittedAt: new Date(),
+            operationNumber: proofCheck.operationNumber,
+            detectedMethod: proofCheck.detectedMethod,
+          },
+        });
+        await tx.order.update({
+          where: { id: order.id },
+          // Pausar expiración: el pedido ya no vence mientras se valida el pago.
+          data: {
+            paymentStatus: 'proof_submitted',
+            reservationExpiresAt: null,
+            stockReserved: true,
+          },
+        });
+      });
+    } catch (error) {
+      // No se aceptó: la foto subida no debe quedar huérfana.
+      void this.media.deleteByUrl(uploaded.url, company.id);
+      throw error;
+    }
 
     const updated = await this.prisma.order.findUnique({
       where: { id: order.id },

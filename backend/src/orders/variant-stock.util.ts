@@ -8,7 +8,7 @@ type VariantRow = {
   reserved: number;
 };
 // sell = salida directa sin reserva previa (ventas al crédito).
-type Action = 'reserve' | 'commit' | 'release' | 'restore' | 'sell';
+type Action = 'check' | 'reserve' | 'commit' | 'release' | 'restore' | 'sell';
 
 const clean = (value?: string | null) =>
   (value ?? '').trim().toLocaleLowerCase();
@@ -65,7 +65,14 @@ export async function adjustVariantStock(
     stock: Number(rows[index].stock),
     reserved: Number(rows[index].reserved ?? 0),
   };
-  if (action === 'reserve') {
+  if (action === 'check') {
+    // Solo verifica que haya unidades libres (no aparta nada).
+    if (row.stock - row.reserved < quantity)
+      throw new ConflictException(
+        `Ya no hay suficientes unidades de esa talla o color para "${product?.name}".`,
+      );
+    return;
+  } else if (action === 'reserve') {
     if (row.stock - row.reserved < quantity)
       throw new ConflictException(
         `Ya no hay suficientes unidades de esa talla o color para "${product?.name}".`,

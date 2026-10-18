@@ -43,6 +43,8 @@ function rebuildVariants(
   sizesText: string,
   colorsText: string,
   current: Array<{ size: string | null; color: string | null; stock: number; reserved: number }>,
+  /** Cantidad escrita antes de elegir tallas: si queda una sola opción, pasa a ella. */
+  looseStock = 0,
 ) {
   const sizes = optionList(sizesText);
   const colors = optionList(colorsText);
@@ -51,9 +53,13 @@ function rebuildVariants(
     : sizes.length
       ? sizes.map((size) => ({ size, color: null }))
       : colors.map((color) => ({ size: null, color }));
+  // Con una sola opción, se conserva la cantidad que ya había: la escrita antes
+  // de elegir tallas o la de la única opción anterior (ej. "37" → "37 · Blanco").
+  const inherit =
+    combinations.length !== 1 ? 0 : current.length === 0 ? looseStock : current.length === 1 ? current[0].stock : 0;
   return combinations.map(({ size, color }) => {
     const previous = current.find((row) => row.size === size && row.color === color);
-    return { size, color, stock: previous?.stock ?? 0, reserved: previous?.reserved ?? 0 };
+    return { size, color, stock: previous?.stock ?? inherit, reserved: previous?.reserved ?? 0 };
   });
 }
 
@@ -172,7 +178,7 @@ export default function ProductosPage() {
     setProductType(next.id);
     // Las tallas no se llenan solas: el dueño marca las que tiene.
     const colors = next.colors ? form.colors : "";
-    setForm({ ...form, sizes: "", colors, sizeGuide: "", variantStocks: rebuildVariants("", colors, form.variantStocks) });
+    setForm({ ...form, sizes: "", colors, sizeGuide: "", variantStocks: rebuildVariants("", colors, form.variantStocks, form.variantStocks.length ? 0 : Number(form.stock) || 0) });
   }
 
   function load() {
@@ -241,9 +247,21 @@ export default function ProductosPage() {
       setError("El precio debe ser mayor a cero.");
       return;
     }
-    if (form.variantStocks.length === 0 && (!Number.isInteger(Number(form.stock)) || Number(form.stock) < 0)) {
-      setError("El stock debe ser un número entero igual o mayor a cero.");
+    if (!Number.isInteger(Number(form.stock)) || Number(form.stock) < 0) {
+      setError("La cantidad debe ser un número entero igual o mayor a cero.");
       return;
+    }
+    if (form.variantStocks.length > 0) {
+      const assigned = form.variantStocks.reduce((sum, row) => sum + row.stock, 0);
+      const total = Number(form.stock);
+      if (assigned !== total) {
+        setError(
+          assigned < total
+            ? `Reparte exacto: tienes ${total} y solo repartiste ${assigned} (faltan ${total - assigned}).`
+            : `Reparte exacto: tienes ${total} pero repartiste ${assigned} (sobran ${assigned - total}).`,
+        );
+        return;
+      }
     }
     if (isService && form.reservationPaymentMode !== "none" && Number(form.reservationAdvanceValue) <= 0) {
       setError("El adelanto debe ser mayor a cero o cambia el modo a reservar sin pago.");
@@ -525,15 +543,17 @@ export default function ProductosPage() {
               <div className="grid grid-cols-2 gap-3">
                 <Input label={isDigital ? "Precio mensual *" : "Precio *"} type="number" min="0.01" step="0.01" placeholder="0.00" value={form.price} onChange={(value) => setForm({ ...form, price: value })} />
                 <Input
-                  label={isDigital || isService ? "Stock interno *" : form.variantStocks.length ? "Cantidad total (automática)" : "Cantidad disponible *"}
+                  label={isDigital || isService ? "Stock interno *" : form.variantStocks.length ? "Cantidad total que tienes *" : "Cantidad disponible *"}
                   type="number"
                   min="0"
                   step="1"
                   placeholder="0"
                   value={form.stock}
                   onChange={(value) => setForm({ ...form, stock: value })}
-                  disabled={form.variantStocks.length > 0}
                 />
+                {form.variantStocks.length > 0 && (
+                  <p className="-mt-1 text-[11px] font-medium text-slate-500">Repártela exacta en &quot;Cantidad por opción&quot;.</p>
+                )}
               </div>
               <div className={`grid gap-3 ${!isDigital && !isService ? "sm:grid-cols-2" : ""}`}>
                 <label className="block">
@@ -651,7 +671,7 @@ export default function ProductosPage() {
                                         return index === -1 ? 999 : index;
                                       };
                                       const sizes = next.sort((x, y) => order(x) - order(y)).join(", ");
-                                      setForm({ ...form, sizes, variantStocks: rebuildVariants(sizes, form.colors, form.variantStocks) });
+                                      setForm({ ...form, sizes, variantStocks: rebuildVariants(sizes, form.colors, form.variantStocks, form.variantStocks.length ? 0 : Number(form.stock) || 0) });
                                     }}
                                     className={`min-w-10 rounded-lg px-2.5 py-1.5 text-xs font-bold ring-1 transition ${
                                       on ? "bg-violet-600 text-white ring-violet-600" : "bg-white text-slate-700 ring-slate-200 hover:ring-violet-300"
@@ -669,12 +689,12 @@ export default function ProductosPage() {
                           label={typeInfo.sizes.length ? "Tallas elegidas (puedes agregar otras)" : "Tallas"}
                           placeholder={typeInfo.sizes.length ? "Toca las tallas de arriba" : "Ej: Chico, Mediano, Grande"}
                           value={form.sizes}
-                          onChange={(value) => setForm({ ...form, sizes: value, variantStocks: rebuildVariants(value, form.colors, form.variantStocks) })}
+                          onChange={(value) => setForm({ ...form, sizes: value, variantStocks: rebuildVariants(value, form.colors, form.variantStocks, form.variantStocks.length ? 0 : Number(form.stock) || 0) })}
                         />
                       </div>
                     )}
                     <div>
-                      <Input label="Colores (opcional)" placeholder="Negro, Blanco, Azul" value={form.colors} onChange={(value) => setForm({ ...form, colors: value, variantStocks: rebuildVariants(form.sizes, value, form.variantStocks) })} />
+                      <Input label="Colores (opcional)" placeholder="Negro, Blanco, Azul" value={form.colors} onChange={(value) => setForm({ ...form, colors: value, variantStocks: rebuildVariants(form.sizes, value, form.variantStocks, form.variantStocks.length ? 0 : Number(form.stock) || 0) })} />
                     </div>
                   </div>
                   {typeInfo.sizes !== null && (
@@ -695,15 +715,14 @@ export default function ProductosPage() {
                     <div>
                       <p className="text-sm font-black text-slate-900">Cantidad por opción</p>
                       <p className="text-xs text-slate-500">Indica cuántas unidades tienes de cada talla y color.</p>
+
                     </div>
-                    <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-violet-700">
-                      Total: {form.variantStocks.reduce((sum, row) => sum + row.stock, 0)}
-                    </span>
+                    <SplitBadge total={Number(form.stock) || 0} assigned={form.variantStocks.reduce((sum, row) => sum + row.stock, 0)} />
                   </div>
                   <div className="grid gap-2 sm:grid-cols-3">
                     {form.variantStocks.map((row, index) => (
                       <label key={`${row.size ?? ""}-${row.color ?? ""}`} className="flex items-center gap-2 rounded-xl bg-white p-2 ring-1 ring-slate-200">
-                        <span className="min-w-0 flex-1 truncate text-xs font-bold text-slate-700">
+                        <span className="min-w-0 flex-1 break-words text-xs font-bold leading-tight text-slate-700" title={[row.size, row.color].filter(Boolean).join(" · ")}>
                           {[row.size, row.color].filter(Boolean).join(" · ")}
                         </span>
                         <input
@@ -714,7 +733,7 @@ export default function ProductosPage() {
                           onChange={(event) => {
                             const next = [...form.variantStocks];
                             next[index] = { ...row, stock: Math.max(0, Math.trunc(Number(event.target.value) || 0)) };
-                            setForm({ ...form, variantStocks: next, stock: String(next.reduce((sum, item) => sum + item.stock, 0)) });
+                            setForm({ ...form, variantStocks: next });
                           }}
                           className="h-9 w-16 rounded-lg border border-slate-200 px-2 text-right text-sm font-bold outline-none focus:border-violet-500"
                           aria-label={`Cantidad de ${[row.size, row.color].filter(Boolean).join(" ")}`}
@@ -946,5 +965,16 @@ function Check({ label, checked, onChange }: { label: string; checked: boolean; 
       <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="h-4 w-4" />
       {label}
     </label>
+  );
+}
+
+/** "Repartido X de Y": verde cuando cuadra exacto; rojo si falta o sobra. */
+function SplitBadge({ total, assigned }: { total: number; assigned: number }) {
+  const ok = assigned === total;
+  return (
+    <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold ${ok ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-700"}`}>
+      Repartido {assigned} de {total}
+      {ok ? " ✓" : assigned < total ? ` · faltan ${total - assigned}` : ` · sobran ${assigned - total}`}
+    </span>
   );
 }

@@ -581,4 +581,47 @@ describe('Ventas al crédito (e2e)', () => {
     expect(res.body.address).toBe('Av. Giráldez 450, Huancayo');
     expect(res.body.reference).toBe('Frente al Parque');
   });
+
+  it('reportes y resumen incluyen las ventas al crédito', async () => {
+    const report = await http().get('/api/admin/reports').set(A()).expect(200);
+    expect(report.body.credits).toMatchObject({
+      salesCount: expect.any(Number),
+      soldTotal: expect.any(String),
+      collected: expect.any(String),
+      receivable: expect.any(String),
+    });
+    expect(report.body.credits.salesCount).toBeGreaterThan(0);
+    expect(Array.isArray(report.body.credits.topProducts)).toBe(true);
+    // Los checkouts nunca pagados no cuentan como pedidos.
+    expect(
+      (report.body.ordersByStatus as { status: string }[]).some(
+        (s) => s.status === 'expired',
+      ),
+    ).toBe(false);
+
+    const dashboard = await http()
+      .get('/api/admin/dashboard')
+      .set(A())
+      .expect(200);
+    expect(dashboard.body.credits).toMatchObject({
+      receivable: expect.any(String),
+      customersWithDebt: expect.any(Number),
+    });
+  });
+
+  it('el historial de stock indica canal y clienta de cada venta al crédito', async () => {
+    const res = await http()
+      .get('/api/admin/inventory/movements?channel=credito&limit=50')
+      .set(A())
+      .expect(200);
+    const items = res.body.items as {
+      channel: string;
+      code: string | null;
+      customerName: string | null;
+    }[];
+    expect(items.length).toBeGreaterThan(0);
+    expect(items.every((m) => m.channel === 'credito')).toBe(true);
+    expect(items.every((m) => m.code?.startsWith('CR-'))).toBe(true);
+    expect(items.every((m) => Boolean(m.customerName))).toBe(true);
+  });
 });
