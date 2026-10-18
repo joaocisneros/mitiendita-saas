@@ -11,6 +11,7 @@ import Link from "next/link";
 import { VariantStockModal, variantSummary } from "@/components/inventory/VariantStockModal";
 import { PRODUCT_TYPES, typeHasOptions } from "@/lib/product-types";
 import { SplitVariantsForm } from "@/components/inventory/SplitVariantsForm";
+import { ActionHeader, LockedInfo, ReasonChips, soldUnits, type StockAction } from "@/components/inventory/ActionCards";
 
 /** Las ventas y anulaciones ya traen su texto ("Venta al crédito CR-…"); no se repite el tipo. */
 function movementText(type: string, reason: string | null) {
@@ -35,7 +36,7 @@ export default function InventoryPage() {
   const [holds, setHolds] = useState<UnpaidReservation[]>([]);
   const [historyTotal, setHistoryTotal] = useState(0);
   const [editing, setEditing] = useState<InventoryProduct | null>(null);
-  const [type, setType] = useState("entry");
+  const [type, setType] = useState<StockAction>("entry");
   const [quantity, setQuantity] = useState("");
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
@@ -44,7 +45,9 @@ export default function InventoryPage() {
   // El tipo es el que se guardó al registrar el producto: no se vuelve a preguntar.
   // Los productos sin tipo guardado son "Sin tallas ni colores" (como en Productos).
   const kindInfo = PRODUCT_TYPES.find((t) => t.id === editing?.productType) ?? PRODUCT_TYPES[0];
-  const splitting = typeHasOptions(kindInfo);
+  // Sin repartir todavía: "Llegó" pide marcar las tallas y cuántas hay de cada una.
+  // Devolución y Corregir trabajan con la cantidad total hasta que se reparta.
+  const splitting = typeHasOptions(kindInfo) && type === "entry";
 
   const load = useCallback(() => {
     adminApi.inventoryProducts().then(setProducts).catch(() => {});
@@ -53,9 +56,9 @@ export default function InventoryPage() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  function open(p: InventoryProduct) {
+  function open(p: InventoryProduct, action: StockAction = "entry") {
     setEditing(p);
-    setType("entry");
+    setType(action);
     setQuantity("");
     setReason("");
     setError("");
@@ -71,6 +74,11 @@ export default function InventoryPage() {
     }
     if (type !== "adjustment" && amount === 0) {
       setError("La cantidad debe ser mayor a cero.");
+      return;
+    }
+    // Una devolución no puede ser mayor a lo que se vendió de este producto.
+    if (type === "return" && amount > soldUnits(editing)) {
+      setError(`Solo vendiste ${soldUnits(editing)} de este producto: no puedes devolver ${amount}.`);
       return;
     }
     setSaving(true);
@@ -190,9 +198,17 @@ export default function InventoryPage() {
                     {p.available <= 5 && <span className="ml-1 text-xs text-amber-600">⚠️</span>}
                   </td>
                   <td className="p-4 text-right">
-                    <button onClick={() => open(p)} className="rounded-lg bg-violet-50 px-3 py-1.5 text-xs font-bold text-violet-700 hover:bg-violet-100">
-                      Cambiar cantidad
-                    </button>
+                    <div className="flex justify-end gap-1.5">
+                      <button onClick={() => open(p, "entry")} title="Llegó mercadería: se suma" className="whitespace-nowrap rounded-lg bg-emerald-50 px-2.5 py-1.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100">
+                        ➕ Llegó
+                      </button>
+                      <button onClick={() => open(p, "return")} title="Devolución de una clienta: se suma" className="whitespace-nowrap rounded-lg bg-sky-50 px-2.5 py-1.5 text-xs font-bold text-sky-700 ring-1 ring-sky-200 hover:bg-sky-100">
+                        ↩ Devolución
+                      </button>
+                      <button onClick={() => open(p, "adjustment")} title="Corregir conteo: se reemplaza" className="whitespace-nowrap rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs font-bold text-amber-800 ring-1 ring-amber-200 hover:bg-amber-100">
+                        ✎ Corregir
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -211,6 +227,7 @@ export default function InventoryPage() {
       {editing && (editing.variants?.length ?? 0) > 0 && (
         <VariantStockModal
           product={editing}
+          initialMode={type}
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);
@@ -221,17 +238,27 @@ export default function InventoryPage() {
 
       {/* Modal de ajuste (productos sin tallas ni colores) */}
       {editing && !(editing.variants?.length ?? 0) && (
-        <Overlay onClose={() => setEditing(null)} size={splitting ? "wide" : "default"}>
-          <h2 className="pr-10 text-xl font-black text-slate-950">Cambiar cantidad de {editing.name}</h2>
-          <p className="mb-4 mt-1 text-sm text-slate-500">
-            Actualmente puedes vender <strong className="text-slate-800">{editing.available}</strong> unidades.
-          </p>
-          {/* Tipo guardado del producto; se cambia en Productos > Editar. */}
-          <p className="-mt-2 mb-3 text-xs font-semibold text-slate-500">
-            Tipo de producto: <span className="text-slate-800">{kindInfo.label}</span>
-            {" · "}
-            <Link href="/panel/productos" className="text-violet-700 hover:underline">¿Está mal? Cámbialo en Productos</Link>
-          </p>
+        <Overlay onClose={() => setEditing(null)} size={splitting ? "large" : "medium"}>
+          <div className="mb-4">
+            <ActionHeader
+              action={type}
+              productName={editing.name}
+              imageUrl={editing.imageUrl}
+              detail={
+                <>
+                  Tienes <b className="text-slate-800">{editing.stock}</b>
+                  {type === "return" && <> · vendidas <b className="text-slate-800">{soldUnits(editing)}</b></>} · puedes vender{" "}
+                  <b className="text-slate-800">{editing.available}</b>
+                </>
+              }
+            />
+          </div>
+          {/* Categoría y tipo guardados del producto: bloqueados (se cambian en Productos > Editar). */}
+          {!splitting && (
+            <div className="mb-4">
+              <LockedInfo categoryName={editing.categoryName} typeLabel={kindInfo.label} />
+            </div>
+          )}
           {splitting ? (
             <SplitVariantsForm
               key={kindInfo.id}
@@ -245,36 +272,39 @@ export default function InventoryPage() {
             />
           ) : (
           <div className="space-y-3">
-            <label className="block">
-              <span className="mb-1 block text-sm font-semibold text-slate-700">¿Qué deseas hacer?</span>
-              <select value={type} onChange={(e) => setType(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2">
-                <option value="entry">Agregar productos que compré o recibí</option>
-                <option value="return">Volver a sumar un producto devuelto</option>
-                <option value="adjustment">Corregir la cantidad total disponible</option>
-              </select>
-              <span className="mt-1 block text-xs leading-5 text-slate-500">
-                {type === "entry" && "Úsalo cuando recibas mercadería nueva de tu proveedor."}
-                {type === "return" && "Úsalo cuando un cliente devuelva un producto que puede venderse otra vez."}
-                {type === "adjustment" && "Úsalo después de contar tus productos y encontrar una diferencia."}
-              </span>
-            </label>
+            <p className="rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-600">
+              {type === "entry" && "Llegó mercadería de tu proveedor: lo que escribas se suma a lo que tienes."}
+              {type === "return" && "Una clienta devolvió un producto que se puede vender otra vez: se suma."}
+              {type === "adjustment" && "Contaste lo que hay en tu almacén: escribe cuántas hay de verdad y se reemplaza."}
+            </p>
             <label className="block">
               <span className="mb-1 block text-sm font-medium text-slate-700">
-                {type === "adjustment" ? "¿Cuántas unidades tienes realmente?" : "¿Cuántas unidades deseas agregar?"}
+                {type === "adjustment" ? "¿Cuántas unidades hay realmente?" : type === "return" ? "¿Cuántas unidades volvieron?" : "¿Cuántas unidades llegaron?"}
               </span>
               <input type="number" min="0" step="1" value={quantity} onChange={(e) => setQuantity(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2" placeholder="0" />
+                className="h-12 w-full rounded-xl border border-slate-300 px-3 text-lg font-black outline-none focus:border-violet-600" placeholder="Ej: 10" />
+              {quantity !== "" && Number.isInteger(Number(quantity)) && Number(quantity) >= 0 && (
+                <span className="mt-1 block text-xs font-bold text-violet-800">
+                  Tienes {editing.stock} → quedarán {type === "adjustment" ? Number(quantity) : editing.stock + Number(quantity)}
+                  {type === "adjustment" && Number(quantity) !== editing.stock && (
+                    <span className={Number(quantity) < editing.stock ? "text-amber-700" : "text-emerald-700"}>
+                      {" "}({Number(quantity) > editing.stock ? "+" : ""}{Number(quantity) - editing.stock}{Number(quantity) < editing.stock ? " faltan" : " sobran"})
+                    </span>
+                  )}
+                </span>
+              )}
             </label>
             <label className="block">
               <span className="mb-1 block text-sm font-medium text-slate-700">Escribe una nota (opcional)</span>
               <input value={reason} onChange={(e) => setReason(e.target.value)}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2" placeholder={type === "return" ? "Ej: devolución del cliente" : type === "adjustment" ? "Ej: conteo físico del almacén" : "Ej: compra al proveedor"} />
+              <ReasonChips action={type} value={reason} onPick={setReason} />
             </label>
             {error && <p className="rounded bg-red-50 p-2 text-sm text-red-600">{error}</p>}
             <div className="flex gap-2 pt-2">
               <button onClick={() => setEditing(null)} className="flex-1 rounded-lg bg-slate-100 py-2 font-semibold text-slate-700">Cancelar</button>
               <button onClick={save} disabled={saving || quantity === ""} className="flex-1 rounded-lg bg-violet-600 py-2 font-semibold text-white disabled:opacity-60">
-                {saving ? "Guardando..." : type === "adjustment" ? "Guardar cantidad" : "Agregar unidades"}
+                {saving ? "Guardando..." : type === "adjustment" ? "Guardar conteo" : type === "return" ? "Devolver unidades" : "Agregar unidades"}
               </button>
             </div>
           </div>

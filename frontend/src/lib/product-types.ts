@@ -98,3 +98,131 @@ export function colorChipsFor(type: { id: string; group: string }): string[] {
   if (type.id === "ferreteria") return ["Negro", "Gris", "Plateado", "Rojo", "Amarillo"];
   return ["Negro", "Blanco", "Azul", "Rojo", "Gris", "Beige", "Rosado"];
 }
+
+const plain = (value?: string | null) =>
+  (value ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase();
+
+type TypeId = (typeof PRODUCT_TYPES)[number]["id"];
+const ROPA: TypeId[] = ["ropa", "pantalon", "vestidos", "deportiva", "bano", "pijamas", "lenceria", "ropa_grande", "interior", "uniformes", "ninos", "bebe"];
+const CALZADO: TypeId[] = ["calzado_mujer", "calzado_hombre", "calzado", "calzado_ninos"];
+const JOYAS: TypeId[] = ["relojes", "anillos", "pulseras", "collares", "aretes", "cabello", "lentes", "correas", "gorras"];
+const BOLSOS: TypeId[] = ["carteras", "billeteras", "mochilas"];
+const BELLEZA: TypeId[] = ["perfumes", "cuidado", "maquillaje", "unas"];
+const SIEMPRE: TypeId[] = ["colores", "otro"];
+
+/**
+ * Tipos que ve cada rubro (subtipo del registro). null = el rubro no usa
+ * "Tipo de producto": sus productos son de una sola cantidad (bodegas, farmacias,
+ * restaurantes…). Un rubro que no está aquí ve todos los tipos.
+ */
+const TYPES_BY_BUSINESS: Record<string, TypeId[] | null> = {
+  "tiendas de ropa": [...ROPA, "correas", "gorras", "carteras", ...SIEMPRE],
+  zapaterias: [...CALZADO, "correas", "carteras", "billeteras", ...SIEMPRE],
+  "moda y accesorios": [...ROPA, ...CALZADO, ...JOYAS, ...BOLSOS, ...SIEMPRE],
+  joyerias: [...JOYAS, ...SIEMPRE],
+  "perfumerias y cosmeticos": [...BELLEZA, "cabello", ...SIEMPRE],
+  tecnologia: ["celulares", "electro", ...SIEMPRE],
+  "tiendas de electrodomesticos": ["electro", "hogar", "celulares", ...SIEMPRE],
+  jugueterias: ["juguetes", "mochilas", ...SIEMPRE],
+  "tiendas de mascotas": ["mascotas", "alimentos", ...SIEMPRE],
+  ferreterias: ["ferreteria", "hogar", ...SIEMPRE],
+  librerias: ["libros", "utiles", "mochilas", ...SIEMPRE],
+  papelerias: ["utiles", "libros", "mochilas", ...SIEMPRE],
+  florerias: ["colores"],
+  // Sin tipo: productos de una sola cantidad.
+  farmacias: null,
+  bodegas: null,
+  minimarkets: null,
+  licorerias: null,
+  "fruterias y verdulerias": null,
+  "carnicerias y avicolas": null,
+};
+const FOOD = ["restaurantes", "pollerias", "pizzerias", "cafeterias", "panaderias", "pastelerias", "cevicherias", "chifas", "heladerias", "juguerias", "sanguicherias", "comida rapida", "menu y comida casera", "alimentos"];
+
+/**
+ * Palabras de una categoría (o del nombre) → tipo que le corresponde. Así una tienda
+ * que mezcla negocios (ropa + perfumes + joyas) recibe sola los tipos que usa.
+ * Va de lo más específico a lo más general.
+ */
+const KEYWORDS: Array<[RegExp, TypeId]> = [
+  [/perfum|fragan|colonia|body ?splash/, "perfumes"],
+  [/maquill|labial|rubor|sombra|base de/, "maquillaje"],
+  [/u[nñ]as|esmalte/, "unas"],
+  [/crema|cuidado|cosmet|skin|facial|corporal|jab[oó]n|shampoo/, "cuidado"],
+  [/reloj/, "relojes"],
+  [/anillo|sortija/, "anillos"],
+  [/collar|cadena/, "collares"],
+  [/arete|zarcillo/, "aretes"],
+  [/pulsera|brazalete/, "pulseras"],
+  [/lente|gafa/, "lentes"],
+  [/cabello|vincha|gancho|colet/, "cabello"],
+  [/correa|cintur[oó]n/, "correas"],
+  [/gorra|sombrero/, "gorras"],
+  [/joya|bisuter|accesorio/, "anillos"],
+  [/billetera|monedero/, "billeteras"],
+  [/mochila|lonchera/, "mochilas"],
+  [/cartera|bolso|bolsa/, "carteras"],
+  [/zapatill|zapato|calzado|sandalia|botin|bot[ae]s|tac[oó]n/, "calzado"],
+  [/pijama|dormir/, "pijamas"],
+  [/lencer|brasier|sost[eé]n/, "lenceria"],
+  [/ba[nñ]o|bikini/, "bano"],
+  [/deport|buzo|legging|jogger/, "deportiva"],
+  [/vestido|falda/, "vestidos"],
+  [/jean|pantal/, "pantalon"],
+  [/beb[eé]/, "bebe"],
+  [/ni[nñ]o|ni[nñ]a|infantil/, "ninos"],
+  [/uniforme/, "uniformes"],
+  [/ropa|polo|blusa|camis|chompa|casaca|chaqueta|hoodie|polera|short|moda/, "ropa"],
+  [/celular|funda|aud[ií]fono|cargador|tecnolog/, "celulares"],
+  [/electro|licuadora|cocina|refri/, "electro"],
+  [/hogar|decora|menaje/, "hogar"],
+  [/ferret|herramient/, "ferreteria"],
+  [/mascota|perro|gato/, "mascotas"],
+  [/jugue/, "juguetes"],
+  [/libro|revista/, "libros"],
+  [/[uú]til|cuaderno|librer|papeler/, "utiles"],
+];
+
+/** Tipo sugerido para una categoría o nombre ("Zapatillas" → Calzado unisex). null si no se reconoce. */
+export function suggestTypeFor(text?: string | null): TypeId | null {
+  const value = plain(text);
+  if (!value) return null;
+  return KEYWORDS.find(([pattern]) => pattern.test(value))?.[1] ?? null;
+}
+
+/** Grupo de tipos al que pertenece un tipo (para sumar sus "hermanos": ropa → toda la ropa). */
+function familyOf(id: TypeId): TypeId[] {
+  for (const family of [ROPA, CALZADO, JOYAS, BOLSOS, BELLEZA]) if (family.includes(id)) return family;
+  return [id];
+}
+
+/**
+ * Tipos de producto para la tienda (siempre incluye "Sin tallas ni colores").
+ * Junta: los del rubro + los que se detectan en sus categorías (tiendas que mezclan
+ * negocios) + el que ya tiene el producto (`keep`). null = no se muestra el campo.
+ */
+export function productTypesFor(businessType?: string | null, keep?: string | null, categoryNames: string[] = []) {
+  const key = plain(businessType);
+  // Restaurantes y comida: no usan tipo (sus "Cremas y sopas" no son cremas de belleza).
+  if (FOOD.includes(key)) return null;
+  const detected = new Set<TypeId>(); // con sus "hermanos" (ropa → toda la ropa)
+  const exact = new Set<TypeId>(); // solo lo que se detectó
+  for (const name of categoryNames) {
+    const found = suggestTypeFor(name);
+    if (found) {
+      exact.add(found);
+      familyOf(found).forEach((id) => detected.add(id));
+    }
+  }
+  if (keep && keep !== "simple") detected.add(keep as TypeId);
+
+  const base = key in TYPES_BY_BUSINESS ? TYPES_BY_BUSINESS[key] : undefined;
+  if (base === undefined) return [...PRODUCT_TYPES];
+  // En rubros sin tipo (bodegas, farmacias…) solo suma lo detectado exacto y con tallas o
+  // colores ("Polo niño" sí; "Crema de leche" no hace aparecer Belleza).
+  const extra = base !== null ? [...detected] : [...exact].filter((id) => typeHasOptions(PRODUCT_TYPES.find((t) => t.id === id)!));
+  const ids = new Set<TypeId>([...(base ?? []), ...extra]);
+  if (!ids.size) return null;
+  if (base === null) SIEMPRE.forEach((id) => ids.add(id));
+  return PRODUCT_TYPES.filter((t) => t.id === "simple" || ids.has(t.id));
+}

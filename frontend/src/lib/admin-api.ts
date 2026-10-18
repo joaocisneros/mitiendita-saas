@@ -367,7 +367,7 @@ export const adminApi = {
     }).then((r) => jsonOrThrow<{ ok: boolean; stock: number; before: number; delta: number }>(r, "No se pudo guardar.")),
   adjustVariants: (body: {
     productId: string;
-    type: "entry" | "adjustment";
+    type: "entry" | "return" | "adjustment";
     reason?: string;
     rows: Array<{ size?: string; color?: string; quantity: number }>;
   }) =>
@@ -584,6 +584,8 @@ export interface InventoryProduct {
   soldCredit?: number;
   isActive: boolean;
   productType?: string | null;
+  categoryName?: string | null;
+  imageUrl?: string | null;
   /** Cuánto queda por talla/color (vacío si no tiene opciones). */
   variants?: InventoryVariant[];
 }

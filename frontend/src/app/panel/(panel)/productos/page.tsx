@@ -11,7 +11,7 @@ import { formatPrice } from "@/lib/format";
 import Link from "next/link";
 import { Overlay } from "@/components/OrderDetailModal";
 import { archetypeOf, resolveCategory } from "@/lib/business-categories";
-import { PRODUCT_TYPE_GROUPS, PRODUCT_TYPES, colorChipsFor, typeHasOptions, usesTones, type ProductTypeId } from "@/lib/product-types";
+import { PRODUCT_TYPE_GROUPS, PRODUCT_TYPES, colorChipsFor, productTypesFor, suggestTypeFor, typeHasOptions, usesTones, type ProductTypeId } from "@/lib/product-types";
 
 const EMPTY = {
   name: "",
@@ -112,6 +112,8 @@ function productDescriptionPlaceholder(category?: string): string {
 export default function ProductosPage() {
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [categories, setCategories] = useState<AdminCategory[]>([]);
+  // Nombres de todos los productos de la tienda: delatan qué tipos vende (aunque la categoría sea una marca).
+  const [storeNames, setStoreNames] = useState<string[]>([]);
   const [editing, setEditing] = useState<string | null>(null);
   const [form, setForm] = useState({ ...EMPTY });
   const [error, setError] = useState("");
@@ -120,6 +122,7 @@ export default function ProductosPage() {
   const [dragOver, setDragOver] = useState(false);
   const [isDigital, setIsDigital] = useState(false);
   const [isService, setIsService] = useState(false);
+  const [businessType, setBusinessType] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
   // Páginas de 20: con muchos productos se pasa a los siguientes (antes solo se veían los primeros 20).
@@ -145,6 +148,15 @@ export default function ProductosPage() {
   const materialChips = usesMaterial ? MATERIAL_CHIPS : PRESENTATION_CHIPS;
   // Productos físicos: siempre 3 columnas (datos | tallas y colores | fotos).
   const isPhysical = !isDigital && !isService;
+  // Tipos que ve este rubro (null = el rubro no usa "Tipo de producto": bodegas, restaurantes…).
+  // Suma los tipos que se detectan en sus productos y categorías (tiendas que mezclan negocios).
+  // Primero el nombre (lo más confiable); la categoría puede ser solo una marca ("Nike").
+  const allowedTypes = productTypesFor(businessType, productType, [form.name, ...storeNames, ...categories.map((c) => c.name)]);
+  const otherTypes = allowedTypes ? PRODUCT_TYPES.filter((type) => !allowedTypes.some((allowed) => allowed.id === type.id)) : [];
+  const suggestedType = PRODUCT_TYPES.find(
+    (type) => type.id === (suggestTypeFor(form.name) ?? suggestTypeFor(categories.find((c) => c.id === form.categoryId)?.name)),
+  );
+  const showType = isPhysical && allowedTypes !== null;
   const hasOptions = isPhysical && typeHasOptions(typeInfo);
   // El formulario se llena en orden: nombre → precio y cantidad → categoría y tipo.
   const nameDone = form.name.trim().length > 0;
@@ -164,12 +176,14 @@ export default function ProductosPage() {
       setListInfo({ total: d.total, pages: Math.max(1, d.pages) });
     });
     adminApi.categories().then(setCategories).catch(() => {});
+    adminApi.inventoryProducts().then((rows) => setStoreNames(rows.map((row) => row.name))).catch(() => {});
     adminApi
       .settings()
       .then((settings) => {
         const archetype = archetypeOf(resolveCategory(settings.businessType));
         setIsDigital(archetype === "digital");
         setIsService(archetype === "servicios");
+        setBusinessType(settings.businessType ?? null);
       })
       .catch(() => {});
   }
@@ -223,8 +237,9 @@ export default function ProductosPage() {
       setError(`Nombre, precio y ${isDigital || isService ? "stock interno" : "stock"} son obligatorios.`);
       return;
     }
-    // La categoría enlaza el producto con su sección de la tienda: es obligatoria.
-    if (!form.categoryId) {
+    // La categoría enlaza el producto con su sección de la tienda: obligatoria en
+    // catálogo y carta. En servicios y planes digitales sigue siendo opcional.
+    if (isPhysical && !form.categoryId) {
       setError(categories.length ? "Elige la categoría del producto." : "Primero crea tus categorías en Categorías.");
       return;
     }
@@ -610,16 +625,16 @@ export default function ProductosPage() {
               </div>
               <div className={`grid gap-3 ${!isDigital && !isService ? "sm:grid-cols-2" : ""}`}>
                 <label className="block">
-                  <span className="mb-1 block text-sm font-medium text-gray-700">Categoría *</span>
+                  <span className="mb-1 block text-sm font-medium text-gray-700">Categoría{isPhysical ? " *" : ""}</span>
                   <select
                     value={form.categoryId}
                     onChange={(event) => setForm({ ...form, categoryId: event.target.value })}
                     disabled={!basicsDone}
                     className={`h-10 w-full rounded-lg border bg-white px-3 text-sm outline-none focus:border-violet-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 ${
-                      basicsDone && !form.categoryId ? "border-amber-400" : "border-gray-200"
+                      isPhysical && basicsDone && !form.categoryId ? "border-amber-400" : "border-gray-200"
                     }`}
                   >
-                    <option value="" disabled>Elige una categoría</option>
+                    <option value="" disabled={isPhysical}>{isPhysical ? "Elige una categoría" : "Sin categoría"}</option>
                     {categories.map((category) => (
                       <option key={category.id} value={category.id}>{category.name}</option>
                     ))}
@@ -635,7 +650,7 @@ export default function ProductosPage() {
                     )}
                   </span>
                 </label>
-                {!isDigital && !isService && (
+                {showType && (
                   <label className="block">
                     <span className="mb-1 block text-sm font-medium text-gray-700">Tipo de producto</span>
                     <select
@@ -644,16 +659,33 @@ export default function ProductosPage() {
                       disabled={!basicsDone}
                       className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm outline-none focus:border-violet-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
                     >
-                      {PRODUCT_TYPE_GROUPS.map((group) => (
+                      {PRODUCT_TYPE_GROUPS.filter((group) => allowedTypes?.some((type) => type.group === group)).map((group) => (
                         <optgroup key={group} label={group}>
-                          {PRODUCT_TYPES.filter((type) => type.group === group).map((type) => (
+                          {(allowedTypes ?? []).filter((type) => type.group === group).map((type) => (
                             <option key={type.id} value={type.id}>{type.label}</option>
                           ))}
                         </optgroup>
                       ))}
+                      {/* Nunca bloquea: si el sistema no detectó un tipo, igual se puede elegir. */}
+                      {otherTypes.length > 0 && (
+                        <optgroup label="Más tipos">
+                          {otherTypes.map((type) => (
+                            <option key={type.id} value={type.id}>{type.label}</option>
+                          ))}
+                        </optgroup>
+                      )}
                     </select>
                     <span className={`mt-1 line-clamp-2 block h-8 text-xs leading-4 ${basicsDone ? "text-slate-500" : "font-semibold text-amber-700"}`}>
-                      {basicsDone ? typeInfo.hint : "Primero completa nombre, precio y cantidad."}
+                      {!basicsDone ? (
+                        "Primero completa nombre, precio y cantidad."
+                      ) : suggestedType && suggestedType.id !== productType && productType === "simple" ? (
+                        // Sugerencia por el nombre (o la categoría): la dueña decide si la usa.
+                        <button type="button" onClick={() => chooseType(suggestedType.id)} className="font-bold text-violet-700 hover:underline">
+                          💡 Sugerido: {suggestedType.label} · usar
+                        </button>
+                      ) : (
+                        typeInfo.hint
+                      )}
                     </span>
                   </label>
                 )}
@@ -703,9 +735,13 @@ export default function ProductosPage() {
                 <div className="flex h-full min-h-56 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 p-5 text-center">
                   <span className="text-3xl" aria-hidden>🏷️</span>
                   <p className="mt-2 text-sm font-bold text-slate-800">Este producto no usa tallas ni colores</p>
-                  <p className="mt-1 text-xs text-slate-500">¿Sí los tiene? Elige qué es y aparecen las opciones:</p>
+                  {showType ? (
+                    <p className="mt-1 text-xs text-slate-500">¿Sí los tiene? Elige qué es y aparecen las opciones:</p>
+                  ) : (
+                    <p className="mt-1 text-xs text-slate-500">En tu rubro cada producto lleva una sola cantidad.</p>
+                  )}
                   <div className="mt-3 flex flex-wrap justify-center gap-1.5">
-                    {PRODUCT_TYPES.filter(typeHasOptions).map((type) => (
+                    {(showType ? (allowedTypes ?? []).filter(typeHasOptions) : []).map((type) => (
                       <button
                         key={type.id}
                         type="button"

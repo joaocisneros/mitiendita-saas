@@ -54,8 +54,8 @@ class AdjustVariantsDto {
   @IsUUID()
   productId!: string;
 
-  @IsIn(['entry', 'adjustment'])
-  type!: 'entry' | 'adjustment';
+  @IsIn(['entry', 'return', 'adjustment'])
+  type!: 'entry' | 'return' | 'adjustment';
 
   @IsOptional()
   @IsString()

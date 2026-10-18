@@ -54,6 +54,8 @@ export class InventoryService {
         isActive: true,
         productType: true,
         variantStocks: true,
+        category: { select: { name: true } },
+        imageUrl: true,
       },
     });
     // Lo separado viene de pedidos pagados que la tienda aún no confirma.
@@ -109,8 +111,9 @@ export class InventoryService {
       ]),
     );
 
-    return rows.map(({ variantStocks, ...p }) => ({
+    return rows.map(({ variantStocks, category, ...p }) => ({
       ...p,
+      categoryName: category?.name ?? null,
       // Cuánto queda por talla/color (vacío si el producto no tiene opciones).
       variants: (Array.isArray(variantStocks)
         ? (variantStocks as VariantRow[])
@@ -299,6 +302,41 @@ export class InventoryService {
     };
   }
 
+  /**
+   * Una devolución no puede superar lo vendido del producto (tienda + crédito,
+   * menos lo ya devuelto a mano). Evita sumar stock que nunca salió.
+   */
+  private async assertReturnable(
+    companyId: string,
+    productId: string,
+    quantity: number,
+  ) {
+    const [row] = await this.prisma.$queryRaw<
+      Array<{ sold: unknown; returned: unknown }>
+    >`
+      SELECT
+        SUM(CASE
+          WHEN type IN ('sale', 'cancellation') THEN -quantity
+          WHEN type = 'return' AND reason LIKE 'Anulaci%n cr%' THEN -quantity
+          ELSE 0 END) AS sold,
+        SUM(CASE
+          WHEN type = 'return' AND (reason IS NULL OR reason NOT LIKE 'Anulaci%n cr%') THEN quantity
+          ELSE 0 END) AS returned
+      FROM stock_movements
+      WHERE company_id = ${companyId} AND product_id = ${productId}`;
+    const allowed = Math.max(
+      0,
+      Number(row?.sold ?? 0) - Number(row?.returned ?? 0),
+    );
+    if (quantity > allowed) {
+      throw new BadRequestException(
+        allowed === 0
+          ? 'Este producto no tiene ventas que se puedan devolver.'
+          : `Solo se pueden devolver ${allowed} ${allowed === 1 ? 'unidad' : 'unidades'} de este producto (lo vendido menos lo ya devuelto).`,
+      );
+    }
+  }
+
   /** Ajuste manual de stock que queda registrado en el historial. */
   async adjust(
     companyId: string,
@@ -332,6 +370,10 @@ export class InventoryService {
       newStock = product.stock + delta;
     } else {
       throw new BadRequestException('Tipo de movimiento inválido.');
+    }
+
+    if (dto.type === 'return') {
+      await this.assertReturnable(companyId, product.id, delta);
     }
 
     if (newStock < product.reserved) {
@@ -370,7 +412,7 @@ export class InventoryService {
     userId: string,
     dto: {
       productId: string;
-      type: 'entry' | 'adjustment';
+      type: 'entry' | 'return' | 'adjustment';
       reason?: string;
       rows: Array<{ size?: string; color?: string; quantity: number }>;
     },
@@ -459,8 +501,21 @@ export class InventoryService {
           changes.push(`${label} ${change > 0 ? '+' : ''}${change}`);
       }
 
-      if (dto.type === 'entry' && delta <= 0) {
-        throw new BadRequestException('Escribe cuántas unidades llegaron.');
+      if (dto.type === 'return') {
+        await this.assertReturnable(companyId, product.id, delta);
+      }
+      if (dto.type !== 'adjustment' && delta <= 0) {
+        throw new BadRequestException(
+          dto.type === 'return'
+            ? 'Escribe cuántas unidades volvieron.'
+            : 'Escribe cuántas unidades llegaron.',
+        );
+      }
+      // Una devolución es de algo que ya existía: no crea tallas ni colores nuevos.
+      if (dto.type === 'return' && added) {
+        throw new BadRequestException(
+          'Una devolución solo puede ser de tallas o colores que ya tiene el producto.',
+        );
       }
       if (dto.type === 'adjustment' && !changes.length && !added) {
         throw new BadRequestException('No cambiaste ninguna cantidad.');

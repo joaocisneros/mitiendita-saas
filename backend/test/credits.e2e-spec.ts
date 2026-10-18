@@ -676,6 +676,44 @@ describe('Ventas al crédito (e2e)', () => {
     expect(report.body.credits.discounts.sales).toBeGreaterThanOrEqual(1);
   });
 
+  it('una devolución no puede superar lo vendido del producto', async () => {
+    const product = (
+      await http()
+        .post('/api/products')
+        .set(A())
+        .send({ name: 'Polo Devolución', price: 30, stock: 5 })
+        .expect(201)
+    ).body as { id: string };
+    const devolver = (quantity: number) =>
+      http()
+        .post('/api/admin/inventory/adjust')
+        .set(A())
+        .send({ productId: product.id, type: 'return', quantity });
+    // Sin ventas no hay nada que devolver.
+    await devolver(1).expect(400);
+    const customer = (
+      await http()
+        .post('/api/admin/credits/customers')
+        .set(A())
+        .send({
+          firstName: 'Ana',
+          lastName: 'Devuelve',
+          phone: '987555119',
+          address: 'Jr. Lima 789',
+        })
+        .expect(201)
+    ).body as { id: string };
+    await http()
+      .post(`/api/admin/credits/customers/${customer.id}/sales`)
+      .set(A())
+      .send({ items: [{ productId: product.id, quantity: 2 }] })
+      .expect(201);
+    await devolver(3).expect(400);
+    await devolver(2).expect(201);
+    // Ya se devolvió todo lo vendido.
+    await devolver(1).expect(400);
+  });
+
   it('reportes y resumen incluyen las ventas al crédito', async () => {
     const report = await http().get('/api/admin/reports').set(A()).expect(200);
     expect(report.body.credits).toMatchObject({

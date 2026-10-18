@@ -3,15 +3,17 @@
 import { useState } from "react";
 import { adminApi, type InventoryProduct } from "@/lib/admin-api";
 import { PRODUCT_TYPES, colorChipsFor, usesTones } from "@/lib/product-types";
+import { LockedInfo, SplitStatus } from "@/components/inventory/ActionCards";
 
 const same = (a?: string | null, b?: string | null) =>
   (a ?? "").trim().toLocaleLowerCase() === (b ?? "").trim().toLocaleLowerCase();
 const keyOf = (size: string | null, color: string | null) => `${size ?? ""}\u0000${color ?? ""}`.toLocaleLowerCase();
 
 /**
- * Completa el tipo de un producto que no tenía tallas ni colores: se marcan las
- * opciones y cuántas hay ahora de cada una (lo que había + lo que llegó).
+ * Llegó mercadería a un producto con tipo de tallas/colores que aún no se repartió:
+ * se marcan las opciones y cuántas hay AHORA de cada una (lo que había + lo que llegó).
  * Es el mismo producto: conserva ventas, historial, fotos y precio.
+ * Izquierda: datos fijos, total y nota. Derecha: tallas, colores y cantidades.
  */
 export function SplitVariantsForm({
   product,
@@ -27,6 +29,7 @@ export function SplitVariantsForm({
   const type = PRODUCT_TYPES.find((t) => t.id === typeId);
   const usesSizes = type?.sizes !== null && type?.sizes !== undefined;
   const usesColors = Boolean(type?.colors);
+  const tones = usesTones(typeId);
 
   const [sizes, setSizes] = useState<string[]>([]);
   const [colors, setColors] = useState<string[]>([]);
@@ -34,10 +37,11 @@ export function SplitVariantsForm({
   const [colorDraft, setColorDraft] = useState("");
   const [values, setValues] = useState<Record<string, string>>({});
   const [reason, setReason] = useState("");
+  const [totalTyped, setTotalTyped] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Con tallas: las filas son tallas (y los colores, columnas). Sin tallas: una fila por color.
+  // Con tallas: talla × color (si marcó colores). Sin tallas: una casilla por color.
   const combos: Array<{ size: string | null; color: string | null }> = usesSizes
     ? colors.length
       ? sizes.flatMap((size) => colors.map((color) => ({ size, color })))
@@ -50,9 +54,22 @@ export function SplitVariantsForm({
   const total = combos.reduce((sum, c) => sum + Number(valueOf(c.size, c.color) || 0), 0);
   const before = product.stock;
   const diff = total - before;
+  // El total es obligatorio y el reparto debe dar exacto para poder guardar.
+  const wanted = totalTyped === "" ? null : Number(totalTyped);
+  const pending =
+    wanted === null
+      ? "Escribe el total"
+      : !combos.length
+        ? `Marca ${usesSizes ? "las tallas" : tones ? "los tonos" : "los colores"}`
+        : wanted > total
+          ? `Reparte ${wanted - total} más`
+          : wanted < total
+            ? `Sobran ${total - wanted}`
+            : null;
 
-  function toggleSize(size: string) {
-    setSizes((prev) => (prev.some((item) => same(item, size)) ? prev.filter((item) => !same(item, size)) : [...prev, size]));
+  function toggle(kind: "size" | "color", value: string) {
+    const setList = kind === "size" ? setSizes : setColors;
+    setList((prev) => (prev.some((item) => same(item, value)) ? prev.filter((item) => !same(item, value)) : [...prev, value]));
   }
 
   function addOption(kind: "size" | "color", raw: string) {
@@ -74,7 +91,9 @@ export function SplitVariantsForm({
   async function save() {
     setError("");
     if (usesSizes && !sizes.length) return setError("Marca al menos una talla.");
-    if (!usesSizes && !colors.length) return setError("Agrega al menos un color.");
+    if (!usesSizes && !colors.length) return setError(`Marca al menos un ${tones ? "tono" : "color"}.`);
+    if (totalTyped !== "" && Number(totalTyped) !== total)
+      return setError(`Reparte exacto: escribiste ${totalTyped} en total y repartiste ${total}.`);
     setSaving(true);
     try {
       await adminApi.splitVariants({
@@ -105,104 +124,107 @@ export function SplitVariantsForm({
       className="h-9 w-16 rounded-lg border border-slate-300 bg-white text-center text-sm font-black text-slate-950 outline-none placeholder:font-medium placeholder:text-slate-300 focus:border-violet-600"
     />
   );
-  const removable = (kind: "size" | "color", value: string) => (
-    <button
-      type="button"
-      onClick={() => (kind === "size" ? setSizes((p) => p.filter((i) => i !== value)) : setColors((p) => p.filter((i) => i !== value)))}
-      className="ml-1 text-slate-400 hover:text-red-600"
-      aria-label={`Quitar ${value}`}
-    >
-      ✕
-    </button>
-  );
 
-  return (
-    <div className="space-y-3">
-      <p className="rounded-xl bg-violet-50 p-3 text-xs font-medium leading-5 text-violet-900">
-        Es el <b>mismo producto</b>: conserva sus ventas, historial, fotos y precio. Hoy tienes <b>{before}</b> sin talla:
-        escribe cuántas hay <b>ahora</b> de cada {usesSizes ? "talla" : "color"}, contando lo que llegó.
-      </p>
-
-      {usesSizes && (
-        <div>
-          <span className="mb-1 block text-sm font-semibold text-slate-700">Marca las tallas que tienes</span>
-          <div className="flex flex-wrap gap-1.5">
-            {(type?.sizes ?? []).map((size) => {
-              const on = sizes.some((item) => same(item, size));
-              return (
-                <button
-                  key={size}
-                  type="button"
-                  onClick={() => toggleSize(size)}
-                  className={`min-w-10 rounded-lg px-2.5 py-1.5 text-xs font-bold ring-1 transition ${on ? "bg-violet-600 text-white ring-violet-600" : "bg-white text-slate-700 ring-slate-300 hover:bg-violet-50"}`}
-                >
-                  {size}
-                </button>
-              );
-            })}
-            <span className="flex gap-1">
-              <input
-                value={sizeDraft}
-                onChange={(event) => setSizeDraft(event.target.value)}
-                onKeyDown={(event) => event.key === "Enter" && (event.preventDefault(), addOption("size", sizeDraft))}
-                placeholder="Otra talla"
-                className="h-8 w-24 rounded-lg border border-slate-300 px-2 text-xs outline-none focus:border-violet-600"
-              />
-              <button type="button" onClick={() => addOption("size", sizeDraft)} className="rounded-lg px-2 text-xs font-bold text-violet-700 ring-1 ring-violet-200 hover:bg-violet-50">
-                + Agregar
+  /** Botones para marcar con un toque (como al crear el producto) y uno para escribir otra opción. */
+  const chips = (kind: "size" | "color") => {
+    const list = kind === "size" ? sizes : colors;
+    const suggested = kind === "size" ? [...(type?.sizes ?? [])] : type ? colorChipsFor(type) : [];
+    const options = [...suggested, ...list.filter((item) => !suggested.some((s) => same(s, item)))];
+    const draft = kind === "size" ? sizeDraft : colorDraft;
+    const setDraft = kind === "size" ? setSizeDraft : setColorDraft;
+    const noun = kind === "size" ? "las tallas" : tones ? "los tonos" : "los colores";
+    return (
+      <div>
+        <span className="mb-1 block text-sm font-semibold text-slate-700">
+          Marca {noun} que tienes{kind === "color" && usesSizes ? " (opcional)" : ""}
+        </span>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {options.map((option) => {
+            const on = list.some((item) => same(item, option));
+            return (
+              <button
+                key={option}
+                type="button"
+                onClick={() => toggle(kind, option)}
+                className={`min-w-10 rounded-lg px-2.5 py-1.5 text-xs font-bold ring-1 transition ${
+                  on ? "bg-violet-600 text-white ring-violet-600" : "bg-white text-slate-700 ring-slate-300 hover:ring-violet-400"
+                }`}
+              >
+                {option}
               </button>
-            </span>
-          </div>
-        </div>
-      )}
-
-      {usesColors && (
-        <div>
-          <span className="mb-1 block text-sm font-semibold text-slate-700">
-            {usesSizes ? "Colores (opcional)" : usesTones(typeId) ? "Tonos" : "Colores"}
-          </span>
-          {type && (
-            <div className="mb-1.5 flex flex-wrap gap-1.5">
-              {colorChipsFor(type)
-                .filter((option) => !colors.some((color) => same(color, option)))
-                .map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => setColors((prev) => [...prev, option])}
-                    className="rounded-lg bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 ring-1 ring-slate-300 hover:bg-violet-50"
-                  >
-                    + {option}
-                  </button>
-                ))}
-            </div>
-          )}
-          <div className="flex flex-wrap items-center gap-1.5">
-            {colors.map((color) => (
-              <span key={color} className="rounded-lg bg-violet-600 px-2.5 py-1.5 text-xs font-bold text-white">
-                {color}
-                <button type="button" onClick={() => setColors((p) => p.filter((i) => i !== color))} className="ml-1 text-violet-200 hover:text-white" aria-label={`Quitar ${color}`}>
-                  ✕
-                </button>
-              </span>
-            ))}
+            );
+          })}
+          <span className="flex gap-1">
             <input
-              value={colorDraft}
-              onChange={(event) => setColorDraft(event.target.value)}
-              onKeyDown={(event) => event.key === "Enter" && (event.preventDefault(), addOption("color", colorDraft))}
-              placeholder={usesTones(typeId) ? "Ej: Nude" : "Ej: Negro"}
-              className="h-8 w-28 rounded-lg border border-slate-300 px-2 text-xs outline-none focus:border-violet-600"
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  addOption(kind, draft);
+                }
+              }}
+              placeholder={kind === "size" ? "Otra talla" : tones ? "Otro tono" : "Otro color"}
+              className="h-8 w-24 rounded-lg border border-slate-300 px-2 text-xs outline-none focus:border-violet-600"
             />
-            <button type="button" onClick={() => addOption("color", colorDraft)} className="h-8 rounded-lg px-2 text-xs font-bold text-violet-700 ring-1 ring-violet-200 hover:bg-violet-50">
+            <button type="button" onClick={() => addOption(kind, draft)} className="rounded-lg px-2 text-xs font-bold text-violet-700 ring-1 ring-violet-200 hover:bg-violet-50">
               + Agregar
             </button>
-          </div>
+          </span>
         </div>
-      )}
+      </div>
+    );
+  };
 
-      {combos.length > 0 && (
-        <div className="max-h-[36vh] overflow-auto rounded-2xl ring-1 ring-slate-200">
-          {usesSizes && colors.length > 0 ? (
+  return (
+    // Mismo diseño que "Llegó" de un producto con tallas: dos columnas y el resumen abajo.
+    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="grid min-h-0 flex-1 gap-5 lg:grid-cols-[400px_1fr]">
+      {/* Izquierda: datos fijos del producto, total, explicación y nota. */}
+      <div className="flex flex-col gap-4">
+        <LockedInfo categoryName={product.categoryName} typeLabel={type?.label ?? "Tallas y colores"} />
+        <label className="block">
+          <span className="mb-1 block text-sm font-semibold text-slate-700">
+            ¿Cuántas hay ahora en total? <span className="text-red-500">*</span>
+          </span>
+          <input
+            value={totalTyped}
+            onChange={(event) => setTotalTyped(event.target.value.replace(/\D/g, "").slice(0, 5))}
+            inputMode="numeric"
+            placeholder={`Ej: ${before + 10}`}
+            className={`h-11 w-full rounded-xl border px-3 text-lg font-black outline-none focus:border-violet-600 ${totalTyped === "" ? "border-amber-400" : "border-slate-300"}`}
+          />
+          <span className="mt-1 block min-h-6">
+            {totalTyped !== "" && <SplitStatus total={Number(totalTyped)} assigned={total} />}
+          </span>
+        </label>
+        <p className="rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-600">
+          Este producto todavía no tiene sus {usesSizes ? "tallas" : tones ? "tonos" : "colores"}. Hoy tienes <b>{before}</b> en total:
+          marca {usesSizes ? "las tallas" : tones ? "los tonos" : "los colores"} y escribe cuántas hay <b>ahora</b> de cada una, contando lo que llegó.
+          Es el mismo producto: conserva sus ventas, historial, fotos y precio.
+        </p>
+        <label className="block">
+          <span className="mb-1 block text-sm font-semibold text-slate-700">Nota (opcional)</span>
+          <input
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            maxLength={120}
+            placeholder="Ej: llegó mercadería del proveedor"
+            className="h-10 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-violet-600"
+          />
+        </label>
+      </div>
+
+      {/* Derecha: tallas y colores para marcar, y cuántas hay de cada una. */}
+      <div className="flex min-h-0 flex-col gap-3 rounded-2xl border border-violet-100 bg-violet-50/40 p-4">
+        {usesSizes && chips("size")}
+        {usesColors && chips("color")}
+        {combos.length === 0 ? (
+          <p className="flex min-h-0 flex-1 items-center justify-center rounded-2xl bg-white p-4 text-center text-sm text-slate-500 ring-1 ring-slate-200">
+            Marca {usesSizes ? "las tallas" : tones ? "los tonos" : "los colores"} de arriba y aquí escribes cuántas hay de cada una.
+          </p>
+        ) : usesSizes && colors.length > 1 ? (
+          <div className="min-h-0 flex-1 overflow-auto rounded-2xl bg-white ring-1 ring-slate-200">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-slate-50 text-[11px] font-bold uppercase tracking-wide text-slate-500">
                 <tr>
@@ -215,10 +237,7 @@ export function SplitVariantsForm({
               <tbody>
                 {sizes.map((size) => (
                   <tr key={size} className="border-t border-slate-100">
-                    <td className="px-3 py-2 font-black text-slate-900">
-                      {size}
-                      {removable("size", size)}
-                    </td>
+                    <td className="px-3 py-2 font-black text-slate-900">{size}</td>
                     {colors.map((color) => (
                       <td key={color} className="px-2 py-2 text-center">{input(size, color)}</td>
                     ))}
@@ -226,69 +245,52 @@ export function SplitVariantsForm({
                 ))}
               </tbody>
             </table>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-slate-50 text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th className="px-3 py-2 text-left">{usesSizes ? "Talla" : usesTones(typeId) ? "Tono" : "Color"}</th>
-                  <th className="px-3 py-2 text-right">Hay ahora</th>
-                </tr>
-              </thead>
-              <tbody>
-                {combos.map(({ size, color }) => {
-                  const label = (size ?? color)!;
-                  return (
-                    <tr key={label} className="border-t border-slate-100">
-                      <td className="px-3 py-2 font-black text-slate-900">
-                        {label}
-                        {removable(size ? "size" : "color", label)}
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex justify-end">{input(size, color)}</div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
+          </div>
+        ) : (
+          // Una sola lista (solo tallas o solo colores): cuadritos compactos, varios por fila.
+          <div className="min-h-0 flex-1 overflow-auto rounded-2xl bg-white ring-1 ring-slate-200">
+          <div className="grid grid-cols-2 gap-2 p-2 sm:grid-cols-3 xl:grid-cols-4">
+            {combos.map(({ size, color }) => {
+              const label = (size ?? color)!;
+              return (
+                <label key={`${size}-${color}`} className="flex items-center justify-between gap-2 rounded-xl bg-white p-2 pl-3 ring-1 ring-slate-200">
+                  <span className="min-w-0">
+                    <span className="block text-sm font-black text-slate-900">{label}</span>
+                    {size && color && <span className="block truncate text-[11px] font-semibold text-slate-500">{color}</span>}
+                  </span>
+                  {input(size, color)}
+                </label>
+              );
+            })}
+          </div>
+          </div>
+        )}
+      </div>
+    </div>
+
+      {/* Abajo, a lo ancho: resumen y botones (igual que en "Llegó"). */}
+      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex flex-1 items-center justify-between gap-3 rounded-xl bg-violet-50 px-4 py-2.5 text-sm font-bold text-violet-900">
+          <span>Antes {before} sin talla → ahora</span>
+          <span className="flex items-center gap-2">
+            <b className="text-lg font-black">{total}</b>
+            {total > 0 && (
+              <span className={`rounded-full px-2.5 py-1 text-xs font-black ${diff > 0 ? "bg-emerald-100 text-emerald-700" : diff < 0 ? "bg-amber-100 text-amber-800" : "bg-white text-slate-600"}`}>
+                {diff > 0 ? `+${diff} llegaron` : diff < 0 ? `${diff} (corrección)` : "mismo total ✓"}
+              </span>
+            )}
+          </span>
         </div>
-      )}
-
-      <label className="block">
-        <span className="mb-1 block text-sm font-semibold text-slate-700">Nota (opcional)</span>
-        <input
-          value={reason}
-          onChange={(event) => setReason(event.target.value)}
-          maxLength={120}
-          placeholder="Ej: llegó mercadería del proveedor"
-          className="h-10 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-violet-600"
-        />
-      </label>
-
-      <div className="flex items-center justify-between rounded-xl bg-violet-50 px-4 py-2.5 text-sm font-bold text-violet-900">
-        <span>
-          Antes {before} sin talla → ahora <b className="text-lg font-black">{total}</b>
-        </span>
-        <span
-          className={`rounded-full px-2.5 py-1 text-xs font-black ${
-            diff > 0 ? "bg-emerald-100 text-emerald-700" : diff < 0 ? "bg-amber-100 text-amber-800" : "bg-white text-slate-600"
-          }`}
-        >
-          {diff > 0 ? `+${diff} llegaron` : diff < 0 ? `${diff} (se registra como corrección)` : "mismo total ✓"}
-        </span>
+        <div className="flex gap-2 sm:w-[420px]">
+          <button type="button" onClick={onCancel} className="flex-1 rounded-xl bg-slate-100 py-2.5 font-bold text-slate-700 hover:bg-slate-200">
+            Cancelar
+          </button>
+          <button type="button" onClick={save} disabled={saving || pending !== null} className="flex-1 rounded-xl bg-violet-600 py-2.5 font-bold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:bg-slate-300">
+            {saving ? "Guardando..." : pending ?? `Guardar ${total} ${total === 1 ? "unidad" : "unidades"}`}
+          </button>
+        </div>
       </div>
-
-      {error && <p className="rounded-xl bg-red-50 p-2.5 text-sm font-semibold text-red-700">{error}</p>}
-
-      <div className="flex gap-2">
-        <button type="button" onClick={onCancel} className="flex-1 rounded-xl bg-slate-100 py-2.5 font-bold text-slate-700 hover:bg-slate-200">
-          Cancelar
-        </button>
-        <button type="button" onClick={save} disabled={saving} className="flex-1 rounded-xl bg-violet-600 py-2.5 font-bold text-white hover:bg-violet-700 disabled:opacity-60">
-          {saving ? "Guardando..." : `Guardar ${usesSizes ? "tallas" : "colores"}`}
-        </button>
-      </div>
+      {error && <p className="mt-3 rounded-xl bg-red-50 p-2.5 text-sm font-semibold text-red-700">{error}</p>}
     </div>
   );
 }
