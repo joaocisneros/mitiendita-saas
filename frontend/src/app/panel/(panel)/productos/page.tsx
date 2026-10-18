@@ -43,8 +43,6 @@ function rebuildVariants(
   sizesText: string,
   colorsText: string,
   current: Array<{ size: string | null; color: string | null; stock: number; reserved: number }>,
-  /** Cantidad escrita antes de elegir tallas: si queda una sola opción, pasa a ella. */
-  looseStock = 0,
 ) {
   const sizes = optionList(sizesText);
   const colors = optionList(colorsText);
@@ -53,13 +51,11 @@ function rebuildVariants(
     : sizes.length
       ? sizes.map((size) => ({ size, color: null }))
       : colors.map((color) => ({ size: null, color }));
-  // Con una sola opción, se conserva la cantidad que ya había: la escrita antes
-  // de elegir tallas o la de la única opción anterior (ej. "37" → "37 · Blanco").
-  const inherit =
-    combinations.length !== 1 ? 0 : current.length === 0 ? looseStock : current.length === 1 ? current[0].stock : 0;
+  // Ninguna opción recibe unidades sola: la dueña reparte el total a mano
+  // (el indicador "Repartido X de Y" le dice cuánto falta).
   return combinations.map(({ size, color }) => {
     const previous = current.find((row) => row.size === size && row.color === color);
-    return { size, color, stock: previous?.stock ?? inherit, reserved: previous?.reserved ?? 0 };
+    return { size, color, stock: previous?.stock ?? 0, reserved: previous?.reserved ?? 0 };
   });
 }
 
@@ -172,13 +168,16 @@ export default function ProductosPage() {
   // Productos físicos: siempre 3 columnas (datos | tallas y colores | fotos).
   const isPhysical = !isDigital && !isService;
   const hasOptions = isPhysical && productType !== "simple";
+  // El formulario se llena en orden: nombre → precio y cantidad → categoría y tipo.
+  const nameDone = form.name.trim().length > 0;
+  const basicsDone = nameDone && form.price !== "" && form.stock !== "";
 
   function chooseType(id: string) {
     const next = PRODUCT_TYPES.find((type) => type.id === id) ?? PRODUCT_TYPES[0];
     setProductType(next.id);
     // Las tallas no se llenan solas: el dueño marca las que tiene.
     const colors = next.colors ? form.colors : "";
-    setForm({ ...form, sizes: "", colors, sizeGuide: "", variantStocks: rebuildVariants("", colors, form.variantStocks, form.variantStocks.length ? 0 : Number(form.stock) || 0) });
+    setForm({ ...form, sizes: "", colors, sizeGuide: "", variantStocks: rebuildVariants("", colors, form.variantStocks) });
   }
 
   function load() {
@@ -536,24 +535,22 @@ export default function ProductosPage() {
               <Input label={`Nombre del ${noun} *`} value={form.name} placeholder="Ej: Zapatillas Urbanas" onChange={(value) => setForm({ ...form, name: value })} />
               {!isDigital && !isService && (
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Input label="Marca (opcional)" value={form.brand} placeholder="Ej: Nike, Adidas o marca propia" onChange={(value) => setForm({ ...form, brand: value })} />
-                  <Input label="Material o presentación" value={form.material} placeholder="Ej: Cuero sintético / Frasco de 100 ml" onChange={(value) => setForm({ ...form, material: value })} />
+                  <Input label="Marca (opcional)" value={form.brand} placeholder="Ej: Nike, Adidas o marca propia" onChange={(value) => setForm({ ...form, brand: value })} disabled={!nameDone} />
+                  <Input label="Material o presentación" value={form.material} placeholder="Ej: Cuero sintético / Frasco de 100 ml" onChange={(value) => setForm({ ...form, material: value })} disabled={!nameDone} />
                 </div>
               )}
               <div className="grid grid-cols-2 gap-3">
-                <Input label={isDigital ? "Precio mensual *" : "Precio *"} type="number" min="0.01" step="0.01" placeholder="0.00" value={form.price} onChange={(value) => setForm({ ...form, price: value })} />
+                <Input label={isDigital ? "Precio mensual *" : "Precio *"} type="number" min="0.01" step="0.01" placeholder="0.00" value={form.price} onChange={(value) => setForm({ ...form, price: value })} disabled={!nameDone} />
                 <Input
-                  label={isDigital || isService ? "Stock interno *" : form.variantStocks.length ? "Cantidad total que tienes *" : "Cantidad disponible *"}
+                  label={isDigital || isService ? "Stock interno *" : form.variantStocks.length ? "Cantidad total *" : "Cantidad disponible *"}
                   type="number"
                   min="0"
                   step="1"
                   placeholder="0"
                   value={form.stock}
                   onChange={(value) => setForm({ ...form, stock: value })}
+                  disabled={!nameDone}
                 />
-                {form.variantStocks.length > 0 && (
-                  <p className="-mt-1 text-[11px] font-medium text-slate-500">Repártela exacta en &quot;Cantidad por opción&quot;.</p>
-                )}
               </div>
               <div className={`grid gap-3 ${!isDigital && !isService ? "sm:grid-cols-2" : ""}`}>
                 <label className="block">
@@ -561,7 +558,8 @@ export default function ProductosPage() {
                   <select
                     value={form.categoryId}
                     onChange={(event) => setForm({ ...form, categoryId: event.target.value })}
-                    className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-violet-500"
+                    disabled={!basicsDone}
+                    className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm outline-none focus:border-violet-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
                   >
                     <option value="">Sin categoría</option>
                     {categories.map((category) => (
@@ -575,13 +573,16 @@ export default function ProductosPage() {
                     <select
                       value={productType}
                       onChange={(event) => chooseType(event.target.value)}
-                      className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-violet-500"
+                      disabled={!basicsDone}
+                      className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm outline-none focus:border-violet-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
                     >
                       {PRODUCT_TYPES.map((type) => (
                         <option key={type.id} value={type.id}>{type.label}</option>
                       ))}
                     </select>
-                    <span className="mt-1 block text-xs text-slate-500">{typeInfo.hint}</span>
+                    <span className={`mt-1 line-clamp-2 block h-8 text-xs leading-4 ${basicsDone ? "text-slate-500" : "font-semibold text-amber-700"}`}>
+                      {basicsDone ? typeInfo.hint : "Primero completa nombre, precio y cantidad."}
+                    </span>
                   </label>
                 )}
               </div>
@@ -637,7 +638,8 @@ export default function ProductosPage() {
                         key={type.id}
                         type="button"
                         onClick={() => chooseType(type.id)}
-                        className="rounded-full bg-white px-3 py-1 text-xs font-bold text-violet-700 ring-1 ring-violet-200 hover:bg-violet-50"
+                        disabled={!basicsDone}
+                        className="rounded-full bg-white px-3 py-1 text-xs font-bold text-violet-700 ring-1 ring-violet-200 hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         {type.label.replace(/ \(.*\)$/, "")}
                       </button>
@@ -671,7 +673,7 @@ export default function ProductosPage() {
                                         return index === -1 ? 999 : index;
                                       };
                                       const sizes = next.sort((x, y) => order(x) - order(y)).join(", ");
-                                      setForm({ ...form, sizes, variantStocks: rebuildVariants(sizes, form.colors, form.variantStocks, form.variantStocks.length ? 0 : Number(form.stock) || 0) });
+                                      setForm({ ...form, sizes, variantStocks: rebuildVariants(sizes, form.colors, form.variantStocks) });
                                     }}
                                     className={`min-w-10 rounded-lg px-2.5 py-1.5 text-xs font-bold ring-1 transition ${
                                       on ? "bg-violet-600 text-white ring-violet-600" : "bg-white text-slate-700 ring-slate-200 hover:ring-violet-300"
@@ -689,12 +691,12 @@ export default function ProductosPage() {
                           label={typeInfo.sizes.length ? "Tallas elegidas (puedes agregar otras)" : "Tallas"}
                           placeholder={typeInfo.sizes.length ? "Toca las tallas de arriba" : "Ej: Chico, Mediano, Grande"}
                           value={form.sizes}
-                          onChange={(value) => setForm({ ...form, sizes: value, variantStocks: rebuildVariants(value, form.colors, form.variantStocks, form.variantStocks.length ? 0 : Number(form.stock) || 0) })}
+                          onChange={(value) => setForm({ ...form, sizes: value, variantStocks: rebuildVariants(value, form.colors, form.variantStocks) })}
                         />
                       </div>
                     )}
                     <div>
-                      <Input label="Colores (opcional)" placeholder="Negro, Blanco, Azul" value={form.colors} onChange={(value) => setForm({ ...form, colors: value, variantStocks: rebuildVariants(form.sizes, value, form.variantStocks, form.variantStocks.length ? 0 : Number(form.stock) || 0) })} />
+                      <Input label="Colores (opcional)" placeholder="Negro, Blanco, Azul" value={form.colors} onChange={(value) => setForm({ ...form, colors: value, variantStocks: rebuildVariants(form.sizes, value, form.variantStocks) })} />
                     </div>
                   </div>
                   {typeInfo.sizes !== null && (
@@ -926,7 +928,7 @@ function Input({ label, value, onChange, type = "text", placeholder, min, step, 
         step={step}
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-violet-500 disabled:bg-slate-100 disabled:text-slate-500"
+        className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm outline-none focus:border-violet-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
       />
     </label>
   );
