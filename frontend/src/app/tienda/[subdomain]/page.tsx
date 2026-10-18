@@ -7,6 +7,7 @@ import {
   archetypeOf,
   heroOf,
   resolveCategory,
+  usesCredits,
 } from "@/lib/business-categories";
 import { CatalogTemplate } from "@/components/store/CatalogTemplate";
 import { CartaTemplate } from "@/components/store/CartaTemplate";
@@ -16,6 +17,7 @@ import { HeaderCartIcon } from "@/components/store/HeaderCartIcon";
 import { StoreFooter } from "@/components/store/StoreFooter";
 import { StoreBenefits } from "@/components/store/StoreBenefits";
 import { SoldOutCarousel } from "@/components/store/SoldOutCarousel";
+import { CreditStoreProvider } from "@/components/store/CreditRequest";
 
 const DEFAULT_PRIMARY = "#2563eb";
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://mitiendita-saas.vercel.app").replace(/\/$/, "");
@@ -196,6 +198,13 @@ export default async function StorePage({
         </div>
       </header>
 
+      <CreditStoreProvider
+        value={
+          store.creditRequests && usesCredits(store.businessType) && store.whatsappNumber
+            ? { name: store.name, whatsapp: store.whatsappNumber.replace(/\D/g, "") }
+            : null
+        }
+      >
       <main className="mx-auto -mt-6 max-w-[1280px] rounded-t-[2rem] px-4 pb-16 pt-8 sm:px-6 lg:px-8" style={{ backgroundColor: surface }}>
         {archetype === "catalogo" && (
           <CatalogTemplate
@@ -286,6 +295,7 @@ export default async function StorePage({
 
         <StoreBenefits archetype={archetype} />
       </main>
+      </CreditStoreProvider>
 
       <StoreFooter store={store} />
 

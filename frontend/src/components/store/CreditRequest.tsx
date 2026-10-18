@@ -1,10 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { storefrontApi } from "@/lib/api";
 import { usesCredits } from "@/lib/business-categories";
 import { formatPrice } from "@/lib/format";
 import type { PublicProduct } from "@/lib/types";
+
+type CreditStore = { name: string; whatsapp: string } | null;
+
+/**
+ * La página de la tienda ya trae sus datos: los pasa por aquí para que el botón
+ * salga al instante, sin volver a consultar la tienda cada vez que se abre un producto.
+ * Sin proveedor (undefined), el botón consulta la tienda por su cuenta.
+ */
+const CreditStoreContext = createContext<CreditStore | undefined>(undefined);
+
+export function CreditStoreProvider({ value, children }: { value: CreditStore; children: React.ReactNode }) {
+  return <CreditStoreContext.Provider value={value}>{children}</CreditStoreContext.Provider>;
+}
 
 /**
  * "Comprar al crédito": solo en tiendas cuyo rubro usa créditos y cuya dueña lo
@@ -23,23 +36,26 @@ export function CreditRequest({
   currency: string;
   accent: string;
 }) {
-  const [store, setStore] = useState<{ name: string; whatsapp: string } | null>(null);
+  const known = useContext(CreditStoreContext);
+  const [fetched, setFetched] = useState<CreditStore>(null);
   const [open, setOpen] = useState(false);
+  const store = known === undefined ? fetched : known;
 
   useEffect(() => {
+    if (known !== undefined) return;
     let alive = true;
     storefrontApi
       .getStore(subdomain)
       .then(({ store: s }) => {
         if (alive && s.creditRequests && usesCredits(s.businessType) && s.whatsappNumber) {
-          setStore({ name: s.name, whatsapp: s.whatsappNumber.replace(/\D/g, "") });
+          setFetched({ name: s.name, whatsapp: s.whatsappNumber.replace(/\D/g, "") });
         }
       })
       .catch(() => {});
     return () => {
       alive = false;
     };
-  }, [subdomain]);
+  }, [known, subdomain]);
 
   if (!store || !product.inStock) return null;
   return (
