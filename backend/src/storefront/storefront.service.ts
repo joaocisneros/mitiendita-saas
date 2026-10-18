@@ -89,6 +89,7 @@ export class StorefrontService {
         facebookUrl: s?.facebookUrl ?? null,
         tiktokUrl: s?.tiktokUrl ?? null,
         searchVisible: s?.searchVisible ?? true,
+        creditRequests: s?.creditRequests ?? false,
         seoTitle: s?.seoTitle ?? null,
         seoDescription: s?.seoDescription ?? null,
         socialImageUrl: s?.socialImageUrl ?? null,
@@ -106,9 +107,12 @@ export class StorefrontService {
       page?: number;
       limit?: number;
       sort?: string;
+      /** available = con unidades libres · soldout = agotados (sin unidades libres). */
+      availability?: string;
     },
   ) {
     const company = await this.resolveActiveCompany(subdomain);
+    const freeStock = this.prisma.product.fields.reserved;
     const page = opts.page ?? 1;
     const limit = opts.limit ?? 24;
 
@@ -120,6 +124,12 @@ export class StorefrontService {
         ? { category: { slug: opts.categorySlug, isActive: true } }
         : {}),
       ...(opts.search ? { name: { contains: opts.search } } : {}),
+      // Disponible = stock mayor a lo separado; agotado = lo contrario.
+      ...(opts.availability === 'available'
+        ? { stock: { gt: freeStock } }
+        : opts.availability === 'soldout'
+          ? { stock: { lte: freeStock } }
+          : {}),
     };
 
     const ORDER: Record<string, Record<string, 'asc' | 'desc'>[]> = {

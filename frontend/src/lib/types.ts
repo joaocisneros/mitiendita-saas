@@ -23,6 +23,7 @@ export interface StoreBrand {
   facebookUrl: string | null;
   tiktokUrl: string | null;
   searchVisible: boolean;
+  creditRequests: boolean;
   seoTitle: string | null;
   seoDescription: string | null;
   socialImageUrl: string | null;

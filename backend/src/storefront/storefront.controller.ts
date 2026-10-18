@@ -29,6 +29,7 @@ export class StorefrontController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('sort') sort?: string,
+    @Query('availability') availability?: string,
   ) {
     return this.storefront.listProducts(subdomain, {
       categorySlug,
@@ -36,6 +37,7 @@ export class StorefrontController {
       page: page ? Number(page) : undefined,
       limit: limit ? Number(limit) : undefined,
       sort,
+      availability,
     });
   }
 

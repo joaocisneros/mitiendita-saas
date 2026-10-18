@@ -15,6 +15,7 @@ import { DigitalTemplate } from "@/components/store/DigitalTemplate";
 import { HeaderCartIcon } from "@/components/store/HeaderCartIcon";
 import { StoreFooter } from "@/components/store/StoreFooter";
 import { StoreBenefits } from "@/components/store/StoreBenefits";
+import { SoldOutCarousel } from "@/components/store/SoldOutCarousel";
 
 const DEFAULT_PRIMARY = "#2563eb";
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://mitiendita-saas.vercel.app").replace(/\/$/, "");
@@ -104,12 +105,24 @@ export default async function StorePage({
     digital: "#f5f3ff",  // premium, tecnológico
   }[archetype];
 
+  // Tiendas con stock físico: el catálogo muestra solo lo disponible y los
+  // agotados van aparte, en un carrusel al final.
+  const physical = archetype === "catalogo" || archetype === "carta";
   let products;
+  let soldOut: Awaited<ReturnType<typeof storefrontApi.getProducts>>["items"] = [];
   try {
+    const availability = physical ? ("available" as const) : undefined;
     products =
       archetype === "catalogo"
-        ? await storefrontApi.getProducts(subdomain, { category, search, sort })
-        : await storefrontApi.getProducts(subdomain, { search, limit: 100, sort });
+        ? await storefrontApi.getProducts(subdomain, { category, search, sort, availability })
+        : await storefrontApi.getProducts(subdomain, { search, limit: 100, sort, availability });
+    if (physical && !search) {
+      soldOut = (
+        await storefrontApi
+          .getProducts(subdomain, { category, limit: 20, availability: "soldout" })
+          .catch(() => ({ items: [] }))
+      ).items;
+    }
   } catch {
     notFound();
   }
@@ -268,6 +281,8 @@ export default async function StorePage({
             category={category}
           />
         )}
+
+        <SoldOutCarousel products={soldOut} subdomain={subdomain} currency={store.currency} accent={accent} />
 
         <StoreBenefits archetype={archetype} />
       </main>

@@ -305,6 +305,7 @@ model CompanySettings {
   facebookUrl    String? @map("facebook_url")
   tiktokUrl      String? @map("tiktok_url")
   searchVisible  Boolean @default(true) @map("search_visible")
+  creditRequests Boolean @default(false) @map("credit_requests") // botón "Comprar al crédito" en la tienda
   seoTitle       String? @map("seo_title") @db.VarChar(120)
   seoDescription String? @map("seo_description") @db.VarChar(320)
   socialImageUrl String? @map("social_image_url")
@@ -641,6 +642,7 @@ model CreditCustomer {
   reference      String?
   note           String?   @db.Text
   creditLimit    Decimal?  @map("credit_limit") @db.Decimal(10, 2) // null = sin límite
+  birthday       DateTime? @db.Date // fecha de cumpleaños (opcional)
   isActive       Boolean   @default(true) @map("is_active")
   lastActivityAt DateTime? @map("last_activity_at")
   createdAt      DateTime  @default(now()) @map("created_at")

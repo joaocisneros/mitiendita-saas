@@ -234,4 +234,34 @@ describe('Catálogo y aislamiento (e2e)', () => {
       .send({ name: 'Raro', price: 5, stock: 1, productType: 'cohete' })
       .expect(400);
   });
+
+  it('la tienda separa productos disponibles y agotados', async () => {
+    for (const [name, stock] of [
+      ['Vela Disponible', 4],
+      ['Vela Agotada', 0],
+    ] as const) {
+      await http()
+        .post('/api/products')
+        .set(auth(tokenA))
+        .send({ name, price: 10, stock })
+        .expect(201);
+    }
+    const store = `tienda-a-${tag}`;
+    const names = async (availability: string) =>
+      (
+        (
+          await http()
+            .get(
+              `/api/public/stores/${store}/products?limit=100&availability=${availability}`,
+            )
+            .expect(200)
+        ).body.items as { name: string }[]
+      ).map((p) => p.name);
+    const available = await names('available');
+    const soldout = await names('soldout');
+    expect(available).toContain('Vela Disponible');
+    expect(available).not.toContain('Vela Agotada');
+    expect(soldout).toContain('Vela Agotada');
+    expect(soldout).not.toContain('Vela Disponible');
+  });
 });

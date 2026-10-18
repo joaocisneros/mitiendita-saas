@@ -45,6 +45,7 @@ export function CreditCustomerForm({
     reference: customer?.reference ?? "",
     note: customer?.note ?? "",
     creditLimit: customer?.creditLimit ?? "",
+    birthday: customer?.birthday ?? "",
   });
   const [dni, setDni] = useState<DniState>({ status: "idle" });
   const [saving, setSaving] = useState(false);
@@ -98,6 +99,8 @@ export function CreditCustomerForm({
       reference: toCatalogName(form.reference),
       note: toSentence(form.note),
       creditLimit: form.creditLimit.trim() === "" ? null : Number(form.creditLimit),
+      // Al crear, sin fecha no se envía; al editar, vacía la borra.
+      birthday: form.birthday || (customer ? null : undefined),
     };
     try {
       const saved = customer
@@ -148,6 +151,7 @@ export function CreditCustomerForm({
             </label>
             <Field label="Nombres" value={form.firstName} onChange={set("firstName")} onBlur={() => set("firstName")(titleCase(form.firstName.trim()))} required />
             <Field label="Apellidos" value={form.lastName} onChange={set("lastName")} onBlur={() => set("lastName")(titleCase(form.lastName.trim()))} required />
+            <Field label="Fecha de cumpleaños (opcional)" type="date" value={form.birthday} onChange={set("birthday")} max={today()} />
           </div>
         </Section>
 
@@ -177,6 +181,12 @@ export function CreditCustomerForm({
   );
 }
 
+/** Fecha de hoy AAAA-MM-DD en hora local (tope del cumpleaños). */
+const today = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <fieldset className="space-y-3 rounded-2xl border border-slate-200 p-4">
@@ -200,6 +210,7 @@ export function Field({
   required,
   type = "text",
   inputMode,
+  max,
 }: {
   label: string;
   value: string;
@@ -209,6 +220,7 @@ export function Field({
   required?: boolean;
   type?: string;
   inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
+  max?: string;
 }) {
   return (
     <label className="block">
@@ -220,6 +232,7 @@ export function Field({
         value={value}
         required={required}
         inputMode={inputMode}
+        max={max}
         placeholder={placeholder}
         onBlur={onBlur}
         onChange={(event) => onChange(event.target.value)}

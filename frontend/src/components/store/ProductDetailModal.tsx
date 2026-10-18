@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { AddToCart } from "@/components/AddToCart";
 import { ProductGallery } from "@/components/store/ProductGallery";
 import { ShareButton } from "@/components/store/ShareButton";
+import { CreditRequest } from "@/components/store/CreditRequest";
 import { formatPrice } from "@/lib/format";
 import type { PublicProduct } from "@/lib/types";
 
@@ -102,6 +103,7 @@ export function ProductDetailModal({
 
             <div className="mt-7">
               <AddToCart product={product} accent={accent} label={actionLabel} />
+              <CreditRequest product={product} subdomain={subdomain} currency={currency} accent={accent} />
               <ShareButton
                 title={product.name}
                 description={product.description ?? "Mira este producto"}

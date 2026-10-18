@@ -704,6 +704,7 @@ export interface StoreSettings {
   facebookUrl: string | null;
   tiktokUrl: string | null;
   searchVisible: boolean;
+  creditRequests: boolean;
   seoTitle: string | null;
   seoDescription: string | null;
   socialImageUrl: string | null;
@@ -747,6 +748,7 @@ export interface CreditCustomer {
   reference: string | null;
   note: string | null;
   creditLimit: string | null;
+  birthday: string | null;
   isActive: boolean;
   lastActivityAt: string | null;
   createdAt: string;
@@ -807,6 +809,7 @@ export interface CreditCustomerInput {
   reference?: string;
   note?: string;
   creditLimit?: number | null;
+  birthday?: string | null;
 }
 
 export interface CreditSaleInput {

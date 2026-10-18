@@ -281,6 +281,7 @@ export function CreditCustomerModal({
                 </div>
                 <Info label="Dirección" value={data.address} />
                 {data.reference && <Info label="Referencia" value={data.reference} />}
+                {data.birthday && <Info label="Cumpleaños" value={birthdayLabel(data.birthday)} />}
                 {data.note && <Info label="Nota" value={data.note} />}
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Límite de crédito</p>
@@ -394,4 +395,12 @@ function Info({ label, value }: { label: string; value: string }) {
       <p className="text-sm font-semibold text-slate-800">{value}</p>
     </div>
   );
+}
+
+/** "1995-03-21" → "21 de marzo" (y "🎂 ¡Hoy!" si es su día). */
+function birthdayLabel(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  const label = new Date(year, month - 1, day).toLocaleDateString("es-PE", { day: "numeric", month: "long" });
+  const now = new Date();
+  return now.getMonth() + 1 === month && now.getDate() === day ? `${label} · 🎂 ¡Hoy!` : label;
 }

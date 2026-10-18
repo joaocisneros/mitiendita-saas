@@ -203,9 +203,10 @@ export const storefrontApi = {
 
   getProducts: (
     subdomain: string,
-    params: { category?: string; search?: string; page?: number; limit?: number; sort?: string } = {},
+    params: { category?: string; search?: string; page?: number; limit?: number; sort?: string; availability?: "available" | "soldout" } = {},
   ) => {
     const q = new URLSearchParams();
+    if (params.availability) q.set("availability", params.availability);
     if (params.category) q.set("category", params.category);
     if (params.search) q.set("search", params.search);
     if (params.page) q.set("page", String(params.page));

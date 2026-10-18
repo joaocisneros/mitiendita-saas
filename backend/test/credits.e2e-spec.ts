@@ -582,6 +582,49 @@ describe('Ventas al crédito (e2e)', () => {
     expect(res.body.reference).toBe('Frente al Parque');
   });
 
+  it('guarda la fecha de cumpleaños opcional y permite borrarla', async () => {
+    const res = await http()
+      .post('/api/admin/credits/customers')
+      .set(A())
+      .send({
+        firstName: 'Lucía',
+        lastName: 'Paredes',
+        phone: '987555444',
+        address: 'Jr. Lima 123',
+        birthday: '1995-03-21',
+      })
+      .expect(201);
+    expect(res.body.birthday).toBe('1995-03-21');
+    const id = res.body.id as string;
+    for (const birthday of ['2099-01-01', '1995-02-30', '21/03/1995']) {
+      await http()
+        .patch(`/api/admin/credits/customers/${id}`)
+        .set(A())
+        .send({ birthday })
+        .expect(400);
+    }
+    const cleared = await http()
+      .patch(`/api/admin/credits/customers/${id}`)
+      .set(A())
+      .send({ birthday: null })
+      .expect(200);
+    expect(cleared.body.birthday).toBeNull();
+  });
+
+  it('el botón "Comprar al crédito" de la tienda empieza apagado y la dueña lo activa', async () => {
+    const store = async () =>
+      (await http().get(`/api/public/stores/cred-a-${tag}`).expect(200)).body
+        .store as { creditRequests: boolean };
+    expect((await store()).creditRequests).toBe(false);
+    const saved = await http()
+      .patch('/api/admin/settings')
+      .set(A())
+      .send({ creditRequests: true })
+      .expect(200);
+    expect(saved.body.creditRequests).toBe(true);
+    expect((await store()).creditRequests).toBe(true);
+  });
+
   it('reportes y resumen incluyen las ventas al crédito', async () => {
     const report = await http().get('/api/admin/reports').set(A()).expect(200);
     expect(report.body.credits).toMatchObject({

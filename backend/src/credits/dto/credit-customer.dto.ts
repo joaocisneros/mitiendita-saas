@@ -51,6 +51,13 @@ export class CreateCreditCustomerDto {
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   creditLimit?: number | null;
+
+  /** Fecha de cumpleaños AAAA-MM-DD (opcional). */
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'La fecha de cumpleaños no es válida.',
+  })
+  birthday?: string;
 }
 
 export class UpdateCreditCustomerDto {
@@ -98,6 +105,14 @@ export class UpdateCreditCustomerDto {
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   creditLimit?: number | null;
+
+  /** Fecha de cumpleaños AAAA-MM-DD; null la borra. */
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'La fecha de cumpleaños no es válida.',
+  })
+  birthday?: string | null;
 
   @IsOptional()
   @IsBoolean()

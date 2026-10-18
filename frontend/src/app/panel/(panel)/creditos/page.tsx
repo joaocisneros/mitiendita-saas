@@ -26,6 +26,7 @@ export default function CreditsPage() {
   const [creating, setCreating] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [allowed, setAllowed] = useState<boolean | null>(null);
+  const [storeButton, setStoreButton] = useState({ on: false, whatsapp: false });
 
   const load = useCallback((term: string, status: FilterId) => {
     setLoading(true);
@@ -48,6 +49,7 @@ export default function CreditsPage() {
       .then((settings) => {
         const ok = usesCredits(settings.businessType);
         setAllowed(ok);
+        setStoreButton({ on: settings.creditRequests, whatsapp: Boolean(settings.whatsappNumber) });
         if (ok) load("", "all");
       })
       .catch(() => setAllowed(false));
@@ -87,6 +89,8 @@ export default function CreditsPage() {
           <SummaryCard label="Clientas con deuda" value={`${summary.customersWithDebt} de ${summary.customers}`} tone="violet" />
         </div>
       )}
+
+      <StoreButtonToggle state={storeButton} onChange={setStoreButton} />
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="flex min-w-0 flex-1 gap-2">
@@ -199,6 +203,59 @@ function SummaryCard({ label, value, tone }: { label: string; value: string; ton
     <div className={`rounded-2xl p-4 ring-1 ${tones[tone]}`}>
       <p className="text-xs font-bold uppercase tracking-wide opacity-80">{label}</p>
       <p className="mt-1 text-2xl font-black">{value}</p>
+    </div>
+  );
+}
+
+/** Interruptor del botón "Comprar al crédito" de la tienda virtual. El módulo funciona igual en ambos casos. */
+function StoreButtonToggle({
+  state,
+  onChange,
+}: {
+  state: { on: boolean; whatsapp: boolean };
+  onChange: (state: { on: boolean; whatsapp: boolean }) => void;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function toggle() {
+    setSaving(true);
+    setError("");
+    try {
+      const saved = await adminApi.updateSettings({ creditRequests: !state.on });
+      onChange({ ...state, on: saved.creditRequests });
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "No se pudo guardar.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <p className="text-sm font-black text-slate-900">🤝 Botón &quot;Comprar al crédito&quot; en tu tienda virtual</p>
+        <p className="mt-0.5 text-xs font-medium text-slate-600">
+          {state.on
+            ? "Tus clientas pueden pedirte crédito desde cada producto: te llegan sus datos por WhatsApp."
+            : "Apagado: en tu tienda no aparece. Aquí sigues registrando tus ventas al crédito como siempre."}
+        </p>
+        {state.on && !state.whatsapp && (
+          <p className="mt-1 text-xs font-bold text-amber-700">Falta tu número de WhatsApp en Configuración para que el botón se vea.</p>
+        )}
+        {error && <p className="mt-1 text-xs font-bold text-red-600">{error}</p>}
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={state.on}
+        aria-label="Mostrar el botón Comprar al crédito en la tienda"
+        onClick={toggle}
+        disabled={saving}
+        className={`relative h-7 w-12 shrink-0 rounded-full transition disabled:opacity-60 ${state.on ? "bg-violet-600" : "bg-slate-300"}`}
+      >
+        <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${state.on ? "left-[1.375rem]" : "left-0.5"}`} />
+      </button>
     </div>
   );
 }

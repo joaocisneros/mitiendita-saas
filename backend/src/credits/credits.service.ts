@@ -370,6 +370,7 @@ export class CreditsService {
             : null,
           note: dto.note?.trim() ? toSentence(dto.note) : null,
           creditLimit: dto.creditLimit ?? null,
+          birthday: dto.birthday ? toBirthday(dto.birthday) : null,
         },
       })
       .catch(duplicateCustomer);
@@ -396,6 +397,8 @@ export class CreditsService {
     if (dto.note !== undefined)
       data.note = dto.note.trim() ? toSentence(dto.note) : null;
     if (dto.creditLimit !== undefined) data.creditLimit = dto.creditLimit;
+    if (dto.birthday !== undefined)
+      data.birthday = dto.birthday ? toBirthday(dto.birthday) : null;
     if (
       dto.documentNumber !== undefined &&
       (dto.documentNumber || null) !== current.documentNumber
@@ -946,6 +949,7 @@ export class CreditsService {
     reference: string | null;
     note: string | null;
     creditLimit: unknown;
+    birthday: Date | null;
     isActive: boolean;
     lastActivityAt: Date | null;
     createdAt: Date;
@@ -961,6 +965,7 @@ export class CreditsService {
       reference: c.reference,
       note: c.note,
       creditLimit: c.creditLimit === null ? null : money(Number(c.creditLimit)),
+      birthday: c.birthday ? c.birthday.toISOString().slice(0, 10) : null,
       isActive: c.isActive,
       lastActivityAt: c.lastActivityAt,
       createdAt: c.createdAt,
@@ -1055,4 +1060,18 @@ function duplicateCustomer(error: unknown): never {
     );
   }
   throw error;
+}
+
+/** "1995-03-21" → fecha real, ni futura ni anterior a 1900. */
+function toBirthday(value: string): Date {
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (
+    Number.isNaN(date.getTime()) ||
+    date.toISOString().slice(0, 10) !== value ||
+    date.getUTCFullYear() < 1900 ||
+    date.getTime() > Date.now()
+  ) {
+    throw new BadRequestException('La fecha de cumpleaños no es válida.');
+  }
+  return date;
 }

@@ -72,18 +72,14 @@ export function ProductCard({
               {product.category.name}
             </span>
           )}
-          <a
-            href={`/tienda/${subdomain}/producto/${product.slug}`}
-            onClick={(event) => {
-              // Ctrl/Cmd + clic o clic central: abre la página del producto en otra pestaña.
-              if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
-              event.preventDefault();
-              setShowDetail(true);
-            }}
+          {/* Siempre abre la ventana del producto (Google llega a la página por el sitemap). */}
+          <button
+            type="button"
+            onClick={() => setShowDetail(true)}
             className="line-clamp-2 min-h-[2.75rem] text-left text-[15px] font-bold leading-snug text-slate-900 transition hover:opacity-75"
           >
             {product.name}
-          </a>
+          </button>
           <p className="mt-1 text-xl font-black tracking-tight" style={{ color: accent }}>
             {formatPrice(product.price, currency)}
           </p>

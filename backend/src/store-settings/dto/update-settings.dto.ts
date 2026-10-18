@@ -132,6 +132,11 @@ export class UpdateSettingsDto {
   @IsBoolean()
   searchVisible?: boolean;
 
+  /** Muestra el botón "Comprar al crédito" en la tienda virtual. */
+  @IsOptional()
+  @IsBoolean()
+  creditRequests?: boolean;
+
   @IsOptional()
   @IsString()
   @MaxLength(120)
