@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { adminApi, type InventoryProduct, type InventoryVariant } from "@/lib/admin-api";
 import { Overlay } from "@/components/OrderDetailModal";
-import { PRODUCT_TYPES } from "@/lib/product-types";
+import { PRODUCT_TYPES, colorChipsFor, usesTones } from "@/lib/product-types";
 
 type Mode = "entry" | "adjustment";
 
@@ -152,8 +152,13 @@ export function VariantStockModal({
     }
   }
 
+  // Sugerencias del tipo: tallas que faltan o colores (tonos) que aún no tiene.
   const suggestions =
-    adding === "size" ? (type?.sizes ?? []).filter((option) => !sizes.some((size) => same(size, option))) : [];
+    adding === "size"
+      ? (type?.sizes ?? []).filter((option) => !sizes.some((size) => same(size, option)))
+      : adding === "color"
+        ? colorChipsFor(type ?? { id: "colores", group: "Otros" }).filter((option) => !colors.some((color) => same(color, option)))
+        : [];
 
   const cell = (size: string | null, color: string | null) => {
     const existing = current(size, color);
@@ -304,7 +309,7 @@ export function VariantStockModal({
                   addOption(draft);
                 }
               }}
-              placeholder={adding === "size" ? "Ej: 39 o XL" : "Ej: Rojo"}
+              placeholder={adding === "size" ? "Ej: 39 o XL" : usesTones(product.productType) ? "Ej: Nude" : "Ej: Rojo"}
               className="h-10 min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium outline-none focus:border-violet-600"
             />
             <button type="button" onClick={() => addOption(draft)} className="rounded-xl bg-violet-600 px-4 text-sm font-bold text-white hover:bg-violet-700">

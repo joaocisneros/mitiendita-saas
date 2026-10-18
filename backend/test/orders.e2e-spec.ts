@@ -248,6 +248,77 @@ describe('Pedidos / checkout (e2e)', () => {
         .expect(400);
     });
 
+    it('reparte por tallas un producto sin tallas, pero no si tiene un pedido pagado por confirmar', async () => {
+      const auth = { Authorization: `Bearer ${ownerToken}` };
+      const make = async (name: string, stock: number) =>
+        (
+          await http()
+            .post('/api/products')
+            .set(auth)
+            .send({ name, price: 50, stock })
+            .expect(201)
+        ).body.id as string;
+
+      // Con un pedido pagado esperando confirmación: no se puede.
+      const pendingId = await make('Anillo Pendiente', 3);
+      const order = await http()
+        .post(`/api/public/stores/${subdomain}/checkout`)
+        .send(co([{ productId: pendingId, quantity: 1 }]))
+        .expect(201);
+      await payWithProof(order.body.code);
+      const blocked = await http()
+        .post('/api/admin/inventory/split-variants')
+        .set(auth)
+        .send({
+          productId: pendingId,
+          productType: 'anillos',
+          rows: [{ size: '6', quantity: 3 }],
+        })
+        .expect(400);
+      expect(blocked.body.message).toContain(order.body.code);
+      await http()
+        .patch(`/api/products/${pendingId}`)
+        .set(auth)
+        .send({ sizes: '6', variantStocks: [{ size: '6', stock: 3 }] })
+        .expect(400);
+
+      // Sin pedidos pendientes: mismo producto, repartido y con lo que llegó.
+      const ringId = await make('Anillo Repartir', 6);
+      const saved = await http()
+        .post('/api/admin/inventory/split-variants')
+        .set(auth)
+        .send({
+          productId: ringId,
+          productType: 'anillos',
+          reason: 'llegó mercadería',
+          rows: [
+            { size: '6', quantity: 2 },
+            { size: '7', quantity: 3 },
+            { size: '8', quantity: 3 },
+          ],
+        })
+        .expect(201);
+      expect(saved.body).toMatchObject({ stock: 8, before: 6, delta: 2 });
+      const ring = (
+        await http().get(`/api/products/${ringId}`).set(auth).expect(200)
+      ).body as { productType: string; sizes: string; stock: number };
+      expect(ring).toMatchObject({
+        productType: 'anillos',
+        sizes: '6, 7, 8',
+        stock: 8,
+      });
+      // Ya tiene tallas: lo nuevo se suma con "Agregar lo que llegó".
+      await http()
+        .post('/api/admin/inventory/split-variants')
+        .set(auth)
+        .send({
+          productId: ringId,
+          productType: 'anillos',
+          rows: [{ size: '9', quantity: 1 }],
+        })
+        .expect(400);
+    });
+
     it('corrige lo separado que no tiene un pedido real detrás', async () => {
       const id = (
         await http()

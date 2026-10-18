@@ -8,9 +8,10 @@ import {
   type AdminProduct,
 } from "@/lib/admin-api";
 import { formatPrice } from "@/lib/format";
+import Link from "next/link";
 import { Overlay } from "@/components/OrderDetailModal";
 import { archetypeOf, resolveCategory } from "@/lib/business-categories";
-import { PRODUCT_TYPE_GROUPS, PRODUCT_TYPES, typeHasOptions, type ProductTypeId } from "@/lib/product-types";
+import { PRODUCT_TYPE_GROUPS, PRODUCT_TYPES, colorChipsFor, typeHasOptions, usesTones, type ProductTypeId } from "@/lib/product-types";
 
 const EMPTY = {
   name: "",
@@ -220,6 +221,11 @@ export default function ProductosPage() {
     setError("");
     if (!form.name || !form.price || (form.stock === "" && form.variantStocks.length === 0)) {
       setError(`Nombre, precio y ${isDigital || isService ? "stock interno" : "stock"} son obligatorios.`);
+      return;
+    }
+    // La categoría enlaza el producto con su sección de la tienda: es obligatoria.
+    if (!form.categoryId) {
+      setError(categories.length ? "Elige la categoría del producto." : "Primero crea tus categorías en Categorías.");
       return;
     }
     if (Number(form.price) <= 0) {
@@ -604,18 +610,30 @@ export default function ProductosPage() {
               </div>
               <div className={`grid gap-3 ${!isDigital && !isService ? "sm:grid-cols-2" : ""}`}>
                 <label className="block">
-                  <span className="mb-1 block text-sm font-medium text-gray-700">Categoría</span>
+                  <span className="mb-1 block text-sm font-medium text-gray-700">Categoría *</span>
                   <select
                     value={form.categoryId}
                     onChange={(event) => setForm({ ...form, categoryId: event.target.value })}
                     disabled={!basicsDone}
-                    className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm outline-none focus:border-violet-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                    className={`h-10 w-full rounded-lg border bg-white px-3 text-sm outline-none focus:border-violet-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 ${
+                      basicsDone && !form.categoryId ? "border-amber-400" : "border-gray-200"
+                    }`}
                   >
-                    <option value="">Sin categoría</option>
+                    <option value="" disabled>Elige una categoría</option>
                     {categories.map((category) => (
                       <option key={category.id} value={category.id}>{category.name}</option>
                     ))}
                   </select>
+                  <span className={`mt-1 line-clamp-2 block h-8 text-xs leading-4 ${categories.length ? "text-slate-500" : "font-semibold text-amber-700"}`}>
+                    {categories.length ? (
+                      "Sección de tu tienda donde aparecerá."
+                    ) : (
+                      <>
+                        Aún no tienes categorías.{" "}
+                        <Link href="/panel/categorias" className="underline">Créalas aquí</Link>
+                      </>
+                    )}
+                  </span>
                 </label>
                 {!isDigital && !isService && (
                   <label className="block">
@@ -750,7 +768,43 @@ export default function ProductosPage() {
                       </div>
                     )}
                     <div>
-                      <Input label="Colores (opcional)" placeholder="Negro, Blanco, Azul" value={form.colors} onChange={(value) => setForm({ ...form, colors: value, variantStocks: rebuildVariants(form.sizes, value, form.variantStocks) })} />
+                      {/* Colores o tonos sugeridos según el tipo (un toque los marca o desmarca). */}
+                      <span className="mb-1 block text-sm font-medium text-gray-700">
+                        Marca {usesTones(typeInfo.id) ? "los tonos" : "los colores"} que tienes{typeInfo.sizes !== null ? " (opcional)" : ""}
+                      </span>
+                      <div className="mb-2 flex flex-wrap gap-1.5">
+                        {colorChipsFor(typeInfo).map((color) => {
+                          const chosen = splitSizes(form.colors);
+                          const on = chosen.some((item) => item.toLowerCase() === color.toLowerCase());
+                          return (
+                            <button
+                              key={color}
+                              type="button"
+                              onClick={() => {
+                                const colors = (on ? chosen.filter((item) => item.toLowerCase() !== color.toLowerCase()) : [...chosen, color]).join(", ");
+                                setForm({ ...form, colors, variantStocks: rebuildVariants(form.sizes, colors, form.variantStocks) });
+                              }}
+                              className={`rounded-lg px-2.5 py-1.5 text-xs font-bold ring-1 transition ${
+                                on ? "bg-violet-600 text-white ring-violet-600" : "bg-white text-slate-700 ring-slate-200 hover:ring-violet-300"
+                              }`}
+                              aria-pressed={on}
+                            >
+                              {color}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <Input
+                        label={usesTones(typeInfo.id) ? "Tonos elegidos (puedes agregar otros)" : "Colores elegidos (puedes agregar otros)"}
+                        placeholder={usesTones(typeInfo.id) ? "Toca los tonos de arriba o escribe otros" : "Toca los colores de arriba o escribe otros"}
+                        value={form.colors}
+                        onChange={(value) => setForm({ ...form, colors: value, variantStocks: rebuildVariants(form.sizes, value, form.variantStocks) })}
+                      />
+                      {typeInfo.sizes === null && !form.colors.trim() && (
+                        <p className="mt-2 rounded-xl bg-white p-3 text-xs leading-5 text-slate-500 ring-1 ring-slate-200">
+                          Marca {usesTones(typeInfo.id) ? "los tonos" : "los colores"} y abajo repartes cuántas hay de cada uno. Si no marcas ninguno, se guarda solo la cantidad total.
+                        </p>
+                      )}
                     </div>
                   </div>
                   {typeInfo.sizes !== null && (
@@ -775,10 +829,10 @@ export default function ProductosPage() {
                     </div>
                     <SplitBadge total={Number(form.stock) || 0} assigned={form.variantStocks.reduce((sum, row) => sum + row.stock, 0)} />
                   </div>
-                  <div className="grid gap-2 sm:grid-cols-3">
+                  <div className="grid gap-2 sm:grid-cols-2">
                     {form.variantStocks.map((row, index) => (
                       <label key={`${row.size ?? ""}-${row.color ?? ""}`} className="flex items-center gap-2 rounded-xl bg-white p-2 ring-1 ring-slate-200">
-                        <span className="min-w-0 flex-1 break-words text-xs font-bold leading-tight text-slate-700" title={[row.size, row.color].filter(Boolean).join(" · ")}>
+                        <span className="min-w-0 flex-1 text-xs font-bold leading-tight text-slate-700 [overflow-wrap:normal] [word-break:normal]" title={[row.size, row.color].filter(Boolean).join(" · ")}>
                           {[row.size, row.color].filter(Boolean).join(" · ")}
                         </span>
                         <input

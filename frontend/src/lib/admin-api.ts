@@ -354,6 +354,17 @@ export const adminApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }).then((r) => jsonOrThrow<{ ok: boolean; stock: number }>(r, "No se pudo ajustar.")),
+  splitVariants: (body: {
+    productId: string;
+    productType: string;
+    reason?: string;
+    rows: Array<{ size?: string; color?: string; quantity: number }>;
+  }) =>
+    authFetch("/admin/inventory/split-variants", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => jsonOrThrow<{ ok: boolean; stock: number; before: number; delta: number }>(r, "No se pudo guardar.")),
   adjustVariants: (body: {
     productId: string;
     type: "entry" | "adjustment";

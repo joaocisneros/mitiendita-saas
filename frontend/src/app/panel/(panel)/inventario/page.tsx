@@ -9,7 +9,8 @@ import {
 } from "@/lib/admin-api";
 import Link from "next/link";
 import { VariantStockModal, variantSummary } from "@/components/inventory/VariantStockModal";
-import { PRODUCT_TYPES } from "@/lib/product-types";
+import { PRODUCT_TYPES, typeHasOptions } from "@/lib/product-types";
+import { SplitVariantsForm } from "@/components/inventory/SplitVariantsForm";
 
 /** Las ventas y anulaciones ya traen su texto ("Venta al crédito CR-…"); no se repite el tipo. */
 function movementText(type: string, reason: string | null) {
@@ -40,6 +41,10 @@ export default function InventoryPage() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  // El tipo es el que se guardó al registrar el producto: no se vuelve a preguntar.
+  // Los productos sin tipo guardado son "Sin tallas ni colores" (como en Productos).
+  const kindInfo = PRODUCT_TYPES.find((t) => t.id === editing?.productType) ?? PRODUCT_TYPES[0];
+  const splitting = typeHasOptions(kindInfo);
 
   const load = useCallback(() => {
     adminApi.inventoryProducts().then(setProducts).catch(() => {});
@@ -152,6 +157,11 @@ export default function InventoryPage() {
                 <tr key={p.id} className="text-slate-800">
                   <td className="p-4">
                     <span className="font-bold text-slate-950">{p.name}</span>
+                    {!(p.variants?.length ?? 0) && typeHasOptions(PRODUCT_TYPES.find((t) => t.id === p.productType) ?? PRODUCT_TYPES[0]) && (
+                      <span className="mt-0.5 block text-[11px] font-bold text-amber-700">
+                        {PRODUCT_TYPES.find((t) => t.id === p.productType)?.label} · falta repartir por tallas o colores
+                      </span>
+                    )}
                     {(p.variants?.length ?? 0) > 0 && (
                       <span className="mt-0.5 block max-w-[320px] truncate text-[11px] font-semibold text-slate-500" title={variantSummary(p.variants ?? [], true)}>
                         {PRODUCT_TYPES.find((t) => t.id === p.productType)?.label ?? "Tallas y colores"} · {variantSummary(p.variants ?? [])}
@@ -211,11 +221,29 @@ export default function InventoryPage() {
 
       {/* Modal de ajuste (productos sin tallas ni colores) */}
       {editing && !(editing.variants?.length ?? 0) && (
-        <Overlay onClose={() => setEditing(null)}>
-          <h2 className="text-xl font-black text-slate-950">Cambiar cantidad de {editing.name}</h2>
+        <Overlay onClose={() => setEditing(null)} size={splitting ? "wide" : "default"}>
+          <h2 className="pr-10 text-xl font-black text-slate-950">Cambiar cantidad de {editing.name}</h2>
           <p className="mb-4 mt-1 text-sm text-slate-500">
             Actualmente puedes vender <strong className="text-slate-800">{editing.available}</strong> unidades.
           </p>
+          {/* Tipo guardado del producto; se cambia en Productos > Editar. */}
+          <p className="-mt-2 mb-3 text-xs font-semibold text-slate-500">
+            Tipo de producto: <span className="text-slate-800">{kindInfo.label}</span>
+            {" · "}
+            <Link href="/panel/productos" className="text-violet-700 hover:underline">¿Está mal? Cámbialo en Productos</Link>
+          </p>
+          {splitting ? (
+            <SplitVariantsForm
+              key={kindInfo.id}
+              product={editing}
+              typeId={kindInfo.id}
+              onCancel={() => setEditing(null)}
+              onSaved={() => {
+                setEditing(null);
+                load();
+              }}
+            />
+          ) : (
           <div className="space-y-3">
             <label className="block">
               <span className="mb-1 block text-sm font-semibold text-slate-700">¿Qué deseas hacer?</span>
@@ -250,6 +278,7 @@ export default function InventoryPage() {
               </button>
             </div>
           </div>
+          )}
         </Overlay>
       )}
     </div>

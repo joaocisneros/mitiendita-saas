@@ -70,6 +70,27 @@ class AdjustVariantsDto {
   rows!: VariantQuantityDto[];
 }
 
+class SplitVariantsDto {
+  @IsUUID()
+  productId!: string;
+
+  @IsString()
+  @MaxLength(20)
+  productType!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  reason?: string;
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(300)
+  @ValidateNested({ each: true })
+  @Type(() => VariantQuantityDto)
+  rows!: VariantQuantityDto[];
+}
+
 @Roles('OWNER', 'EMPLOYEE')
 @Controller('admin/inventory')
 export class InventoryController {
@@ -119,5 +140,15 @@ export class InventoryController {
     @Body() dto: AdjustVariantsDto,
   ) {
     return this.inventory.adjustVariants(companyId, userId, dto);
+  }
+
+  /** Pone tallas o colores a un producto que no los tenía (mismo producto). */
+  @Post('split-variants')
+  splitVariants(
+    @CurrentUser('companyId') companyId: string,
+    @CurrentUser('userId') userId: string,
+    @Body() dto: SplitVariantsDto,
+  ) {
+    return this.inventory.splitVariants(companyId, userId, dto);
   }
 }

@@ -179,6 +179,24 @@ export class ProductsService {
         : [];
       const variantStocks =
         cleanVariantStocks(dto.variantStocks, currentVariants) ?? [];
+      // Pedidos pagados por confirmar se hicieron sin talla: no sabrían de cuál descontar.
+      if (!currentVariants.length && variantStocks.length) {
+        const pending = await this.prisma.order.findMany({
+          where: {
+            companyId,
+            status: 'pending',
+            stockReserved: true,
+            items: { some: { productId: id } },
+          },
+          select: { publicCode: true },
+          take: 5,
+        });
+        if (pending.length) {
+          throw new BadRequestException(
+            `Primero confirma o rechaza en Pedidos ${pending.map((o) => o.publicCode).join(', ')}: se hizo sin talla y no sabría de cuál descontar.`,
+          );
+        }
+      }
       const removedWithReservations = currentVariants.some(
         (old) =>
           old.reserved > 0 &&

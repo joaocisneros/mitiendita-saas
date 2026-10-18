@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { OrderExpirationService } from '../orders/order-expiration.service';
 import type { StockMovementType } from '../../generated/prisma/enums';
 import { variantLabel } from '../orders/variant-stock.util';
+import { PRODUCT_TYPES } from '../products/product-types';
 
 type VariantRow = {
   size: string | null;
@@ -518,6 +519,148 @@ export class InventoryService {
       }
       return { ok: true, stock, added };
     });
+  }
+
+  /**
+   * Pedidos pagados por confirmar que incluyen el producto. Mientras existan,
+   * no se le pueden poner tallas: se hicieron sin talla y no sabrían de cuál descontar.
+   */
+  async pendingOrderCodes(companyId: string, productId: string) {
+    const orders = await this.prisma.order.findMany({
+      where: {
+        companyId,
+        status: 'pending',
+        stockReserved: true,
+        items: { some: { productId } },
+      },
+      select: { publicCode: true },
+      take: 5,
+    });
+    return orders.map((order) => order.publicCode);
+  }
+
+  /**
+   * Completa el tipo de un producto que aún no tenía tallas ni colores: se
+   * marcan las opciones y cuántas hay de cada una (lo que ya había + lo que
+   * llegó). Es el mismo producto: conserva ventas, historial, fotos y precio.
+   */
+  async splitVariants(
+    companyId: string,
+    userId: string,
+    dto: {
+      productId: string;
+      productType: string;
+      reason?: string;
+      rows: Array<{ size?: string; color?: string; quantity: number }>;
+    },
+  ) {
+    if (!(PRODUCT_TYPES as readonly string[]).includes(dto.productType)) {
+      throw new BadRequestException('Tipo de producto inválido.');
+    }
+    const product = await this.prisma.product.findFirst({
+      where: { id: dto.productId, companyId, deletedAt: null },
+    });
+    if (!product) throw new NotFoundException('Producto no encontrado.');
+    if (Array.isArray(product.variantStocks) && product.variantStocks.length) {
+      throw new BadRequestException(
+        'Este producto ya tiene tallas o colores. Usa "Agregar lo que llegó".',
+      );
+    }
+    const codes = await this.pendingOrderCodes(companyId, product.id);
+    if (codes.length) {
+      throw new BadRequestException(
+        `Primero confirma o rechaza en Pedidos ${codes.length === 1 ? 'el pedido' : 'los pedidos'} ${codes.join(', ')}: se ${codes.length === 1 ? 'hizo' : 'hicieron'} sin talla.`,
+      );
+    }
+
+    const usesSizes = dto.rows.some((row) => row.size?.trim());
+    const usesColors = dto.rows.some((row) => row.color?.trim());
+    const rows: VariantRow[] = [];
+    for (const row of dto.rows) {
+      const size = row.size?.trim() || null;
+      const color = row.color?.trim() || null;
+      if (Boolean(size) !== usesSizes || Boolean(color) !== usesColors) {
+        throw new BadRequestException(
+          usesSizes && usesColors
+            ? 'Cada cantidad debe tener talla y color.'
+            : usesSizes
+              ? 'Cada cantidad debe tener su talla.'
+              : 'Cada cantidad debe tener su color.',
+        );
+      }
+      for (const text of [size, color]) {
+        if (text && (text.length > 30 || text.includes(','))) {
+          throw new BadRequestException(
+            `"${text}" no es una talla o color válido.`,
+          );
+        }
+      }
+      if (
+        rows.some(
+          (item) => sameText(item.size, size) && sameText(item.color, color),
+        )
+      ) {
+        throw new BadRequestException('Hay tallas o colores repetidos.');
+      }
+      rows.push({ size, color, stock: row.quantity, reserved: 0 });
+    }
+
+    // Con tallas y colores, cada talla tiene todos los colores.
+    const sizes = uniqueOptions(rows.map((row) => row.size));
+    const colors = uniqueOptions(rows.map((row) => row.color));
+    if (usesSizes && usesColors) {
+      for (const size of sizes) {
+        for (const color of colors) {
+          if (
+            !rows.some(
+              (row) => sameText(row.size, size) && sameText(row.color, color),
+            )
+          ) {
+            rows.push({ size, color, stock: 0, reserved: 0 });
+          }
+        }
+      }
+    }
+
+    const stock = rows.reduce((sum, row) => sum + row.stock, 0);
+    const delta = stock - product.stock;
+    const detail = rows
+      .filter((row) => row.stock > 0)
+      .map((row) => `${variantLabel(row.size, row.color)}: ${row.stock}`)
+      .join(' · ');
+    const note = dto.reason?.trim();
+    const reason = [
+      note,
+      `Repartido por ${usesSizes ? 'tallas' : 'colores'}`,
+      detail,
+    ]
+      .filter(Boolean)
+      .join(' — ');
+
+    await this.prisma.$transaction([
+      this.prisma.product.update({
+        where: { id: product.id },
+        data: {
+          productType: dto.productType,
+          sizes: usesSizes ? sizes.join(', ') : null,
+          colors: usesColors ? colors.join(', ') : null,
+          variantStocks: rows,
+          stock,
+        },
+      }),
+      this.prisma.stockMovement.create({
+        data: {
+          companyId,
+          productId: product.id,
+          // Si llegó más, es una entrada; si quedó igual o menos, una corrección.
+          type: delta > 0 ? 'entry' : 'adjustment',
+          quantity: delta,
+          reason: reason.length > 190 ? `${reason.slice(0, 187)}...` : reason,
+          createdByUserId: userId,
+        },
+      }),
+    ]);
+    return { ok: true, stock, before: product.stock, delta };
   }
 
   /**
