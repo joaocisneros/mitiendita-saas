@@ -121,6 +121,9 @@ export default function ProductosPage() {
   const [isService, setIsService] = useState(false);
   const [search, setSearch] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
+  // Páginas de 20: con muchos productos se pasa a los siguientes (antes solo se veían los primeros 20).
+  const [page, setPage] = useState(1);
+  const [listInfo, setListInfo] = useState({ total: 0, pages: 1 });
 
   const noun = isDigital ? "plan" : isService ? "servicio" : "producto";
   const nounPlural = isDigital ? "Planes" : isService ? "Servicios" : "Productos";
@@ -155,7 +158,10 @@ export default function ProductosPage() {
   }
 
   function load() {
-    adminApi.products({ search: appliedSearch || undefined }).then((d) => setProducts(d.items));
+    adminApi.products({ search: appliedSearch || undefined, page }).then((d) => {
+      setProducts(d.items);
+      setListInfo({ total: d.total, pages: Math.max(1, d.pages) });
+    });
     adminApi.categories().then(setCategories).catch(() => {});
     adminApi
       .settings()
@@ -170,7 +176,7 @@ export default function ProductosPage() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appliedSearch]);
+  }, [appliedSearch, page]);
 
   function openNew() {
     setForm({ ...EMPTY, stock: isDigital || isService ? "999" : "" });
@@ -284,8 +290,11 @@ export default function ProductosPage() {
       setEditing(null);
       // Sincroniza silenciosamente totales/filtros sin retrasar el cambio visible.
       void adminApi
-        .products({ search: appliedSearch || undefined })
-        .then((result) => setProducts(result.items));
+        .products({ search: appliedSearch || undefined, page })
+        .then((result) => {
+          setProducts(result.items);
+          setListInfo({ total: result.total, pages: Math.max(1, result.pages) });
+        });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
     } finally {
@@ -351,12 +360,20 @@ export default function ProductosPage() {
         <input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          onKeyDown={(event) => event.key === "Enter" && setAppliedSearch(search.trim())}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              setAppliedSearch(search.trim());
+              setPage(1);
+            }
+          }}
           placeholder={`Buscar ${nounPlural.toLowerCase()} por nombre o SKU`}
           className="h-11 min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-500 focus:border-violet-600"
         />
         <button
-          onClick={() => setAppliedSearch(search.trim())}
+          onClick={() => {
+            setAppliedSearch(search.trim());
+            setPage(1);
+          }}
           className="rounded-xl bg-violet-600 px-5 text-sm font-bold text-white hover:bg-violet-700"
         >
           Buscar
@@ -481,6 +498,38 @@ export default function ProductosPage() {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Páginas: muestra cuántos hay y deja pasar a los siguientes. */}
+          <div className="flex flex-col items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3 text-sm ring-1 ring-slate-200 sm:flex-row">
+            <p className="font-medium text-slate-600">
+              Mostrando <b className="text-slate-900">{listInfo.total ? (page - 1) * 20 + 1 : 0}–{Math.min(page * 20, listInfo.total)}</b> de{" "}
+              <b className="text-slate-900">{listInfo.total}</b> {listInfo.total === 1 ? noun : `${noun}s`}
+            </p>
+            {listInfo.pages > 1 && (
+              <div className="flex flex-wrap items-center gap-1">
+                <button type="button" disabled={page <= 1} onClick={() => { setPage(page - 1); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="rounded-lg px-3 py-1.5 font-bold text-violet-700 ring-1 ring-violet-200 hover:bg-violet-50 disabled:opacity-40">
+                  ← Anterior
+                </button>
+                {Array.from({ length: listInfo.pages }, (_, i) => i + 1)
+                  .filter((n) => n === 1 || n === listInfo.pages || Math.abs(n - page) <= 1)
+                  .map((n, index, list) => (
+                    <span key={n} className="flex items-center gap-1">
+                      {index > 0 && n - list[index - 1] > 1 && <span className="px-1 text-slate-400">…</span>}
+                      <button
+                        type="button"
+                        onClick={() => { setPage(n); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                        className={`h-8 min-w-8 rounded-lg px-2 font-bold ${n === page ? "bg-violet-600 text-white" : "text-slate-700 hover:bg-slate-100"}`}
+                      >
+                        {n}
+                      </button>
+                    </span>
+                  ))}
+                <button type="button" disabled={page >= listInfo.pages} onClick={() => { setPage(page + 1); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="rounded-lg px-3 py-1.5 font-bold text-violet-700 ring-1 ring-violet-200 hover:bg-violet-50 disabled:opacity-40">
+                  Siguiente →
+                </button>
+              </div>
+            )}
           </div>
         </>
       )}
