@@ -6,6 +6,27 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { OrderExpirationService } from '../orders/order-expiration.service';
 import type { StockMovementType } from '../../generated/prisma/enums';
+import { variantLabel } from '../orders/variant-stock.util';
+
+type VariantRow = {
+  size: string | null;
+  color: string | null;
+  stock: number;
+  reserved: number;
+};
+
+const sameText = (a?: string | null, b?: string | null) =>
+  (a ?? '').trim().toLocaleLowerCase() === (b ?? '').trim().toLocaleLowerCase();
+
+/** Lista de opciones sin repetir (sin importar mayúsculas), en el orden dado. */
+function uniqueOptions(values: Array<string | null | undefined>) {
+  const out: string[] = [];
+  for (const value of values) {
+    const text = value?.trim();
+    if (text && !out.some((item) => sameText(item, text))) out.push(text);
+  }
+  return out;
+}
 
 @Injectable()
 export class InventoryService {
@@ -30,6 +51,8 @@ export class InventoryService {
         stock: true,
         reserved: true,
         isActive: true,
+        productType: true,
+        variantStocks: true,
       },
     });
     // Lo separado viene de pedidos pagados que la tienda aún no confirma.
@@ -85,8 +108,18 @@ export class InventoryService {
       ]),
     );
 
-    return rows.map((p) => ({
+    return rows.map(({ variantStocks, ...p }) => ({
       ...p,
+      // Cuánto queda por talla/color (vacío si el producto no tiene opciones).
+      variants: (Array.isArray(variantStocks)
+        ? (variantStocks as VariantRow[])
+        : []
+      ).map((v) => ({
+        size: v.size ?? null,
+        color: v.color ?? null,
+        stock: Number(v.stock ?? 0),
+        reserved: Number(v.reserved ?? 0),
+      })),
       available: p.stock - p.reserved,
       soldOnline: sold.get(p.id)?.online ?? 0,
       soldCredit: sold.get(p.id)?.credit ?? 0,
@@ -324,6 +357,167 @@ export class InventoryService {
     ]);
 
     return { ok: true, stock: newStock };
+  }
+
+  /**
+   * Mercadería por talla/color: suma lo que llegó (o corrige el conteo) de cada
+   * opción y puede agregar tallas o colores nuevos. Nada se reemplaza: las
+   * opciones que no vienen quedan igual. Queda un movimiento en el historial.
+   */
+  async adjustVariants(
+    companyId: string,
+    userId: string,
+    dto: {
+      productId: string;
+      type: 'entry' | 'adjustment';
+      reason?: string;
+      rows: Array<{ size?: string; color?: string; quantity: number }>;
+    },
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const product = await tx.product.findFirst({
+        where: { id: dto.productId, companyId, deletedAt: null },
+      });
+      if (!product) throw new NotFoundException('Producto no encontrado.');
+      const current = Array.isArray(product.variantStocks)
+        ? (product.variantStocks as VariantRow[])
+        : [];
+      if (!current.length) {
+        throw new BadRequestException(
+          'Este producto no tiene tallas ni colores.',
+        );
+      }
+      const usesSizes = current.some((row) => row.size);
+      const usesColors = current.some((row) => row.color);
+      const next: VariantRow[] = current.map((row) => ({
+        size: row.size ?? null,
+        color: row.color ?? null,
+        stock: Number(row.stock ?? 0),
+        reserved: Number(row.reserved ?? 0),
+      }));
+
+      const seen = new Set<string>();
+      const changes: string[] = [];
+      let delta = 0;
+      let added = 0;
+      for (const row of dto.rows) {
+        const size = row.size?.trim() || null;
+        const color = row.color?.trim() || null;
+        if (Boolean(size) !== usesSizes || Boolean(color) !== usesColors) {
+          throw new BadRequestException(
+            usesSizes && usesColors
+              ? 'Cada cantidad debe tener talla y color.'
+              : usesSizes
+                ? 'Cada cantidad debe tener su talla.'
+                : 'Cada cantidad debe tener su color.',
+          );
+        }
+        for (const text of [size, color]) {
+          if (text && (text.length > 30 || text.includes(','))) {
+            throw new BadRequestException(
+              `"${text}" no es una talla o color válido.`,
+            );
+          }
+        }
+        const key = `${size ?? ''}\u0000${color ?? ''}`.toLocaleLowerCase();
+        if (seen.has(key)) {
+          throw new BadRequestException('Hay tallas o colores repetidos.');
+        }
+        seen.add(key);
+
+        let target = next.find(
+          (item) => sameText(item.size, size) && sameText(item.color, color),
+        );
+        if (!target) {
+          // Si la talla o el color ya existen, se escriben igual que antes ("s" → "S").
+          target = {
+            size: next.find((item) => sameText(item.size, size))?.size ?? size,
+            color:
+              next.find((item) => sameText(item.color, color))?.color ?? color,
+            stock: 0,
+            reserved: 0,
+          };
+          next.push(target);
+          added++;
+        }
+        const label = variantLabel(target.size, target.color) ?? '';
+        let change: number;
+        if (dto.type === 'adjustment') {
+          if (row.quantity < target.reserved) {
+            throw new BadRequestException(
+              `${label}: no puedes dejar menos de ${target.reserved}; hay unidades por confirmar.`,
+            );
+          }
+          change = row.quantity - target.stock;
+        } else {
+          change = row.quantity;
+        }
+        target.stock += change;
+        delta += change;
+        if (change !== 0)
+          changes.push(`${label} ${change > 0 ? '+' : ''}${change}`);
+      }
+
+      if (dto.type === 'entry' && delta <= 0) {
+        throw new BadRequestException('Escribe cuántas unidades llegaron.');
+      }
+      if (dto.type === 'adjustment' && !changes.length && !added) {
+        throw new BadRequestException('No cambiaste ninguna cantidad.');
+      }
+
+      // Con tallas y colores, cada talla tiene todos los colores (y al revés).
+      const sizes = uniqueOptions([
+        ...(product.sizes ?? '').split(','),
+        ...next.map((row) => row.size),
+      ]);
+      const colors = uniqueOptions([
+        ...(product.colors ?? '').split(','),
+        ...next.map((row) => row.color),
+      ]);
+      if (usesSizes && usesColors) {
+        for (const size of sizes) {
+          for (const color of colors) {
+            if (
+              !next.some(
+                (row) => sameText(row.size, size) && sameText(row.color, color),
+              )
+            ) {
+              next.push({ size, color, stock: 0, reserved: 0 });
+            }
+          }
+        }
+      }
+
+      const stock = next.reduce((sum, row) => sum + row.stock, 0);
+      await tx.product.update({
+        where: { id: product.id },
+        data: {
+          variantStocks: next,
+          stock,
+          ...(usesSizes ? { sizes: sizes.join(', ') } : {}),
+          ...(usesColors ? { colors: colors.join(', ') } : {}),
+        },
+      });
+      const note = dto.reason?.trim();
+      const detail = changes.join(' · ');
+      const reason = [note, detail].filter(Boolean).join(' — ') || null;
+      if (delta !== 0) {
+        await tx.stockMovement.create({
+          data: {
+            companyId,
+            productId: product.id,
+            type: dto.type,
+            quantity: delta,
+            reason:
+              reason && reason.length > 190
+                ? `${reason.slice(0, 187)}...`
+                : reason,
+            createdByUserId: userId,
+          },
+        });
+      }
+      return { ok: true, stock, added };
+    });
   }
 
   /**

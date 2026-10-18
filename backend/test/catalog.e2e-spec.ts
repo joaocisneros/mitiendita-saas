@@ -235,6 +235,107 @@ describe('Catálogo y aislamiento (e2e)', () => {
       .expect(400);
   });
 
+  it('suma mercadería por talla y color, y agrega opciones nuevas sin borrar las demás', async () => {
+    const product = (
+      await http()
+        .post('/api/products')
+        .set(auth(tokenA))
+        .send({
+          name: 'Polo Lote',
+          price: 30,
+          stock: 0,
+          productType: 'ropa',
+          sizes: 'S, M',
+          colors: 'Negro',
+          variantStocks: [
+            { size: 'S', color: 'Negro', stock: 0 },
+            { size: 'M', color: 'Negro', stock: 1 },
+          ],
+        })
+        .expect(201)
+    ).body as { id: string };
+    const adjust = (body: object) =>
+      http()
+        .post('/api/admin/inventory/adjust-variants')
+        .set(auth(tokenA))
+        .send({ productId: product.id, ...body });
+
+    await adjust({
+      type: 'entry',
+      rows: [{ size: 'S', color: 'Negro', quantity: 0 }],
+    }).expect(400);
+    await adjust({
+      type: 'entry',
+      rows: [{ size: 'S', quantity: 2 }],
+    }).expect(400);
+    const saved = await adjust({
+      type: 'entry',
+      reason: 'compra al proveedor',
+      rows: [
+        { size: 'S', color: 'Negro', quantity: 3 },
+        { size: 'XL', color: 'Negro', quantity: 2 },
+        { size: 's', color: 'Rojo', quantity: 1 },
+      ],
+    }).expect(201);
+    expect(saved.body.stock).toBe(7);
+
+    const after = (
+      await http()
+        .get(`/api/products/${product.id}`)
+        .set(auth(tokenA))
+        .expect(200)
+    ).body as {
+      stock: number;
+      sizes: string;
+      colors: string;
+      variantStocks: { size: string; color: string; stock: number }[];
+    };
+    expect(after.stock).toBe(7);
+    expect(after.sizes).toBe('S, M, XL');
+    expect(after.colors).toBe('Negro, Rojo');
+    const stockOf = (size: string, color: string) =>
+      after.variantStocks.find((v) => v.size === size && v.color === color)
+        ?.stock;
+    expect(after.variantStocks).toHaveLength(6);
+    expect(stockOf('S', 'Negro')).toBe(3);
+    expect(stockOf('M', 'Negro')).toBe(1);
+    expect(stockOf('XL', 'Negro')).toBe(2);
+    expect(stockOf('S', 'Rojo')).toBe(1);
+    expect(stockOf('M', 'Rojo')).toBe(0);
+
+    const counted = await adjust({
+      type: 'adjustment',
+      rows: [{ size: 'S', color: 'Negro', quantity: 1 }],
+    }).expect(201);
+    expect(counted.body.stock).toBe(5);
+
+    await http()
+      .post('/api/admin/inventory/adjust')
+      .set(auth(tokenA))
+      .send({ productId: product.id, type: 'entry', quantity: 3 })
+      .expect(400);
+
+    const inventory = (
+      await http()
+        .get('/api/admin/inventory/products')
+        .set(auth(tokenA))
+        .expect(200)
+    ).body as { id: string; productType: string; variants: unknown[] }[];
+    const row = inventory.find((p) => p.id === product.id)!;
+    expect(row.productType).toBe('ropa');
+    expect(row.variants).toHaveLength(6);
+
+    const history = (
+      await http()
+        .get(`/api/admin/inventory/movements?productId=${product.id}`)
+        .set(auth(tokenA))
+        .expect(200)
+    ).body as { items: { quantity: number; reason: string }[] };
+    const entry = history.items.find((m) => m.quantity === 6)!;
+    expect(entry.reason).toContain('compra al proveedor');
+    expect(entry.reason).toContain('Talla XL · Negro +2');
+  });
+
   it('la tienda separa productos disponibles y agotados', async () => {
     for (const [name, stock] of [
       ['Vela Disponible', 4],

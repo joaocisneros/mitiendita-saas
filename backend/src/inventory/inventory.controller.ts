@@ -1,5 +1,8 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
   IsIn,
   IsInt,
   IsOptional,
@@ -7,7 +10,9 @@ import {
   IsUUID,
   MaxLength,
   Min,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { InventoryService } from './inventory.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -27,6 +32,42 @@ class AdjustStockDto {
   @IsString()
   @MaxLength(200)
   reason?: string;
+}
+
+class VariantQuantityDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  size?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  color?: string;
+
+  @IsInt()
+  @Min(0)
+  quantity!: number;
+}
+
+class AdjustVariantsDto {
+  @IsUUID()
+  productId!: string;
+
+  @IsIn(['entry', 'adjustment'])
+  type!: 'entry' | 'adjustment';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  reason?: string;
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(300)
+  @ValidateNested({ each: true })
+  @Type(() => VariantQuantityDto)
+  rows!: VariantQuantityDto[];
 }
 
 @Roles('OWNER', 'EMPLOYEE')
@@ -68,5 +109,15 @@ export class InventoryController {
     @Body() dto: AdjustStockDto,
   ) {
     return this.inventory.adjust(companyId, userId, dto);
+  }
+
+  /** Mercadería por talla/color (suma o corrige y agrega opciones nuevas). */
+  @Post('adjust-variants')
+  adjustVariants(
+    @CurrentUser('companyId') companyId: string,
+    @CurrentUser('userId') userId: string,
+    @Body() dto: AdjustVariantsDto,
+  ) {
+    return this.inventory.adjustVariants(companyId, userId, dto);
   }
 }

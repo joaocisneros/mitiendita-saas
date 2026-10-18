@@ -354,6 +354,17 @@ export const adminApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }).then((r) => jsonOrThrow<{ ok: boolean; stock: number }>(r, "No se pudo ajustar.")),
+  adjustVariants: (body: {
+    productId: string;
+    type: "entry" | "adjustment";
+    reason?: string;
+    rows: Array<{ size?: string; color?: string; quantity: number }>;
+  }) =>
+    authFetch("/admin/inventory/adjust-variants", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => jsonOrThrow<{ ok: boolean; stock: number; added: number }>(r, "No se pudo guardar.")),
 
   // ── Citas (reservas de servicios) ──
   appointments: (status?: string) => {
@@ -561,6 +572,15 @@ export interface InventoryProduct {
   soldOnline?: number;
   soldCredit?: number;
   isActive: boolean;
+  productType?: string | null;
+  /** Cuánto queda por talla/color (vacío si no tiene opciones). */
+  variants?: InventoryVariant[];
+}
+export interface InventoryVariant {
+  size: string | null;
+  color: string | null;
+  stock: number;
+  reserved: number;
 }
 export interface StockMovementRow {
   id: string;

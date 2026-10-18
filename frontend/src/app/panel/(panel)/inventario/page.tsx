@@ -8,6 +8,8 @@ import {
   type UnpaidReservation,
 } from "@/lib/admin-api";
 import Link from "next/link";
+import { VariantStockModal, variantSummary } from "@/components/inventory/VariantStockModal";
+import { PRODUCT_TYPES } from "@/lib/product-types";
 
 /** Las ventas y anulaciones ya traen su texto ("Venta al crédito CR-…"); no se repite el tipo. */
 function movementText(type: string, reason: string | null) {
@@ -148,7 +150,14 @@ export default function InventoryPage() {
             <tbody className="divide-y divide-slate-200">
               {products.map((p) => (
                 <tr key={p.id} className="text-slate-800">
-                  <td className="p-4 font-bold text-slate-950">{p.name}</td>
+                  <td className="p-4">
+                    <span className="font-bold text-slate-950">{p.name}</span>
+                    {(p.variants?.length ?? 0) > 0 && (
+                      <span className="mt-0.5 block max-w-[320px] truncate text-[11px] font-semibold text-slate-500" title={variantSummary(p.variants ?? [], true)}>
+                        {PRODUCT_TYPES.find((t) => t.id === p.productType)?.label ?? "Tallas y colores"} · {variantSummary(p.variants ?? [])}
+                      </span>
+                    )}
+                  </td>
                   <td className="p-4 text-slate-500">{p.registered ?? p.stock}</td>
                   <td className="p-4 font-semibold">{p.stock}</td>
                   <td className="p-4">
@@ -188,8 +197,20 @@ export default function InventoryPage() {
       {/* El historial se abre desde el botón superior para mantener limpia la vista. */}
       {historyOpen && <HistoryModal onClose={() => setHistoryOpen(false)} />}
 
-      {/* Modal de ajuste */}
-      {editing && (
+      {/* Con tallas o colores: una casilla por opción. */}
+      {editing && (editing.variants?.length ?? 0) > 0 && (
+        <VariantStockModal
+          product={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            load();
+          }}
+        />
+      )}
+
+      {/* Modal de ajuste (productos sin tallas ni colores) */}
+      {editing && !(editing.variants?.length ?? 0) && (
         <Overlay onClose={() => setEditing(null)}>
           <h2 className="text-xl font-black text-slate-950">Cambiar cantidad de {editing.name}</h2>
           <p className="mb-4 mt-1 text-sm text-slate-500">
