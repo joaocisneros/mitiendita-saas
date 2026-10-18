@@ -80,6 +80,177 @@ export class CreditsService {
     };
   }
 
+  /**
+   * Reporte de ventas al crédito en un rango: lo entregado, lo cobrado,
+   * cómo va la cobranza, quiénes deben más y qué productos salen al crédito.
+   */
+  async report(companyId: string, from: Date, to: Date) {
+    const range = { gte: from, lte: to };
+    const [sales, payments, pending, topItems, overview, payers] =
+      await Promise.all([
+        this.prisma.creditSale.findMany({
+          where: { companyId, status: { not: 'cancelled' }, soldAt: range },
+          select: { total: true, soldAt: true },
+        }),
+        this.prisma.creditPayment.findMany({
+          where: { companyId, paidAt: range },
+          select: { amount: true, paidAt: true },
+        }),
+        // Saldos pendientes de hoy (no dependen del rango).
+        this.prisma.creditSale.findMany({
+          where: { companyId, status: 'pending' },
+          select: {
+            total: true,
+            paidAmount: true,
+            customer: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                phone: true,
+              },
+            },
+          },
+        }),
+        this.prisma.creditSaleItem.groupBy({
+          by: ['name'],
+          where: {
+            sale: { companyId, status: { not: 'cancelled' }, soldAt: range },
+          },
+          _sum: { quantity: true, lineTotal: true },
+          orderBy: { _sum: { quantity: 'desc' } },
+          take: 5,
+        }),
+        this.summary(companyId),
+        // Quién pagó más en el periodo (la "mejor clienta" de créditos).
+        this.prisma.creditPayment.groupBy({
+          by: ['creditCustomerId'],
+          where: { companyId, paidAt: range },
+          _sum: { amount: true },
+          _count: { _all: true },
+          orderBy: { _sum: { amount: 'desc' } },
+          take: 5,
+        }),
+      ]);
+    // Quién compró más al crédito en el periodo (monto y productos).
+    const boughtItems = await this.prisma.creditSaleItem.findMany({
+      where: {
+        sale: { companyId, status: { not: 'cancelled' }, soldAt: range },
+      },
+      select: {
+        quantity: true,
+        lineTotal: true,
+        sale: { select: { creditCustomerId: true } },
+      },
+    });
+    const buyers = new Map<string, { total: number; units: number }>();
+    for (const item of boughtItems) {
+      const id = item.sale.creditCustomerId;
+      const row = buyers.get(id) ?? { total: 0, units: 0 };
+      row.total += Number(item.lineTotal);
+      row.units += item.quantity;
+      buyers.set(id, row);
+    }
+    const topBuyerIds = [...buyers.entries()]
+      .sort(([, a], [, b]) => b.total - a.total || b.units - a.units)
+      .slice(0, 5)
+      .map(([id]) => id);
+
+    const payerNames = await this.prisma.creditCustomer.findMany({
+      where: {
+        id: {
+          in: [...payers.map((p) => p.creditCustomerId), ...topBuyerIds],
+        },
+      },
+      select: { id: true, firstName: true, lastName: true, phone: true },
+    });
+    const nameOf = new Map(payerNames.map((c) => [c.id, c]));
+
+    const day = (date: Date) => date.toISOString().slice(0, 10);
+    const byDay = new Map<string, { sold: number; collected: number }>();
+    for (const sale of sales) {
+      const row = byDay.get(day(sale.soldAt)) ?? { sold: 0, collected: 0 };
+      row.sold += Number(sale.total);
+      byDay.set(day(sale.soldAt), row);
+    }
+    for (const payment of payments) {
+      const row = byDay.get(day(payment.paidAt)) ?? { sold: 0, collected: 0 };
+      row.collected += Number(payment.amount);
+      byDay.set(day(payment.paidAt), row);
+    }
+
+    const debtors = new Map<
+      string,
+      { name: string; phone: string; balance: number }
+    >();
+    for (const sale of pending) {
+      const c = sale.customer;
+      const row = debtors.get(c.id) ?? {
+        name: `${c.firstName} ${c.lastName}`,
+        phone: c.phone,
+        balance: 0,
+      };
+      row.balance += Number(sale.total) - Number(sale.paidAmount);
+      debtors.set(c.id, row);
+    }
+
+    return {
+      soldTotal: money(sales.reduce((sum, s) => sum + Number(s.total), 0)),
+      salesCount: sales.length,
+      collected: money(payments.reduce((sum, p) => sum + Number(p.amount), 0)),
+      paymentsCount: payments.length,
+      receivable: overview.receivable,
+      customersWithDebt: overview.customersWithDebt,
+      customers: overview.customers,
+      byDay: [...byDay.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, v]) => ({
+          date,
+          sold: money(v.sold),
+          collected: money(v.collected),
+        })),
+      topDebtors: [...debtors.values()]
+        .filter((d) => d.balance > 0.001)
+        .sort((a, b) => b.balance - a.balance)
+        .slice(0, 5)
+        .map((d) => ({ ...d, balance: money(d.balance) })),
+      topBuyers: topBuyerIds.map((id) => {
+        const c = nameOf.get(id);
+        const bought = buyers.get(id)!;
+        return {
+          name: c ? `${c.firstName} ${c.lastName}` : 'Clienta',
+          phone: c?.phone ?? '',
+          bought: money(bought.total),
+          units: bought.units,
+          // Saldo actual: sirve para no premiar a quien se lleva mucho y no paga.
+          balance: money(
+            pending
+              .filter((sale) => sale.customer.id === id)
+              .reduce(
+                (sum, sale) =>
+                  sum + Number(sale.total) - Number(sale.paidAmount),
+                0,
+              ),
+          ),
+        };
+      }),
+      topPayers: payers.map((p) => {
+        const c = nameOf.get(p.creditCustomerId);
+        return {
+          name: c ? `${c.firstName} ${c.lastName}` : 'Clienta',
+          phone: c?.phone ?? '',
+          payments: p._count._all,
+          paid: money(Number(p._sum.amount ?? 0)),
+        };
+      }),
+      topProducts: topItems.map((item) => ({
+        name: item.name,
+        units: item._sum.quantity ?? 0,
+        total: money(Number(item._sum.lineTotal ?? 0)),
+      })),
+    };
+  }
+
   // ───────────────────── CLIENTAS ─────────────────────
 
   async listCustomers(

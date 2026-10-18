@@ -8,7 +8,7 @@ import { orderStatusLabel, StatusBadge, type OrderStatusContext } from "@/compon
 import { OrderDetailModal } from "@/components/OrderDetailModal";
 import { BarChart, DonutChart } from "@/components/Charts";
 import { Skeleton } from "@/components/Skeleton";
-import { archetypeOf, resolveCategory } from "@/lib/business-categories";
+import { archetypeOf, resolveCategory, usesCredits } from "@/lib/business-categories";
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -17,6 +17,7 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [statusContext, setStatusContext] = useState<OrderStatusContext>("physical");
+  const [showCredits, setShowCredits] = useState(false);
 
   const isServiceLike = statusContext !== "physical";
   const operationsName = isServiceLike ? "Solicitudes" : "Pedidos";
@@ -33,6 +34,7 @@ export default function DashboardPage() {
     adminApi
       .settings()
       .then((settings) => {
+        setShowCredits(usesCredits(settings.businessType));
         const category = resolveCategory(settings.businessType);
         const archetype = archetypeOf(category);
         const serviceLike = archetype === "digital" || archetype === "servicios";
@@ -119,6 +121,33 @@ export default function DashboardPage() {
           ) : <div className="flex h-[145px] items-center justify-center rounded-xl bg-slate-50 text-sm text-slate-500">{isServiceLike ? "Sin solicitudes aún." : "Sin pedidos aún."}</div>}
         </section>
       </div>
+
+      {showCredits && data.credits && (
+        <section>
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="font-bold">Ventas al crédito</h2>
+            <Link href="/panel/creditos" className="text-sm text-violet-600">
+              Ver créditos →
+            </Link>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className={`rounded-2xl p-4 ring-1 ${Number(data.credits.receivable) > 0 ? "bg-amber-50 ring-amber-200" : "bg-white ring-black/5"}`}>
+              <p className="text-xs text-gray-500">Por cobrar</p>
+              <p className="mt-1 text-2xl font-extrabold text-amber-700">{formatPrice(data.credits.receivable)}</p>
+            </div>
+            <div className="rounded-2xl bg-white p-4 ring-1 ring-black/5">
+              <p className="text-xs text-gray-500">Cobrado este mes</p>
+              <p className="mt-1 text-2xl font-extrabold text-emerald-600">{formatPrice(data.credits.collectedThisMonth)}</p>
+            </div>
+            <div className="rounded-2xl bg-white p-4 ring-1 ring-black/5">
+              <p className="text-xs text-gray-500">Clientas con deuda</p>
+              <p className="mt-1 text-2xl font-extrabold text-slate-900">
+                {data.credits.customersWithDebt} <span className="text-base font-bold text-slate-400">de {data.credits.customers}</span>
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
 
       {subs && subs.active + subs.expiring + subs.expired > 0 && (
         <section>

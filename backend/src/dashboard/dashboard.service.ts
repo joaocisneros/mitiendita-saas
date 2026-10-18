@@ -1,12 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CreditsService } from '../credits/credits.service';
 import { VALID_ORDER } from '../common/utils/valid-order.util';
 
 const LOW_STOCK_THRESHOLD = 5;
 
 @Injectable()
 export class DashboardService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly credits: CreditsService,
+  ) {}
 
   async summary(companyId: string) {
     const startOfDay = new Date();
@@ -142,6 +146,8 @@ export class DashboardService {
     });
     const salesMonth = Number(monthAgg._sum.total ?? 0);
 
+    const credits = await this.credits.summary(companyId);
+
     const salesToday = approvedToday.reduce((s, o) => s + Number(o.total), 0);
     const lowStockProducts = lowStock
       .filter((p) => p.stock - p.reserved <= LOW_STOCK_THRESHOLD)
@@ -165,6 +171,7 @@ export class DashboardService {
         status: s.status,
         count: s._count._all,
       })),
+      credits,
       topProducts: topProducts.map((product) => ({
         id: product.productId,
         name: product.name,

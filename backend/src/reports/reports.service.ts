@@ -1,9 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CreditsService } from '../credits/credits.service';
 
 @Injectable()
 export class ReportsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly credits: CreditsService,
+  ) {}
 
   async summary(companyId: string, fromStr?: string, toStr?: string) {
     const to = toStr ? new Date(toStr) : new Date();
@@ -26,7 +30,13 @@ export class ReportsService {
       }),
       this.prisma.order.groupBy({
         by: ['status'],
-        where: { companyId, createdAt: { gte: from, lte: to } },
+        // Sin los checkouts que nunca enviaron pago (vencidos o cancelados
+        // antes de pagar): no son pedidos reales, igual que en Pedidos.
+        where: {
+          companyId,
+          paymentStatus: { not: 'pending' },
+          createdAt: { gte: from, lte: to },
+        },
         _count: { _all: true },
       }),
       this.prisma.orderItem.groupBy({
@@ -63,6 +73,8 @@ export class ReportsService {
         orders: v.orders,
       }));
 
+    const credits = await this.credits.report(companyId, from, to);
+
     const totalRevenue = approvedOrders.reduce(
       (s, o) => s + Number(o.total),
       0,
@@ -89,6 +101,7 @@ export class ReportsService {
         orders: c._count._all,
         total: (c._sum.total ?? 0).toString(),
       })),
+      credits,
     };
   }
 }
