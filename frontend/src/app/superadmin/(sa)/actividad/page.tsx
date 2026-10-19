@@ -47,6 +47,21 @@ const LABELS: Record<string, string> = {
   "appointment.payment_approved": "Aprobó el pago de una cita",
   "appointment.payment_rejected": "Rechazó el pago de una cita",
   "inventory.adjusted": "Ajustó el inventario",
+  "inventory.split": "Repartió un producto por tallas",
+  // Créditos (los registros antiguos quedaron como credit.created / credit.updated).
+  "credit.created": "Registró en Créditos",
+  "credit.updated": "Actualizó en Créditos",
+  "credit.deleted": "Eliminó en Créditos",
+  "credit.customer_created": "Registró una clienta de crédito",
+  "credit.customer_updated": "Editó una clienta de crédito",
+  "credit.customer_deleted": "Eliminó una clienta de crédito",
+  "credit.sale_created": "Registró una venta al crédito",
+  "credit.sale_cancelled": "Anuló una venta al crédito",
+  "credit.payment_created": "Registró un abono",
+  "credit.payment_updated": "Corrigió un abono",
+  "credit.payment_deleted": "Eliminó un abono",
+  "media.created": "Subió una imagen",
+  "media.uploaded": "Subió una imagen",
 };
 
 function actionLabel(action: string) {
@@ -88,6 +103,20 @@ function actionMeta(action: string) {
       icon: "calendar" as const,
       box: "bg-pink-100 text-pink-700",
       badge: "bg-pink-50 text-pink-700",
+    };
+  if (action.startsWith("credit."))
+    return {
+      category: "Créditos",
+      icon: "plans" as const,
+      box: "bg-amber-100 text-amber-700",
+      badge: "bg-amber-50 text-amber-800",
+    };
+  if (action.startsWith("media."))
+    return {
+      category: "Imágenes",
+      icon: "eye" as const,
+      box: "bg-sky-100 text-sky-700",
+      badge: "bg-sky-50 text-sky-700",
     };
   if (action.startsWith("store.") || action.startsWith("profile."))
     return {
@@ -165,7 +194,34 @@ const DETAIL_LABELS: Record<string, string> = {
   userName: "Usuario",
   userEmail: "Correo",
   entityLabel: "Elemento",
+  // Créditos
+  documentNumber: "DNI",
+  firstName: "Nombres",
+  lastName: "Apellidos",
+  phone: "Celular",
+  address: "Dirección",
+  reference: "Referencia",
+  note: "Nota",
+  creditLimit: "Límite de crédito",
+  birthday: "Cumpleaños",
+  isActive: "Activa",
+  amount: "Monto",
+  paidAt: "Fecha",
+  soldAt: "Fecha",
+  items: "Productos",
+  reason: "Motivo",
+  // Inventario y productos
+  type: "Movimiento",
+  quantity: "Cantidad",
+  rows: "Tallas/colores",
+  productType: "Tipo de producto",
+  name: "Nombre",
+  price: "Precio",
+  stock: "Cantidad",
 };
+/** Datos que no le dicen nada a una persona (identificadores internos). */
+const HIDDEN_DETAIL = /(^id$|Id$|^entityLabel$)/;
+const MONEY_KEYS = new Set(["creditLimit", "amount", "price"]);
 const DETAIL_VALUES: Record<string, string> = {
   active: "Activo",
   suspended: "Suspendido",
@@ -174,6 +230,13 @@ const DETAIL_VALUES: Record<string, string> = {
   past_due: "Vencido",
   cancelled: "Cancelado",
   credentials: "Correo y contraseña",
+  entry: "Llegó mercadería",
+  return: "Devolución",
+  adjustment: "Corrección de conteo",
+  cash: "Efectivo",
+  yape: "Yape",
+  plin: "Plin",
+  transfer: "Transferencia",
   true: "Sí",
   false: "No",
 };
@@ -183,7 +246,16 @@ const COMPANY_STATUS_WORDS: Record<string, string> = {
   inactive: "inactiva",
 };
 
-function detailValue(value: unknown) {
+function detailValue(value: unknown, key?: string) {
+  if (Array.isArray(value)) return `${value.length}`;
+  if (key && MONEY_KEYS.has(key) && value !== null && value !== "" && !Number.isNaN(Number(value)))
+    return `S/ ${Number(value).toFixed(2)}`;
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value))
+    return new Date(value.length === 10 ? `${value}T12:00:00` : value).toLocaleDateString("es-PE", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
   const raw = String(value);
   return DETAIL_VALUES[raw] ?? raw;
 }
@@ -237,14 +309,22 @@ function detailSummary(
     return `${detailValue(values.months)} ${Number(values.months) === 1 ? "mes registrado" : "meses registrados"}`;
   if (values.active !== undefined)
     return `Usuario: ${detailValue(values.active) === "Sí" ? "Activado" : "Desactivado"}`;
+  // Créditos: activar o desactivar una clienta.
+  if (action.startsWith("credit.") && values.isActive !== undefined && entries.length === 1)
+    return values.isActive ? "Clienta activada." : "Clienta desactivada.";
   if (values.status !== undefined)
     return `Estado: ${detailValue(values.status)}`;
-  return entries
-    .map(
-      ([key, value]) =>
-        `${DETAIL_LABELS[key] ?? "Dato"}: ${detailValue(value)}`,
-    )
-    .join(" · ");
+  // Cada dato con su nombre (DNI, Nombres, Celular…); se omiten los códigos internos.
+  const readable = entries.filter(
+    ([key, value]) =>
+      !HIDDEN_DETAIL.test(key) &&
+      value !== null &&
+      value !== undefined &&
+      value !== "" &&
+      (typeof value !== "object" || Array.isArray(value)),
+  );
+  if (!readable.length) return "Sin cambios adicionales";
+  return readable.map(([key, value]) => `${DETAIL_LABELS[key] ?? key}: ${detailValue(value, key)}`).join(" · ");
 }
 
 export default function ActivityPage() {
@@ -526,7 +606,8 @@ export default function ActivityPage() {
                     </td>
                     <td className="px-4 py-4 text-xs font-semibold text-slate-700">
                       {row.entityLabel ??
-                        (row.entityId
+                        // Si el objetivo es la empresa misma (ej. ingresó como soporte), se ve su nombre.
+                        (row.entityId && row.entityId !== row.companyId
                           ? `${meta.category} · ${row.entityId.slice(0, 8)}`
                           : (row.companyName ?? meta.category))}
                     </td>

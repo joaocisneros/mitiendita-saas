@@ -22,7 +22,8 @@ type DniState =
   | { status: "loading" }
   | { status: "found" }
   | { status: "exists"; id: string }
-  | { status: "error"; message: string };
+  | { status: "notfound" }
+  | { status: "down" };
 
 /** Alta o edición de una clienta de crédito. El DNI autocompleta nombre y apellidos. */
 export function CreditCustomerForm({
@@ -68,7 +69,9 @@ export function CreditCustomerForm({
       }));
       setDni({ status: "found" });
     } catch (reason) {
-      setDni({ status: "error", message: reason instanceof Error ? reason.message : "No se pudo consultar el DNI." });
+      // No encontrado en RENIEC vs. consulta caída: mensajes distintos para que la dueña sepa qué hacer.
+      const message = reason instanceof Error ? reason.message : "";
+      setDni({ status: /no se encontraron/i.test(message) ? "notfound" : "down" });
     }
   }
 
@@ -123,17 +126,8 @@ export function CreditCustomerForm({
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Field label="DNI" value={form.documentNumber} onChange={changeDni} placeholder="8 dígitos: completa los nombres" inputMode="numeric" />
-              {dni.status === "loading" && <Hint tone="slate">Buscando DNI...</Hint>}
-              {dni.status === "found" && <Hint tone="emerald">✓ Datos encontrados.</Hint>}
-              {dni.status === "error" && <Hint tone="amber">{dni.message}</Hint>}
-              {dni.status === "exists" && (
-                <Hint tone="red">
-                  Ya está registrada.{" "}
-                  {onOpenExisting && (
-                    <button type="button" onClick={() => onOpenExisting(dni.id)} className="font-black underline">Ver su ficha</button>
-                  )}
-                </Hint>
-              )}
+              {/* Una línea fija bajo el DNI: dice qué pasó sin agrandar la ventana. */}
+              <DniStatus state={dni} onOpenExisting={onOpenExisting} />
             </div>
             <label className="block">
               <span className="mb-1 block text-sm font-bold text-slate-800">Celular <span className="text-red-500">*</span></span>
@@ -148,6 +142,10 @@ export function CreditCustomerForm({
                   className="min-w-0 flex-1 px-3 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-400"
                 />
               </div>
+              {/* Misma línea fija que bajo el DNI, para que las columnas queden parejas. */}
+              <span className="mt-1 block h-4 text-xs font-semibold leading-4 text-red-600">
+                {form.phone && !phoneOk ? "9 dígitos y empieza con 9." : ""}
+              </span>
             </label>
             <Field label="Nombres" value={form.firstName} onChange={set("firstName")} onBlur={() => set("firstName")(titleCase(form.firstName.trim()))} required />
             <Field label="Apellidos" value={form.lastName} onChange={set("lastName")} onBlur={() => set("lastName")(titleCase(form.lastName.trim()))} required />
@@ -196,9 +194,29 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Hint({ tone, children }: { tone: "slate" | "emerald" | "amber" | "red"; children: React.ReactNode }) {
-  const tones = { slate: "text-slate-500", emerald: "text-emerald-700", amber: "text-amber-700", red: "text-red-600" };
-  return <p className={`mt-1.5 text-xs font-semibold ${tones[tone]}`}>{children}</p>;
+/** Qué pasó con el DNI, en una sola línea fija bajo la casilla (la ventana no crece). */
+function DniStatus({ state, onOpenExisting }: { state: DniState; onOpenExisting?: (id: string) => void }) {
+  const view = {
+    idle: { tone: "text-slate-400", text: "" },
+    loading: { tone: "text-slate-500", text: "Buscando en RENIEC…" },
+    found: { tone: "text-emerald-700", text: "✓ Encontrado en RENIEC" },
+    notfound: { tone: "text-amber-700", text: "Este DNI no aparece en RENIEC. Revisa el número o escribe los nombres a mano." },
+    down: { tone: "text-amber-700", text: "RENIEC no responde. Escribe los nombres a mano." },
+    exists: { tone: "text-red-600", text: "Ya está registrada" },
+  }[state.status];
+  return (
+    <p className={`mt-1 h-4 truncate text-[11px] font-semibold leading-4 ${view.tone}`} role="status">
+      {view.text}
+      {state.status === "exists" && onOpenExisting && (
+        <>
+          {" · "}
+          <button type="button" onClick={() => onOpenExisting(state.id)} className="font-black underline">
+            Ver su ficha
+          </button>
+        </>
+      )}
+    </p>
+  );
 }
 
 export function Field({

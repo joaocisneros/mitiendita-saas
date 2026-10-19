@@ -45,7 +45,16 @@ function resolveAudit(path: string, method: string) {
   }
 
   const module = MODULES[root] ?? root.replace(/-/g, '_');
-  if (root === 'inventory' && parts.includes('adjust')) {
+  // Créditos: una acción clara por cada operación (no un "credit.updated" genérico).
+  if (root === 'credits') {
+    const credit = creditAction(parts, method);
+    if (credit) return { module, action: credit };
+  }
+  if (root === 'media') return { module: 'media', action: 'media.uploaded' };
+  if (root === 'inventory' && parts.includes('split-variants')) {
+    return { module, action: 'inventory.split' };
+  }
+  if (root === 'inventory' && parts.some((part) => part.startsWith('adjust'))) {
     return { module, action: 'inventory.adjusted' };
   }
   if (root === 'orders' && parts.includes('status')) {
@@ -60,6 +69,20 @@ function resolveAudit(path: string, method: string) {
   }
   const operation = ACTIONS[method];
   return operation ? { module, action: `${module}.${operation}` } : null;
+}
+
+/** credits/customers/:id/sales → credit.sale_created, etc. */
+function creditAction(parts: string[], method: string) {
+  const [, resource, , sub] = parts;
+  if (resource === 'customers' && sub === 'sales') return 'credit.sale_created';
+  if (resource === 'customers' && sub === 'payments')
+    return 'credit.payment_created';
+  if (resource === 'sales' && sub === 'cancel') return 'credit.sale_cancelled';
+  const verb = ACTIONS[method];
+  if (!verb) return null;
+  if (resource === 'customers') return `credit.customer_${verb}`;
+  if (resource === 'payments') return `credit.payment_${verb}`;
+  return null;
 }
 
 function safeDetails(value: unknown): Record<string, unknown> | undefined {

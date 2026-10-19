@@ -60,7 +60,14 @@ export class DniLookupService {
       data?: DniData | null;
     } & DniData;
     const data = body?.success === undefined ? body : body.data;
-    if (!response.ok || body?.success === false || !data) {
+    // Sin nombres no sirve: se trata igual que "no encontrado" (no "✓ datos encontrados" vacío).
+    const hasName = Boolean(
+      data &&
+      (data.nombres?.trim() ||
+        data.apellido_paterno?.trim() ||
+        data.nombre?.trim()),
+    );
+    if (!response.ok || body?.success === false || !data || !hasName) {
       throw new NotFoundException(
         'No se encontraron datos para ese DNI. Completa los datos a mano.',
       );

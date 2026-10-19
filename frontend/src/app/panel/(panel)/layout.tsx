@@ -40,6 +40,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const [supportMode, setSupportMode] = useState(false);
   const [email, setEmail] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
+  // Celular: la barra de abajo muestra 4 accesos y "Más" abre el resto del menú.
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const baseNav = NAV.map((item) =>
     item.href === "/panel/citas"
@@ -61,6 +63,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     : usesSubscriptions
       ? ["/panel", "/panel/suscripciones", "/panel/productos", "/panel/clientes", "/panel/reportes"]
       : ["/panel", "/panel/pedidos", "/panel/productos", "/panel/inventario", "/panel/reportes"];
+  const mainMobile = nav.filter((item) => mobileHrefs.slice(0, 4).includes(item.href));
+  const moreItems = nav.filter((item) => !mainMobile.includes(item));
+  const moreActive = moreItems.some((item) => isActive(item.href, pathname));
   const current = nav.find((item) => isActive(item.href, pathname));
   const storeUrl = subdomain ? `/tienda/${subdomain}` : null;
 
@@ -213,14 +218,15 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         </main>
 
         <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-slate-200 bg-white px-1 py-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] md:hidden">
-          {baseNav.filter((item) => mobileHrefs.includes(item.href)).map((item) => {
-            const active = item.href === "/panel" ? pathname === "/panel" : pathname.startsWith(item.href);
+          {mainMobile.map((item) => {
+            const active = isActive(item.href, pathname);
             return (
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={() => setMoreOpen(false)}
                 className={`flex flex-col items-center gap-1 rounded-lg py-1 text-[10px] font-bold ${
-                  active ? "text-violet-700" : "text-slate-600"
+                  active && !moreOpen ? "text-violet-700" : "text-slate-600"
                 }`}
               >
                 <DashboardIcon name={item.icon} className="h-5 w-5" />
@@ -228,7 +234,69 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               </Link>
             );
           })}
+          <button
+            type="button"
+            onClick={() => setMoreOpen((open) => !open)}
+            aria-expanded={moreOpen}
+            className={`flex flex-col items-center gap-1 rounded-lg py-1 text-[10px] font-bold ${moreOpen || moreActive ? "text-violet-700" : "text-slate-600"}`}
+          >
+            <DashboardIcon name="menu" className="h-5 w-5" />
+            Más
+          </button>
         </nav>
+
+        {/* "Más" en celular: el resto del menú en una hoja que sube desde abajo. */}
+        {moreOpen && (
+          <div className="fixed inset-0 z-30 md:hidden" onClick={() => setMoreOpen(false)}>
+            <div className="absolute inset-0 bg-slate-950/50" />
+            <div
+              className="absolute inset-x-0 bottom-[64px] rounded-t-3xl bg-white p-4 pb-5 shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-200" />
+              <p className="mb-3 px-1 text-xs font-black uppercase tracking-[0.14em] text-slate-400">Más opciones</p>
+              <div className="grid grid-cols-3 gap-2">
+                {moreItems.map((item) => {
+                  const active = isActive(item.href, pathname);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setMoreOpen(false)}
+                      className={`flex flex-col items-center gap-1.5 rounded-2xl px-2 py-3 text-center text-xs font-bold ring-1 ${
+                        active ? "bg-violet-50 text-violet-700 ring-violet-200" : "bg-slate-50 text-slate-700 ring-slate-200"
+                      }`}
+                    >
+                      <DashboardIcon name={item.icon} className="h-5 w-5" />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3">
+                {storeUrl && (
+                  <a
+                    href={storeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 rounded-xl bg-violet-600 py-2.5 text-sm font-bold text-white"
+                  >
+                    <DashboardIcon name="store" className="h-4 w-4" />
+                    Ver mi tienda ↗
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={logout}
+                  className={`flex items-center justify-center gap-2 rounded-xl bg-red-50 py-2.5 text-sm font-bold text-red-700 ${storeUrl ? "" : "col-span-2"}`}
+                >
+                  <DashboardIcon name="logout" className="h-4 w-4" />
+                  Cerrar sesión
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* En modo soporte (superadmin dentro de la tienda) no se muestra. */}

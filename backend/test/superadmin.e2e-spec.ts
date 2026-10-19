@@ -229,4 +229,52 @@ describe('Superadmin y configuración (e2e)', () => {
       ),
     ).toBe(true);
   });
+  it('la auditoría nombra en claro cada operación de Créditos', async () => {
+    const owner = { Authorization: `Bearer ${ownerToken}` };
+    const product = (
+      await http()
+        .post('/api/products')
+        .set(owner)
+        .send({ name: 'Polo Auditoría', price: 40, stock: 3 })
+        .expect(201)
+    ).body as { id: string };
+    const customer = (
+      await http()
+        .post('/api/admin/credits/customers')
+        .set(owner)
+        .send({
+          firstName: 'Rosa',
+          lastName: 'Auditoría',
+          phone: '987111222',
+          address: 'Jr. Lima 100',
+        })
+        .expect(201)
+    ).body as { id: string };
+    await http()
+      .post(`/api/admin/credits/customers/${customer.id}/sales`)
+      .set(owner)
+      .send({ items: [{ productId: product.id, quantity: 1 }] })
+      .expect(201);
+    await http()
+      .post(`/api/admin/credits/customers/${customer.id}/payments`)
+      .set(owner)
+      .send({ amount: 10, method: 'yape' })
+      .expect(201);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    for (const action of [
+      'credit.customer_created',
+      'credit.sale_created',
+      'credit.payment_created',
+    ]) {
+      const res = await http()
+        .get(`/api/superadmin/audits?action=${action}`)
+        .set('Authorization', `Bearer ${superToken}`)
+        .expect(200);
+      expect(
+        (res.body.items as { companyId: string | null }[]).some(
+          (row) => row.companyId === companyId,
+        ),
+      ).toBe(true);
+    }
+  });
 });
