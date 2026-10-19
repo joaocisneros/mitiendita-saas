@@ -16,6 +16,8 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(false);
   const [appliedRange, setAppliedRange] = useState("");
   const [showCredits, setShowCredits] = useState(false);
+  // El Excel trae costos y ganancia: solo la dueña lo descarga.
+  const [isOwner, setIsOwner] = useState(false);
 
   const load = useCallback(() => {
     if (from && to && from > to) {
@@ -37,6 +39,7 @@ export default function ReportsPage() {
   }, [from, to]);
   useEffect(() => {
     adminApi.settings().then((s) => setShowCredits(usesCredits(s.businessType))).catch(() => {});
+    adminApi.me().then((me) => setIsOwner(me.role === "OWNER")).catch(() => {});
   }, []);
   useEffect(() => {
     const timer = window.setTimeout(load, 0);
@@ -80,7 +83,7 @@ export default function ReportsPage() {
             </section>
           )}
 
-          <SectionTitle icon="🛒" title="Tienda virtual" hint="Pedidos hechos en tu tienda online con pago aprobado." />
+          <SectionTitle icon="🛒" title="Tienda virtual" hint="Pedidos hechos en tu tienda online con pago aprobado." action={isOwner ? <ExcelDownload section="tienda" /> : undefined} />
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Stat label="Ventas totales (pagos aprobados)" value={formatPrice(data.totalRevenue)} accent />
             <Stat label="Pedidos pagados" value={String(data.totalOrders)} />
@@ -132,9 +135,55 @@ export default function ReportsPage() {
             </section>
           </div>
 
-          {showCredits && data.credits && <CreditsSection credits={data.credits} />}
+          {showCredits && data.credits && <CreditsSection credits={data.credits} isOwner={isOwner} />}
         </>
       )}
+    </div>
+  );
+}
+
+/** Mes actual en hora de Lima (AAAA-MM). */
+function currentMonth() {
+  return new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString().slice(0, 7);
+}
+
+/** Elegir el mes y bajar el Excel con todo el detalle (ventas, clientes, productos y ganancia). */
+function ExcelDownload({ section }: { section: "tienda" | "credito" }) {
+  const [month, setMonth] = useState(currentMonth);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const download = async () => {
+    if (!month) return setError("Elige un mes.");
+    setBusy(true);
+    setError("");
+    try {
+      await adminApi.downloadReportExcel(section, month);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo generar el Excel.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="relative">
+      <div className="flex items-center gap-1.5 rounded-xl bg-white p-1.5 shadow-sm ring-1 ring-slate-200">
+        <input
+          type="month"
+          value={month}
+          max={currentMonth()}
+          onChange={(e) => setMonth(e.target.value)}
+          aria-label="Mes del Excel"
+          className="h-9 w-44 rounded-lg border border-slate-300 px-2 text-sm"
+        />
+        <button
+          onClick={download}
+          disabled={busy}
+          className="h-9 min-w-40 rounded-lg bg-emerald-600 px-3 text-sm font-bold text-white hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-60"
+        >
+          {busy ? "Generando…" : "📊 Descargar Excel"}
+        </button>
+      </div>
+      {error && <p className="absolute right-0 top-full mt-1 text-xs font-semibold text-red-600">{error}</p>}
     </div>
   );
 }
@@ -180,14 +229,19 @@ function Stat({ label, value, accent, accentGreen, warn }: { label: string; valu
 }
 
 /** Ventas al crédito del periodo: lo entregado, lo cobrado y quién debe. */
-function CreditsSection({ credits }: { credits: CreditsReport }) {
+function CreditsSection({ credits, isOwner }: { credits: CreditsReport; isOwner: boolean }) {
   return (
     <section className="space-y-4">
       <SectionTitle
         icon="🤝"
         title="Ventas al crédito"
         hint="Productos entregados para pagar en abonos. No se mezcla con la tienda virtual."
-        action={<Link href="/panel/creditos" className="text-sm font-bold text-violet-700 hover:underline">Ir a Créditos →</Link>}
+        action={
+          <div className="flex flex-wrap items-center gap-3">
+            {isOwner && <ExcelDownload section="credito" />}
+            <Link href="/panel/creditos" className="text-sm font-bold text-violet-700 hover:underline">Ir a Créditos →</Link>
+          </div>
+        }
       />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Stat label={`Cobrado en abonos (${credits.paymentsCount} ${credits.paymentsCount === 1 ? "abono" : "abonos"})`} value={formatPrice(credits.collected)} accentGreen />

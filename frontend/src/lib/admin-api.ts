@@ -444,6 +444,24 @@ export const adminApi = {
     );
   },
 
+  /** Descarga el Excel del mes (section: tienda | credito; month: AAAA-MM). */
+  async downloadReportExcel(section: "tienda" | "credito", month: string) {
+    const res = await authFetch(`/admin/reports/excel?section=${section}&month=${month}`);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(msg(data, "No se pudo generar el Excel."));
+    }
+    const name = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? `reporte-${month}.xlsx`;
+    const url = URL.createObjectURL(await res.blob());
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  },
+
   // ── Ventas al crédito (módulo opcional) ──
   creditSummary: () =>
     authFetch("/admin/credits/summary").then((r) =>
@@ -644,6 +662,8 @@ export interface AdminProduct {
   slug: string;
   description: string | null;
   price: string;
+  /** Lo que le costó a la dueña (privado). */
+  cost?: string | null;
   stock: number;
   reserved: number;
   sku: string | null;
@@ -666,6 +686,7 @@ export interface AdminProduct {
 export interface ProductInput {
   name: string;
   price: number;
+  cost?: number | null;
   stock: number;
   description?: string;
   sku?: string;

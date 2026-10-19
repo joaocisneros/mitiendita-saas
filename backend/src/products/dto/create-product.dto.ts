@@ -11,6 +11,7 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -49,6 +50,16 @@ export class CreateProductDto {
   )
   @Min(0, { message: 'El precio no puede ser negativo.' })
   price!: number;
+
+  /** Lo que le costó a la dueña (privado, para calcular la ganancia). null = sin costo. */
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsNumber(
+    { maxDecimalPlaces: 2 },
+    { message: 'El costo admite máximo 2 decimales.' },
+  )
+  @Min(0, { message: 'El costo no puede ser negativo.' })
+  cost?: number | null;
 
   @IsInt({ message: 'El stock debe ser un número entero.' })
   @Min(0, { message: 'El stock no puede ser negativo.' })

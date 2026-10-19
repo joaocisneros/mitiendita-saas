@@ -49,6 +49,7 @@
     "class-validator": "^0.15.1",
     "cloudinary": "^2.10.0",
     "dotenv": "^17.4.2",
+    "exceljs": "^4.4.0",
     "mariadb": "^3.5.3",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",

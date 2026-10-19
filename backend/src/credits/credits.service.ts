@@ -539,6 +539,7 @@ export class CreditsService {
           sku: product.sku,
           unitPrice,
           listPrice,
+          unitCost: product.cost === null ? null : Number(product.cost),
           quantity: item.quantity,
           lineTotal: round2(unitPrice * item.quantity),
         };

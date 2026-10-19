@@ -73,7 +73,14 @@ export default function SaLayout({ children }: { children: React.ReactNode }) {
     null,
   );
   const [profileOpen, setProfileOpen] = useState(false);
+  // Celular: 4 accesos abajo y "Más" abre el resto del menú.
+  const [moreOpen, setMoreOpen] = useState(false);
   const current = NAV.find((item) => isActive(item.href, pathname));
+  const MOBILE_MAIN = ["/superadmin", "/superadmin/empresas", "/superadmin/suscripciones", "/superadmin/actividad"];
+  const mainMobile = MOBILE_MAIN.map((href) => NAV.find((item) => item.href === href)!).filter(Boolean);
+  const moreItems = NAV.filter((item) => !MOBILE_MAIN.includes(item.href));
+  const moreActive = moreItems.some((item) => isActive(item.href, pathname));
+  const shortLabel = (href: string, label: string) => (href === "/superadmin" ? "Inicio" : label);
 
   useEffect(() => {
     if (!getSuperToken()) router.replace("/superadmin/login");
@@ -164,29 +171,71 @@ export default function SaLayout({ children }: { children: React.ReactNode }) {
             onLogout={logout}
           />
         </header>
-        <main className="min-h-0 flex-1 overflow-y-auto p-4 pb-20 text-slate-950 md:p-6 md:pb-6">
+        <main className="min-h-0 flex-1 overflow-y-auto p-4 pb-24 text-slate-950 md:p-6 md:pb-6">
           {children}
         </main>
-        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-slate-200 bg-white p-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] md:hidden">
-          {NAV.filter((item) =>
-            [
-              "/superadmin",
-              "/superadmin/empresas",
-              "/superadmin/suscripciones",
-              "/superadmin/planes",
-              "/superadmin/actividad",
-            ].includes(item.href),
-          ).map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className="flex flex-col items-center gap-1 py-1 text-xs font-bold text-slate-700"
-            >
-              <DashboardIcon name={item.icon} />
-              {item.label}
-            </Link>
-          ))}
+        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-slate-200 bg-white px-1 py-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] md:hidden">
+          {mainMobile.map((item) => {
+            const active = isActive(item.href, pathname);
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                onClick={() => setMoreOpen(false)}
+                className={`flex flex-col items-center gap-1 rounded-lg py-1 text-[10px] font-bold ${active && !moreOpen ? "text-violet-700" : "text-slate-600"}`}
+              >
+                <DashboardIcon name={item.icon} className="h-5 w-5" />
+                {shortLabel(item.href, item.label)}
+              </Link>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setMoreOpen((open) => !open)}
+            aria-expanded={moreOpen}
+            className={`flex flex-col items-center gap-1 rounded-lg py-1 text-[10px] font-bold ${moreOpen || moreActive ? "text-violet-700" : "text-slate-600"}`}
+          >
+            <DashboardIcon name="menu" className="h-5 w-5" />
+            Más
+          </button>
         </nav>
+
+        {/* "Más" en celular: el resto del menú en una hoja que sube desde abajo. */}
+        {moreOpen && (
+          <div className="fixed inset-0 z-30 md:hidden" onClick={() => setMoreOpen(false)}>
+            <div className="absolute inset-0 bg-slate-950/50" />
+            <div className="absolute inset-x-0 bottom-[64px] rounded-t-3xl bg-white p-4 pb-5 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+              <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-200" />
+              <p className="mb-3 px-1 text-xs font-black uppercase tracking-[0.14em] text-slate-400">Más opciones</p>
+              <div className="grid grid-cols-3 gap-2">
+                {moreItems.map((item) => {
+                  const active = isActive(item.href, pathname);
+                  return (
+                    <Link
+                      key={item.label}
+                      href={item.href}
+                      onClick={() => setMoreOpen(false)}
+                      className={`flex flex-col items-center gap-1.5 rounded-2xl px-2 py-3 text-center text-xs font-bold ring-1 ${
+                        active ? "bg-violet-50 text-violet-700 ring-violet-200" : "bg-slate-50 text-slate-700 ring-slate-200"
+                      }`}
+                    >
+                      <DashboardIcon name={item.icon} className="h-5 w-5" />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
+              <button
+                type="button"
+                onClick={logout}
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-red-50 py-2.5 text-sm font-bold text-red-700"
+              >
+                <DashboardIcon name="logout" className="h-4 w-4" />
+                Cerrar sesión
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {profileOpen && (

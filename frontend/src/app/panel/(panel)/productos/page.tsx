@@ -16,6 +16,7 @@ import { PRODUCT_TYPE_GROUPS, PRODUCT_TYPES, colorChipsFor, productTypesFor, sug
 const EMPTY = {
   name: "",
   price: "",
+  cost: "",
   stock: "",
   sku: "",
   categoryId: "",
@@ -205,6 +206,7 @@ export default function ProductosPage() {
     setForm({
       name: product.name,
       price: String(product.price),
+      cost: product.cost === null || product.cost === undefined ? "" : String(Number(product.cost)),
       stock: String(product.stock),
       sku: product.sku ?? "",
       categoryId: product.categoryId ?? "",
@@ -273,6 +275,8 @@ export default function ProductosPage() {
       const body = {
         name: form.name,
         price: Number(form.price),
+        // Costo privado (solo productos físicos): vacío = sin costo.
+        ...(isPhysical ? { cost: form.cost.trim() === "" ? null : Number(form.cost) } : {}),
         stock: form.variantStocks.length ? form.variantStocks.reduce((sum, row) => sum + row.stock, 0) : Number(form.stock),
         sku: form.sku || undefined,
         categoryId: form.categoryId || null,
@@ -623,6 +627,33 @@ export default function ProductosPage() {
                   disabled={!nameDone}
                 />
               </div>
+              {isPhysical && (
+                // Costo privado: solo la dueña lo ve; sirve para la ganancia en el Excel de Reportes.
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    label="Costo (opcional)"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Lo que te costó"
+                    value={form.cost}
+                    onChange={(value) => setForm({ ...form, cost: value })}
+                    disabled={!nameDone}
+                  />
+                  <div className="flex h-full flex-col justify-end">
+                    <span className="flex min-h-10 items-center rounded-lg bg-slate-50 px-3 text-[11px] font-semibold leading-4 text-slate-500 ring-1 ring-slate-200">
+                      {form.cost !== "" && form.price !== "" && Number(form.price) > 0 ? (
+                        <span className={Number(form.price) - Number(form.cost) >= 0 ? "text-emerald-700" : "text-red-600"}>
+                          Ganas S/ {(Number(form.price) - Number(form.cost)).toFixed(2)} por unidad (
+                          {Math.round(((Number(form.price) - Number(form.cost)) / Number(form.price)) * 100)}%)
+                        </span>
+                      ) : (
+                        "🔒 Solo tú lo ves. Sirve para ver tu ganancia en el Excel."
+                      )}
+                    </span>
+                  </div>
+                </div>
+              )}
               <div className={`grid gap-3 ${!isDigital && !isService ? "sm:grid-cols-2" : ""}`}>
                 <label className="block">
                   <span className="mb-1 block text-sm font-medium text-gray-700">Categoría{isPhysical ? " *" : ""}</span>

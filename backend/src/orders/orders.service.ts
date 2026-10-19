@@ -109,6 +109,8 @@ export class OrdersService {
           variantLabel(item.size, item.color) ?? item.variant?.trim() ?? null,
         sku: p.sku,
         unitPrice,
+        // Costo del momento: la ganancia de este mes no cambia si luego cambia el costo.
+        unitCost: p.cost === null ? null : Number(p.cost),
         quantity: item.quantity,
         lineTotal,
       };
@@ -219,6 +221,7 @@ export class OrdersService {
                 variant: l.variant,
                 sku: l.sku,
                 unitPrice: l.unitPrice,
+                unitCost: l.unitCost,
                 quantity: l.quantity,
                 lineTotal: l.lineTotal,
               })),

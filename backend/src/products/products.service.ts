@@ -94,6 +94,7 @@ export class ProductsService {
         slug,
         description: dto.description ?? null,
         price: dto.price,
+        cost: dto.cost ?? null,
         stock,
         sku: dto.sku ?? null,
         imageUrl: images[0] ?? null,

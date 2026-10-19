@@ -1,6 +1,7 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
+import ExcelJS from 'exceljs';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 
@@ -755,5 +756,105 @@ describe('Ventas al crédito (e2e)', () => {
     expect(items.every((m) => m.channel === 'credito')).toBe(true);
     expect(items.every((m) => m.code?.startsWith('CR-'))).toBe(true);
     expect(items.every((m) => Boolean(m.customerName))).toBe(true);
+  });
+
+  it('el Excel del mes muestra la venta con el costo del momento y la ganancia', async () => {
+    const product = (
+      await http()
+        .post('/api/products')
+        .set(A())
+        .send({ name: 'Blusa Costo', price: 100, cost: 60, stock: 4 })
+        .expect(201)
+    ).body as { id: string; cost: string };
+    expect(Number(product.cost)).toBe(60);
+    const customer = (
+      await http()
+        .post('/api/admin/credits/customers')
+        .set(A())
+        .send({
+          firstName: 'Lidia',
+          lastName: 'Ganancia',
+          phone: '987555777',
+          address: 'Jr. Junín 789',
+        })
+        .expect(201)
+    ).body as { id: string };
+    const sale = (
+      await http()
+        .post(`/api/admin/credits/customers/${customer.id}/sales`)
+        .set(A())
+        .send({ items: [{ productId: product.id, quantity: 2 }] })
+        .expect(201)
+    ).body as { code: string };
+    // Cambiar el costo después no cambia la ganancia de esa venta.
+    await http()
+      .patch(`/api/products/${product.id}`)
+      .set(A())
+      .send({ cost: 90 })
+      .expect(200);
+
+    const month = new Date(Date.now() - 5 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 7);
+    const res = await http()
+      .get(`/api/admin/reports/excel?section=credito&month=${month}`)
+      .set(A())
+      .buffer(true)
+      .parse((response, done) => {
+        const chunks: Buffer[] = [];
+        response.on('data', (chunk: Buffer) => chunks.push(chunk));
+        response.on('end', () => done(null, Buffer.concat(chunks)));
+      })
+      .expect(200);
+    expect(res.headers['content-type']).toContain('spreadsheetml');
+    expect(res.headers['content-disposition']).toContain(`${month}.xlsx`);
+
+    const workbook = new ExcelJS.Workbook();
+    const body = res.body as Buffer;
+    await workbook.xlsx.load(
+      body.buffer.slice(
+        body.byteOffset,
+        body.byteOffset + body.length,
+      ) as ArrayBuffer,
+    );
+    expect(workbook.worksheets.map((s) => s.name)).toEqual([
+      'Resumen',
+      'Ventas al crédito',
+      'Abonos',
+      'Clientas',
+      'Productos entregados',
+      'Por día',
+    ]);
+    const sheet = workbook.getWorksheet('Ventas al crédito')!;
+    let found: ExcelJS.CellValue[] = [];
+    sheet.eachRow((row) => {
+      const values = row.values as ExcelJS.CellValue[];
+      if (values.includes(sale.code)) found = values;
+    });
+    // [, fecha, código, clienta, celular, productos, normal, rebaja, total, abonado, debe, costo, ganancia, estado]
+    expect(found[3]).toBe('Lidia Ganancia');
+    expect(found[8]).toBe(200);
+    expect(found[11]).toBe(120);
+    expect(found[12]).toBe(80);
+
+    await http()
+      .get(`/api/admin/reports/excel?section=tienda&month=${month}`)
+      .set(A())
+      .expect(200);
+    await http()
+      .get('/api/admin/reports/excel?section=tienda&month=2026-13')
+      .set(A())
+      .expect(400);
+    await http()
+      .get(`/api/admin/reports/excel?section=otro&month=${month}`)
+      .set(A())
+      .expect(400);
+  });
+
+  it('el costo nunca sale en la tienda pública', async () => {
+    const res = await http()
+      .get(`/api/public/stores/cred-a-${tag}/products`)
+      .expect(200);
+    expect(JSON.stringify(res.body)).not.toContain('"cost"');
   });
 });
