@@ -21,7 +21,8 @@ export class SaPlansService {
   /** Planes activos para mostrar en la landing pública (sin datos sensibles). */
   listPublic() {
     return this.prisma.plan.findMany({
-      where: { isActive: true },
+      // Los planes privados no se muestran: solo el superadmin los asigna.
+      where: { isActive: true, isPublic: true },
       orderBy: { priceMonth: 'asc' },
       select: {
         id: true,
@@ -29,6 +30,13 @@ export class SaPlansService {
         slug: true,
         priceMonth: true,
         maxProducts: true,
+        maxImages: true,
+        featExcel: true,
+        featCredits: true,
+        featSeo: true,
+        featPrioritySupport: true,
+        featSetup: true,
+        featNoBranding: true,
       },
     });
   }

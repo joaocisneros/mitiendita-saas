@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { adminApi } from "@/lib/admin-api";
-import { DashboardIcon } from "@/components/DashboardIcon";
 import { BUSINESS_CATEGORIES, featuresOf } from "@/lib/business-categories";
 import { whatsappLink } from "@/lib/contact";
+import { getPublicLegal, getPublicPlans } from "@/lib/api";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -16,6 +17,16 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  // Plan elegido en la landing (?plan=pro): la prueba gratis empieza con ese plan.
+  const [plan, setPlan] = useState<{ slug: string; name: string; trialDays: number } | null>(null);
+  useEffect(() => {
+    const slug = new URLSearchParams(window.location.search).get("plan");
+    if (!slug) return;
+    Promise.all([getPublicPlans(), getPublicLegal()]).then(([plans, legal]) => {
+      const found = plans.find((p) => p.slug === slug);
+      if (found) setPlan({ slug: found.slug, name: found.name, trialDays: legal?.trialDays ?? 14 });
+    });
+  }, []);
 
   function set(key: keyof typeof form, value: string) { setForm((current) => ({ ...current, [key]: value })); }
   function normalizeSubdomain(value: string) { return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, ""); }
@@ -28,7 +39,7 @@ export default function RegisterPage() {
     if (form.password.length < 8) { setError("La contraseña debe tener al menos 8 caracteres."); return; }
     setLoading(true);
     try {
-      await adminApi.register({ ...form, email: form.email.trim(), subdomain: normalizeSubdomain(form.subdomain), whatsappNumber: normalizeWhatsapp(form.whatsappNumber) });
+      await adminApi.register({ ...form, ...(plan ? { plan: plan.slug } : {}), email: form.email.trim(), subdomain: normalizeSubdomain(form.subdomain), whatsappNumber: normalizeWhatsapp(form.whatsappNumber) });
       router.push("/panel");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "No se pudo crear la tienda.");
@@ -41,11 +52,12 @@ export default function RegisterPage() {
       <div className="mx-auto grid w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl lg:grid-cols-[0.75fr_1.25fr]">
         <section className="relative hidden overflow-hidden bg-violet-700 p-8 text-white lg:block">
           <div className="absolute -bottom-24 -right-24 h-72 w-72 rounded-full bg-fuchsia-400/25 blur-3xl" />
-          <div className="relative flex items-center gap-2.5"><span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/15"><DashboardIcon name="store" /></span><span className="text-lg font-black">MiTiendita</span></div>
+          <div className="relative flex items-center gap-2.5"><Image src="/logo.svg" alt="" width={36} height={36} className="h-9 w-9 rounded-lg" /><span className="text-lg font-black">MiTiendita</span></div>
           <div className="relative mt-10"><p className="text-[11px] font-bold uppercase tracking-[0.2em] text-violet-200">Empieza hoy</p><h1 className="mt-2.5 text-2xl font-black leading-tight">Tu tienda online lista para recibir pedidos.</h1><ul className="mt-6 space-y-2.5 text-sm font-semibold text-violet-100"><li>✓ Catálogo público propio</li><li>✓ Pedidos organizados</li><li>✓ Pagos por Yape</li><li>✓ Envío directo a WhatsApp</li></ul></div>
         </section>
         <section className="p-6 sm:p-8">
           <p className="text-xs font-bold uppercase tracking-wide text-violet-700">Crea tu cuenta</p><h2 className="mt-1 text-2xl font-black text-slate-950">Registra tu negocio</h2><p className="mt-1 text-sm font-medium text-slate-500">Completa los datos y entra directamente a tu panel.</p>
+          {plan && <p className="mt-3 inline-flex rounded-full bg-violet-50 px-3 py-1 text-xs font-bold text-violet-700 ring-1 ring-violet-200">Plan {plan.name} · prueba gratis de {plan.trialDays} días</p>}
           <form onSubmit={submit} className="mt-5 grid gap-3.5 sm:grid-cols-2">
             <Field label="Nombre del responsable"><input required minLength={2} value={form.responsibleName} onChange={(e) => set("responsibleName", e.target.value)} className="field" placeholder="María Pérez" /></Field>
             <Field label="Correo electrónico"><input required type="email" autoComplete="email" value={form.email} onChange={(e) => set("email", e.target.value)} className="field" placeholder="maria@empresa.com" /></Field>

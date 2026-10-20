@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { planLimitsOf } from '../common/plan/plan-limits';
 import { PrismaService } from '../prisma/prisma.service';
 import { MediaService } from '../media/media.service';
 import { normalizePhone } from '../common/utils/phone.util';
@@ -28,7 +29,7 @@ export class StoreSettingsService {
   }
 
   async planStatus(companyId: string) {
-    const [company, platform] = await Promise.all([
+    const [company, limits, platform] = await Promise.all([
       this.prisma.company.findUnique({
         where: { id: companyId },
         select: {
@@ -37,6 +38,7 @@ export class StoreSettingsService {
           plan: { select: { name: true } },
         },
       }),
+      planLimitsOf(this.prisma, companyId),
       this.prisma.platformSettings.findUnique({
         where: { id: 1 },
         select: { supportWhatsapp: true },
@@ -47,6 +49,8 @@ export class StoreSettingsService {
       currentPeriodEndsAt: company?.currentPeriodEndsAt ?? null,
       planName: company?.plan?.name ?? null,
       supportWhatsapp: platform?.supportWhatsapp || null,
+      // Lo que incluye su plan: el panel bloquea lo que no.
+      limits,
     };
   }
 
@@ -61,6 +65,13 @@ export class StoreSettingsService {
         socialImageUrl: true,
       },
     });
+
+    // Sin la función de Google en su plan, el título y la descripción propios no se guardan.
+    const { seo } = await planLimitsOf(this.prisma, companyId);
+    if (!seo) {
+      delete dto.seoTitle;
+      delete dto.seoDescription;
+    }
 
     await this.prisma.companySettings.update({
       where: { companyId },

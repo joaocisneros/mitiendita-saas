@@ -22,6 +22,7 @@ export default function RucDniPage() {
   const [documentNumber, setDocumentNumber] = useState("");
   const [result, setResult] = useState<DniResult | RucResult | null>(null);
   const [quota, setQuota] = useState<DocumentApiQuota | null>(null);
+  const [quotaLoading, setQuotaLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [verified, setVerified] = useState(false);
@@ -40,15 +41,18 @@ export default function RucDniPage() {
               setQuota(currentQuota);
               setVerified(true);
             })
-            .catch(() => {});
+            .catch(() => {})
+            .finally(() => setQuotaLoading(false));
+        else setQuotaLoading(false);
       })
-      .catch((cause) =>
+      .catch((cause) => {
+        setQuotaLoading(false);
         setError(
           cause instanceof Error
             ? cause.message
             : "No se pudo cargar la configuración.",
-        ),
-      );
+        );
+      });
   }, []);
 
   async function save() {
@@ -92,6 +96,7 @@ export default function RucDniPage() {
       return;
     }
     setBusy("test");
+    setQuotaLoading(true);
     setError("");
     setMessage("");
     try {
@@ -110,6 +115,7 @@ export default function RucDniPage() {
           : "No se pudo conectar con CismaFact.",
       );
     } finally {
+      setQuotaLoading(false);
       setBusy("");
     }
   }
@@ -180,7 +186,7 @@ export default function RucDniPage() {
         </div>
       )}
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(420px,0.8fr)_minmax(560px,1.4fr)]">
+      <div className="grid gap-5 xl:grid-cols-[minmax(420px,0.8fr)_minmax(560px,1.4fr)]">
         <div className="contents">
           <section className="order-1 space-y-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
             <div className="flex items-start gap-3 border-b border-slate-200 pb-4">
@@ -271,112 +277,163 @@ export default function RucDniPage() {
             </div>
           </section>
 
-          <section className="order-3 space-y-5 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6 xl:col-span-2">
-            <div className="border-b border-slate-200 pb-4">
-              <h2 className="text-lg font-black text-slate-950">
-                Realizar consulta
-              </h2>
-              <p className="mt-1 text-sm text-slate-600">
-                Selecciona el documento e ingresa únicamente números.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1">
-              {(["dni", "ruc"] as const).map((type) => (
+          <section className="order-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6 xl:col-span-2">
+            <div className="grid gap-6 lg:grid-cols-[minmax(360px,0.85fr)_minmax(480px,1.15fr)]">
+              <div className="space-y-5 lg:border-r lg:border-slate-200 lg:pr-6">
+                <div>
+                  <h2 className="text-lg font-black text-slate-950">
+                    Realizar consulta
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Selecciona el documento e ingresa únicamente números.
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1">
+                  {(["dni", "ruc"] as const).map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => {
+                        setDocumentType(type);
+                        setDocumentNumber("");
+                        setResult(null);
+                        setError("");
+                      }}
+                      className={`rounded-lg px-4 py-2.5 text-sm font-bold ${documentType === type ? "bg-white text-violet-700 shadow-sm" : "text-slate-600"}`}
+                    >
+                      {type.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-bold text-slate-800">
+                    Número de {documentType.toUpperCase()}
+                  </label>
+                  <input
+                    inputMode="numeric"
+                    value={documentNumber}
+                    onChange={(event) =>
+                      setDocumentNumber(
+                        event.target.value
+                          .replace(/\D/g, "")
+                          .slice(0, documentType === "dni" ? 8 : 11),
+                      )
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") void consult();
+                    }}
+                    className={CONTROL}
+                    placeholder={
+                      documentType === "dni"
+                        ? "Ingresa los 8 dígitos"
+                        : "Ingresa los 11 dígitos"
+                    }
+                  />
+                </div>
                 <button
-                  key={type}
-                  onClick={() => {
-                    setDocumentType(type);
-                    setDocumentNumber("");
-                    setResult(null);
-                    setError("");
-                  }}
-                  className={`rounded-lg px-4 py-2.5 text-sm font-bold ${documentType === type ? "bg-white text-violet-700 shadow-sm" : "text-slate-600"}`}
+                  onClick={consult}
+                  disabled={
+                    Boolean(busy) || !config?.configured || !config.enabled
+                  }
+                  className="w-full rounded-xl bg-slate-950 px-6 py-3 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-50"
                 >
-                  Consultar {type.toUpperCase()}
+                  {busy === "query"
+                    ? "Consultando…"
+                    : `Consultar ${documentType.toUpperCase()}`}
                 </button>
-              ))}
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <input
-                inputMode="numeric"
-                value={documentNumber}
-                onChange={(event) =>
-                  setDocumentNumber(
-                    event.target.value
-                      .replace(/\D/g, "")
-                      .slice(0, documentType === "dni" ? 8 : 11),
-                  )
-                }
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") void consult();
-                }}
-                className={CONTROL}
-                placeholder={
-                  documentType === "dni"
-                    ? "DNI de 8 dígitos"
-                    : "RUC de 11 dígitos"
-                }
-              />
-              <button
-                onClick={consult}
-                disabled={
-                  Boolean(busy) || !config?.configured || !config.enabled
-                }
-                className="shrink-0 rounded-xl bg-slate-950 px-6 py-3 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-50"
-              >
-                {busy === "query" ? "Consultando…" : "Consultar"}
-              </button>
-            </div>
-            {result ? (
-              <ResultCard result={result} />
-            ) : (
-              <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center text-sm font-medium text-slate-500">
-                El resultado aparecerá aquí.
               </div>
-            )}
+
+              <div className="flex min-h-64 flex-col">
+                <div>
+                  <h3 className="text-lg font-black text-slate-950">
+                    Resultado de la consulta
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Aquí aparecerá el nombre y la información encontrada.
+                  </p>
+                </div>
+                <div className="mt-5 flex flex-1">
+                  {result ? (
+                    <div className="w-full">
+                      <ResultCard result={result} />
+                    </div>
+                  ) : (
+                    <div className="grid w-full place-items-center rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center">
+                      <div>
+                        <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-violet-100 text-violet-700">
+                          <DashboardIcon name="idcard" className="h-5 w-5" />
+                        </span>
+                        <p className="mt-3 text-sm font-bold text-slate-700">
+                          Aún no realizaste una consulta
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Ingresa un documento válido en el formulario.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </section>
         </div>
 
-        {quota?.servicios && (
-          <section className="order-2 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
-            <div className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 pb-4">
-              <div>
-                <h2 className="text-lg font-black text-slate-950">
-                  Cuota disponible
-                </h2>
-                <p className="mt-1 text-sm text-slate-600">
-                  Plan {quota.plan ?? "—"} · Entorno {quota.entorno ?? "—"}
-                </p>
-              </div>
-              {quota.renueva && (
-                <span className="text-xs font-semibold text-slate-500">
-                  Renueva: {quota.renueva}
-                </span>
-              )}
+        <section className="order-2 flex min-h-[500px] flex-col rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
+          <div className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 pb-4">
+            <div>
+              <h2 className="text-lg font-black text-slate-950">
+                Cuota disponible
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Plan {quota?.plan ?? "—"} · Entorno {quota?.entorno ?? "—"}
+              </p>
             </div>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              {quota.servicios.map((service) => (
+            {quota?.renueva && (
+              <span className="text-xs font-semibold text-slate-500">
+                Renueva: {quota.renueva}
+              </span>
+            )}
+          </div>
+          <div className="mt-4 grid flex-1 gap-4 sm:grid-cols-2">
+            {quotaLoading || !quota?.servicios ? (
+              <>
+                {["DNI", "RUC"].map((type) => (
+                  <div
+                    key={type}
+                    className="flex min-h-64 animate-pulse items-center justify-center rounded-xl border border-slate-200 bg-slate-50"
+                  >
+                    <div className="text-center">
+                      <div className="mx-auto h-32 w-32 rounded-full bg-slate-200" />
+                      <div className="mx-auto mt-5 h-4 w-28 rounded bg-slate-200" />
+                      <p className="mt-3 text-xs font-semibold text-slate-400">
+                        Cargando cuota {type}…
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </>
+            ) : (
+              quota.servicios.map((service) => (
                 <div
                   key={service.servicio}
-                  className="flex items-center gap-4 rounded-xl border border-slate-200 p-4"
+                  className="flex min-h-64 items-center justify-center gap-7 rounded-xl border border-slate-200 p-6"
                 >
                   <div
-                    className="relative grid h-20 w-20 shrink-0 place-items-center rounded-full"
+                    className="relative grid h-36 w-36 shrink-0 place-items-center rounded-full shadow-sm"
                     style={{
                       background: `conic-gradient(rgb(124 58 237) ${Math.min(100, service.limite_mensual ? (service.usadas / service.limite_mensual) * 100 : 0)}%, rgb(241 245 249) 0)`,
                     }}
                   >
-                    <div className="grid h-14 w-14 place-items-center rounded-full bg-white text-center">
-                      <span className="text-base font-black text-slate-950">
+                    <div className="grid h-28 w-28 place-items-center rounded-full bg-white text-center shadow-inner">
+                      <span className="text-3xl font-black text-slate-950">
                         {service.usadas}
                       </span>
                     </div>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <span className="font-bold text-slate-900">
+                    <span className="text-base font-bold text-slate-900">
                       {service.nombre}
                     </span>
-                    <span className="mt-1 block text-lg font-black text-violet-700">
+                    <span className="mt-2 block text-2xl font-black text-violet-700">
                       {service.restantes} disponibles
                     </span>
                     <p className="mt-1 text-xs text-slate-500">
@@ -385,10 +442,10 @@ export default function RucDniPage() {
                     </p>
                   </div>
                 </div>
-              ))}
-            </div>
-          </section>
-        )}
+              ))
+            )}
+          </div>
+        </section>
       </div>
     </div>
   );

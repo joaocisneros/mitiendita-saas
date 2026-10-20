@@ -27,6 +27,8 @@ export interface StoreBrand {
   seoTitle: string | null;
   seoDescription: string | null;
   socialImageUrl: string | null;
+  /** false si su plan quita "Hecho con MiTiendita" del pie. */
+  showBranding?: boolean;
 }
 
 export interface StoreCategory {

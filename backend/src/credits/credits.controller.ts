@@ -10,6 +10,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { RequiresPlan } from '../common/plan/plan-limits';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Throttle } from '@nestjs/throttler';
 import { CreditsService } from './credits.service';
@@ -29,6 +30,7 @@ import {
 
 /** Ventas al crédito del panel del dueño. */
 @Roles('OWNER', 'EMPLOYEE')
+@RequiresPlan('credits')
 @Controller('admin/credits')
 export class CreditsController {
   constructor(

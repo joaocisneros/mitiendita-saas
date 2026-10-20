@@ -78,14 +78,24 @@ enum SubStatus {
 
 /// Planes comerciales (Básico, Pro, Premium). Asignados manualmente en el MVP.
 model Plan {
-  id          Int      @id @default(autoincrement())
-  name        String
-  slug        String   @unique
-  priceMonth  Decimal  @default(0) @map("price_month") @db.Decimal(10, 2)
-  maxProducts Int?     @map("max_products") // null = ilimitado
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id                  Int      @id @default(autoincrement())
+  name                String
+  slug                String   @unique
+  priceMonth          Decimal  @default(0) @map("price_month") @db.Decimal(10, 2)
+  maxProducts         Int?     @map("max_products") // null = ilimitado
+  // Lo que incluye el plan (lo marca el superadmin; el sistema lo bloquea o desbloquea).
+  maxImages           Int      @default(12) @map("max_images") // fotos por producto
+  featExcel           Boolean  @default(true) @map("feat_excel") // Excel de reportes con ganancia
+  featCredits         Boolean  @default(true) @map("feat_credits") // ventas al crédito y abonos
+  featSeo             Boolean  @default(true) @map("feat_seo") // título y descripción propios para Google
+  featPrioritySupport Boolean  @default(false) @map("feat_priority_support") // solo se muestra en precios
+  featSetup           Boolean  @default(false) @map("feat_setup") // "te dejamos la tienda lista" (servicio)
+  featNoBranding      Boolean  @default(false) @map("feat_no_branding") // quita "Hecho con MiTiendita" del pie de la tienda
+  isActive            Boolean  @default(true) @map("is_active")
+  // false = plan privado: no sale en la página de precios; solo el superadmin lo asigna.
+  isPublic            Boolean  @default(true) @map("is_public")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
 
   companies Company[]
 
@@ -438,7 +448,7 @@ model Order {
   idempotencyKey       String?   @map("idempotency_key")
   reservationExpiresAt DateTime? @map("reservation_expires_at")
   // El stock se aparta recién cuando el cliente sube su comprobante de pago.
-  stockReserved        Boolean        @default(false) @map("stock_reserved")
+  stockReserved        Boolean   @default(false) @map("stock_reserved")
   confirmedAt          DateTime? @map("confirmed_at")
   deliveredAt          DateTime? @map("delivered_at")
   cancelledAt          DateTime? @map("cancelled_at")
@@ -460,16 +470,16 @@ model Order {
 
 /// Línea de pedido con copia histórica (nombre, SKU, precio, cantidad).
 model OrderItem {
-  id        String  @id @default(uuid())
-  orderId   String  @map("order_id")
-  productId String? @map("product_id")
+  id        String   @id @default(uuid())
+  orderId   String   @map("order_id")
+  productId String?  @map("product_id")
   name      String
   variant   String? // talla/color elegido por el cliente (ej. "Talla M · Negro")
   sku       String?
-  unitPrice Decimal @map("unit_price") @db.Decimal(12, 2)
+  unitPrice Decimal  @map("unit_price") @db.Decimal(12, 2)
   unitCost  Decimal? @map("unit_cost") @db.Decimal(12, 2) // costo al momento de la venta (para la ganancia)
   quantity  Int
-  lineTotal Decimal @map("line_total") @db.Decimal(12, 2)
+  lineTotal Decimal  @map("line_total") @db.Decimal(12, 2)
 
   order   Order    @relation(fields: [orderId], references: [id])
   product Product? @relation(fields: [productId], references: [id])
@@ -690,17 +700,17 @@ model CreditSale {
 
 /// Línea de una venta al crédito (copia histórica del producto).
 model CreditSaleItem {
-  id           String  @id @default(uuid())
-  creditSaleId String  @map("credit_sale_id")
-  productId    String? @map("product_id")
+  id           String   @id @default(uuid())
+  creditSaleId String   @map("credit_sale_id")
+  productId    String?  @map("product_id")
   name         String
   variant      String?
   sku          String?
-  unitPrice    Decimal @map("unit_price") @db.Decimal(10, 2)
+  unitPrice    Decimal  @map("unit_price") @db.Decimal(10, 2)
   listPrice    Decimal? @map("list_price") @db.Decimal(10, 2) // precio normal del producto al venderlo (para ver rebajas)
   unitCost     Decimal? @map("unit_cost") @db.Decimal(10, 2) // costo al momento de la venta (para la ganancia)
   quantity     Int
-  lineTotal    Decimal @map("line_total") @db.Decimal(10, 2)
+  lineTotal    Decimal  @map("line_total") @db.Decimal(10, 2)
 
   sale    CreditSale @relation(fields: [creditSaleId], references: [id], onDelete: Cascade)
   product Product?   @relation(fields: [productId], references: [id])

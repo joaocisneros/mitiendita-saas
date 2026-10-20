@@ -16,6 +16,9 @@ export const metadata: Metadata = {
   title: "MiTiendita — Tu tienda online en minutos",
   description:
     "Crea tu tienda online, vende por WhatsApp y cobra con Yape. Para bodegas, farmacias y negocios locales.",
+  // Nombre del sitio en Google y al compartir (si no, Google muestra "Vercel").
+  applicationName: "MiTiendita",
+  openGraph: { siteName: "MiTiendita", locale: "es_PE", type: "website" },
   verification: {
     google: "PQJGhBISnxCqLIyALY1N_qb9cQvZYIDzP00_aYhu804",
   },

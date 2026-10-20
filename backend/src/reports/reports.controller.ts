@@ -2,6 +2,7 @@ import { Controller, Get, Query, StreamableFile } from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import { ExcelReportService } from './excel-report.service';
 import { Roles } from '../common/decorators/roles.decorator';
+import { RequiresPlan } from '../common/plan/plan-limits';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @Roles('OWNER', 'EMPLOYEE')
@@ -23,6 +24,7 @@ export class ReportsController {
 
   /** Excel del mes (tienda virtual o ventas al crédito). Trae costos y ganancia: solo la dueña. */
   @Roles('OWNER')
+  @RequiresPlan('excel')
   @Get('excel')
   async downloadExcel(
     @CurrentUser('companyId') companyId: string,

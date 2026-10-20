@@ -67,9 +67,22 @@ export default async function StorePage({
   const { subdomain } = await params;
   const { category, search, sort } = await searchParams;
 
+  // Tienda, catálogo y agotados se piden a la vez (no uno tras otro): así
+  // cambiar de categoría tarda una sola espera. El catálogo y los agotados se
+  // piden con los filtros de tienda con stock (la mayoría); si el rubro es
+  // otro, más abajo se vuelve a pedir con sus filtros.
+  const quiet = <T,>(promise: Promise<T>) => promise.catch(() => null);
+  const storePromise = storefrontApi.getStore(subdomain);
+  const catalogPromise = quiet(
+    storefrontApi.getProducts(subdomain, { category, search, sort, availability: "available" }),
+  );
+  const soldOutPromise = search
+    ? Promise.resolve(null)
+    : quiet(storefrontApi.getProducts(subdomain, { category, limit: 20, availability: "soldout" }));
+
   let data;
   try {
-    data = await storefrontApi.getStore(subdomain);
+    data = await storePromise;
   } catch {
     notFound();
   }
@@ -116,14 +129,10 @@ export default async function StorePage({
     const availability = physical ? ("available" as const) : undefined;
     products =
       archetype === "catalogo"
-        ? await storefrontApi.getProducts(subdomain, { category, search, sort, availability })
+        ? ((await catalogPromise) ?? (await storefrontApi.getProducts(subdomain, { category, search, sort, availability })))
         : await storefrontApi.getProducts(subdomain, { search, limit: 100, sort, availability });
     if (physical && !search) {
-      soldOut = (
-        await storefrontApi
-          .getProducts(subdomain, { category, limit: 20, availability: "soldout" })
-          .catch(() => ({ items: [] }))
-      ).items;
+      soldOut = (await soldOutPromise)?.items ?? [];
     }
   } catch {
     notFound();

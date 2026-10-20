@@ -103,6 +103,28 @@ describe('Auth y multi-tenant (e2e)', () => {
       .expect(409);
   });
 
+  it('la prueba gratis empieza con el plan elegido en la web (sin plan: Básico)', async () => {
+    const prisma = app.get(PrismaService);
+    const res = await http()
+      .post('/api/auth/register')
+      .send({
+        ...companyA,
+        email: `plan_${tag}@t.com`,
+        subdomain: `plan-pro-${tag}`,
+        plan: 'pro',
+      })
+      .expect(201);
+    const planOf = async (id: string) =>
+      (
+        await prisma.company.findUniqueOrThrow({
+          where: { id },
+          include: { plan: true },
+        })
+      ).plan?.slug;
+    expect(await planOf(res.body.company.id as string)).toBe('pro');
+    expect(await planOf(companyIdA)).toBe('basico');
+  });
+
   it('hace login y entrega tokens', async () => {
     const res = await http()
       .post('/api/auth/login')

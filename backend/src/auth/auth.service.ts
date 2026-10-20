@@ -61,7 +61,13 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
-    const [defaultPlan, settings] = await Promise.all([
+    const [chosenPlan, defaultPlan, settings] = await Promise.all([
+      // El plan elegido en la landing, si existe y está activo; si no, Básico.
+      dto.plan
+        ? this.prisma.plan.findFirst({
+            where: { slug: dto.plan, isActive: true, isPublic: true },
+          })
+        : null,
       this.prisma.plan.findUnique({ where: { slug: 'basico' } }),
       this.prisma.platformSettings.findUnique({ where: { id: 1 } }),
     ]);
@@ -75,7 +81,7 @@ export class AuthService {
         data: {
           name: dto.commercialName,
           subdomain,
-          planId: defaultPlan?.id ?? null,
+          planId: chosenPlan?.id ?? defaultPlan?.id ?? null,
           subscriptionStatus: 'trial',
           currentPeriodEndsAt: trialEndsAt,
         },

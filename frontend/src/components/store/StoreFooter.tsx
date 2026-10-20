@@ -85,7 +85,8 @@ export function StoreFooter({ store }: { store: StoreBrand }) {
 
         <div className="mt-7 flex flex-col items-center justify-between gap-2 border-t border-slate-100 pt-5 text-xs text-slate-400 sm:flex-row">
           <p>© {new Date().getFullYear()} {store.name}. Todos los derechos reservados.</p>
-          <p>Hecho con <span className="font-bold text-violet-600">MiTiendita</span> 🛍️</p>
+          {/* Los planes que lo incluyen quitan la marca MiTiendita. */}
+          {store.showBranding !== false && <p>Hecho con <span className="font-bold text-violet-600">MiTiendita</span> 🛍️</p>}
         </div>
       </div>
     </footer>

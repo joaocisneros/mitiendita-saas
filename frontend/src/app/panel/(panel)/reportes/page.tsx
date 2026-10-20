@@ -7,6 +7,7 @@ import { formatPrice } from "@/lib/format";
 import { orderStatusLabel } from "@/components/StatusBadge";
 import { BarChart, DonutChart } from "@/components/Charts";
 import { usesCredits } from "@/lib/business-categories";
+import { upgradeLink } from "@/components/PlanLock";
 
 export default function ReportsPage() {
   const [data, setData] = useState<ReportsData | null>(null);
@@ -18,6 +19,8 @@ export default function ReportsPage() {
   const [showCredits, setShowCredits] = useState(false);
   // El Excel trae costos y ganancia: solo la dueña lo descarga.
   const [isOwner, setIsOwner] = useState(false);
+  // Excel según el plan: si no lo incluye, el botón invita a mejorar el plan.
+  const [excelLock, setExcelLock] = useState<string | null>(null);
 
   const load = useCallback(() => {
     if (from && to && from > to) {
@@ -40,6 +43,10 @@ export default function ReportsPage() {
   useEffect(() => {
     adminApi.settings().then((s) => setShowCredits(usesCredits(s.businessType))).catch(() => {});
     adminApi.me().then((me) => setIsOwner(me.role === "OWNER")).catch(() => {});
+    adminApi
+      .planStatus()
+      .then((plan) => setExcelLock(plan.limits && !plan.limits.excel ? upgradeLink(plan.supportWhatsapp, plan.planName, "el Excel de reportes") : null))
+      .catch(() => {});
   }, []);
   useEffect(() => {
     const timer = window.setTimeout(load, 0);
@@ -83,7 +90,7 @@ export default function ReportsPage() {
             </section>
           )}
 
-          <SectionTitle icon="🛒" title="Tienda virtual" hint="Pedidos hechos en tu tienda online con pago aprobado." action={isOwner ? <ExcelDownload section="tienda" /> : undefined} />
+          <SectionTitle icon="🛒" title="Tienda virtual" hint="Pedidos hechos en tu tienda online con pago aprobado." action={isOwner ? <ExcelDownload section="tienda" lockedLink={excelLock} /> : undefined} />
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Stat label="Ventas totales (pagos aprobados)" value={formatPrice(data.totalRevenue)} accent />
             <Stat label="Pedidos pagados" value={String(data.totalOrders)} />
@@ -135,7 +142,7 @@ export default function ReportsPage() {
             </section>
           </div>
 
-          {showCredits && data.credits && <CreditsSection credits={data.credits} isOwner={isOwner} />}
+          {showCredits && data.credits && <CreditsSection credits={data.credits} isOwner={isOwner} excelLock={excelLock} />}
         </>
       )}
     </div>
@@ -148,10 +155,23 @@ function currentMonth() {
 }
 
 /** Elegir el mes y bajar el Excel con todo el detalle (ventas, clientes, productos y ganancia). */
-function ExcelDownload({ section }: { section: "tienda" | "credito" }) {
+function ExcelDownload({ section, lockedLink }: { section: "tienda" | "credito"; lockedLink?: string | null }) {
   const [month, setMonth] = useState(currentMonth);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  if (lockedLink) {
+    return (
+      <a
+        href={lockedLink}
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Tu plan no incluye el Excel. Escríbenos para mejorar tu plan."
+        className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-slate-100 px-3 text-sm font-bold text-slate-500 ring-1 ring-slate-200 hover:bg-slate-200"
+      >
+        🔒 Excel · mejora tu plan
+      </a>
+    );
+  }
   const download = async () => {
     if (!month) return setError("Elige un mes.");
     setBusy(true);
@@ -229,7 +249,7 @@ function Stat({ label, value, accent, accentGreen, warn }: { label: string; valu
 }
 
 /** Ventas al crédito del periodo: lo entregado, lo cobrado y quién debe. */
-function CreditsSection({ credits, isOwner }: { credits: CreditsReport; isOwner: boolean }) {
+function CreditsSection({ credits, isOwner, excelLock }: { credits: CreditsReport; isOwner: boolean; excelLock: string | null }) {
   return (
     <section className="space-y-4">
       <SectionTitle
@@ -238,7 +258,7 @@ function CreditsSection({ credits, isOwner }: { credits: CreditsReport; isOwner:
         hint="Productos entregados para pagar en abonos. No se mezcla con la tienda virtual."
         action={
           <div className="flex flex-wrap items-center gap-3">
-            {isOwner && <ExcelDownload section="credito" />}
+            {isOwner && <ExcelDownload section="credito" lockedLink={excelLock} />}
             <Link href="/panel/creditos" className="text-sm font-bold text-violet-700 hover:underline">Ir a Créditos →</Link>
           </div>
         }

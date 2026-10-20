@@ -118,12 +118,11 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     <div className="admin-shell flex h-dvh min-h-0 overflow-hidden bg-slate-100 text-slate-950">
       <aside className="hidden h-dvh w-56 shrink-0 flex-col overflow-y-auto bg-slate-950 px-3 py-4 text-white shadow-xl md:flex">
         <Link href="/panel" className="mb-6 flex items-center gap-2.5 px-1.5">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-600 shadow-lg shadow-violet-950/40">
-            <DashboardIcon name="store" className="h-[18px] w-[18px]" />
-          </span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.svg" alt="MiTiendita" className="h-9 w-9 shrink-0 rounded-lg shadow-lg shadow-black/30" />
           <span className="min-w-0">
             <span className="block truncate text-sm font-black tracking-tight">MiTiendita</span>
-            <span className="block text-[9px] font-medium uppercase tracking-[0.16em] text-slate-400">
+            <span className="block text-[9px] font-bold uppercase tracking-[0.16em] text-violet-300">
               Panel del negocio
             </span>
           </span>
@@ -184,9 +183,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         )}
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur md:px-6">
           <div className="flex items-center gap-2.5 md:hidden">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-600 text-white">
-              <DashboardIcon name="store" className="h-4 w-4" />
-            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.svg" alt="" className="h-8 w-8 rounded-lg" />
             <span className="text-sm font-black">MiTiendita</span>
           </div>
           <div className="hidden md:block">

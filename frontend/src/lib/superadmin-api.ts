@@ -109,6 +109,14 @@ export interface Plan {
   priceMonth: string;
   maxProducts: number | null;
   isActive: boolean;
+  isPublic: boolean;
+  maxImages: number;
+  featExcel: boolean;
+  featCredits: boolean;
+  featSeo: boolean;
+  featPrioritySupport: boolean;
+  featSetup: boolean;
+  featNoBranding: boolean;
 }
 export interface CompanyOwner {
   name: string;
@@ -192,6 +200,14 @@ export interface PlanInput {
   priceMonth: number;
   maxProducts?: number | null;
   isActive?: boolean;
+  isPublic?: boolean;
+  maxImages?: number;
+  featExcel?: boolean;
+  featCredits?: boolean;
+  featSeo?: boolean;
+  featPrioritySupport?: boolean;
+  featSetup?: boolean;
+  featNoBranding?: boolean;
 }
 
 export interface CreateCompanyInput {
@@ -221,6 +237,11 @@ export interface UpdateCompanyInput {
   storeAddress?: string;
   allowsPickup?: boolean;
   allowsDelivery?: boolean;
+}
+
+/** Pide a la web que muestre al instante los planes y la configuración guardados. */
+export function refreshPublicPrices() {
+  return fetch("/revalidar-precios", { method: "POST" }).catch(() => undefined);
 }
 
 export const superApi = {

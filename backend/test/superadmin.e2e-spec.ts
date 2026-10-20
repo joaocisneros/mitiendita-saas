@@ -213,8 +213,45 @@ describe('Superadmin y configuración (e2e)', () => {
         'platformName',
         'supportEmail',
         'supportWhatsapp',
+        // Días de prueba: la página de precios los muestra.
+        'trialDays',
       ].sort(),
     );
+  });
+
+  it('al editar un plan (casillas y fotos) la página de precios lo recibe', async () => {
+    const plans = await http()
+      .get('/api/superadmin/plans')
+      .set('Authorization', `Bearer ${superToken}`)
+      .expect(200);
+    const basico = (
+      plans.body as Array<{
+        id: number;
+        slug: string;
+        maxImages: number;
+        featExcel: boolean;
+        featNoBranding: boolean;
+      }>
+    ).find((plan) => plan.slug === 'basico')!;
+    await http()
+      .patch(`/api/superadmin/plans/${basico.id}`)
+      .set('Authorization', `Bearer ${superToken}`)
+      .send({ maxImages: 5, featExcel: false, featNoBranding: true })
+      .expect(200);
+    const pub = await http().get('/api/public/plans').expect(200);
+    expect(
+      (pub.body as Array<{ slug: string }>).find((p) => p.slug === 'basico'),
+    ).toMatchObject({ maxImages: 5, featExcel: false, featNoBranding: true });
+    // Lo deja como estaba.
+    await http()
+      .patch(`/api/superadmin/plans/${basico.id}`)
+      .set('Authorization', `Bearer ${superToken}`)
+      .send({
+        maxImages: basico.maxImages,
+        featExcel: basico.featExcel,
+        featNoBranding: basico.featNoBranding,
+      })
+      .expect(200);
   });
 
   it('registra las acciones sensibles en la auditoría', async () => {

@@ -4,6 +4,8 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { adminApi, type StoreSettings } from "@/lib/admin-api";
 import { BUSINESS_CATEGORIES } from "@/lib/business-categories";
+import { upgradeLink } from "@/components/PlanLock";
+import { metaDescription } from "@/lib/seo";
 
 const TABS = [
   { id: "marca", label: "Marca", icon: "🏪" },
@@ -20,8 +22,15 @@ export default function ConfigPage() {
   const [ok, setOk] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Título y descripción propios para Google solo si el plan lo incluye.
+  const [seoLock, setSeoLock] = useState<string | null>(null);
+
   useEffect(() => {
     adminApi.settings().then(setS).catch((e) => setError(e.message));
+    adminApi
+      .planStatus()
+      .then((plan) => setSeoLock(plan.limits && !plan.limits.seo ? upgradeLink(plan.supportWhatsapp, plan.planName, "el título y la descripción para Google") : null))
+      .catch(() => {});
   }, []);
 
   function set<K extends keyof StoreSettings>(k: K, v: StoreSettings[K]) {
@@ -225,11 +234,22 @@ export default function ConfigPage() {
               <p className="mt-2 text-xs font-medium leading-5 text-violet-700">Al activarlo, incluiremos tu tienda en el mapa que revisa Google. Google decide cuándo mostrarla y puede tardar varios días.</p>
             </div>
 
-            <Input label="Título que verá Google" value={s.seoTitle ?? ""} onChange={(v) => set("seoTitle", v)} placeholder={`${s.storeName} | Tienda online`} />
-            <div>
-              <Textarea label="Descripción para Google" value={s.seoDescription ?? ""} onChange={(v) => set("seoDescription", v)} />
-              <p className="mt-1 text-xs text-slate-400">Explica qué vendes y en qué ciudad atiendes. Recomendado: entre 120 y 160 caracteres.</p>
-            </div>
+            {seoLock ? (
+              // Su plan no incluye título y descripción propios: Google usa los automáticos.
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
+                <p className="text-sm font-bold text-slate-800">🔒 Título y descripción propios para Google</p>
+                <p className="mt-1 text-xs font-medium text-slate-500">Tu plan usa el título automático. Mejora tu plan para escribir el tuyo (por ejemplo, con tu distrito) y salir mejor en Google.</p>
+                <a href={seoLock} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex rounded-lg bg-green-600 px-3 py-2 text-xs font-bold text-white hover:bg-green-700">💬 Mejorar mi plan</a>
+              </div>
+            ) : (
+              <>
+                <Input label="Título que verá Google" value={s.seoTitle ?? ""} onChange={(v) => set("seoTitle", v)} placeholder={`${s.storeName} | Tienda online`} />
+                <div>
+                  <Textarea label="Descripción para Google" value={s.seoDescription ?? ""} onChange={(v) => set("seoDescription", v)} />
+                  <p className="mt-1 text-xs text-slate-400">Explica qué vendes y en qué ciudad atiendes. Recomendado: entre 120 y 160 caracteres.</p>
+                </div>
+              </>
+            )}
 
             <div>
               <span className="mb-1.5 block text-sm font-bold text-slate-800">Imagen para Google y redes</span>
@@ -246,9 +266,9 @@ export default function ConfigPage() {
 
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <p className="text-xs uppercase tracking-wide text-slate-400">Vista previa en Google</p>
-              <p className="mt-2 text-lg font-medium text-blue-700">{s.seoTitle || `${s.storeName} | Tienda online`}</p>
+              <p className="mt-2 text-lg font-medium text-blue-700">{(!seoLock && s.seoTitle) || `${s.storeName} | Tienda online`}</p>
               <p className="text-sm text-emerald-700">mitiendita-saas.vercel.app/tienda/{s.subdomain}</p>
-              <p className="mt-1 text-sm leading-5 text-slate-600">{s.seoDescription || s.description || `Conoce ${s.storeName} y compra por internet.`}</p>
+              <p className="mt-1 text-sm leading-5 text-slate-600">{metaDescription(!seoLock ? s.seoDescription : null) || metaDescription(s.description) || `Conoce ${s.storeName} y compra por internet.`}</p>
             </div>
           </div>
         )}

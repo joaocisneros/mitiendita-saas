@@ -28,6 +28,7 @@ import { ApiTokensModule } from './api-tokens/api-tokens.module';
 import { PublicApiModule } from './public-api/public-api.module';
 import { CreditsModule } from './credits/credits.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { PlanFeatureGuard } from './common/plan/plan-limits';
 import { RolesGuard } from './common/guards/roles.guard';
 import { TenancyMiddleware } from './tenancy/tenancy.middleware';
 import { TenantAuditInterceptor } from './common/interceptors/tenant-audit.interceptor';
@@ -63,6 +64,7 @@ import { TenantAuditInterceptor } from './common/interceptors/tenant-audit.inter
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: PlanFeatureGuard },
     { provide: APP_INTERCEPTOR, useClass: TenantAuditInterceptor },
   ],
 })

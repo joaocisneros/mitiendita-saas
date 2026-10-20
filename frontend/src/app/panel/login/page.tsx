@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { adminApi } from "@/lib/admin-api";
@@ -31,7 +32,7 @@ export default function PanelLogin() {
     <main className="grid min-h-screen bg-slate-50 lg:grid-cols-2">
       <section className="relative hidden overflow-hidden bg-slate-950 p-12 text-white lg:flex lg:flex-col lg:justify-between">
         <div className="absolute -right-32 -top-32 h-96 w-96 rounded-full bg-violet-600/30 blur-3xl" />
-        <div className="relative flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-600"><DashboardIcon name="store" /></span><span className="text-xl font-black">MiTiendita</span></div>
+        <div className="relative flex items-center gap-3"><Image src="/logo.svg" alt="" width={44} height={44} className="h-11 w-11 rounded-xl" /><span className="text-xl font-black">MiTiendita</span></div>
         <div className="relative max-w-lg">
           <p className="mb-4 text-sm font-bold uppercase tracking-[0.2em] text-violet-300">Tu negocio bajo control</p>
           <h1 className="text-4xl font-black leading-tight">Gestiona pedidos, productos y ventas desde un solo lugar.</h1>
@@ -42,7 +43,7 @@ export default function PanelLogin() {
 
       <section className="flex items-center justify-center px-5 py-10 sm:px-10">
         <div className="w-full max-w-md">
-          <div className="mb-8 lg:hidden"><div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-violet-600 text-white"><DashboardIcon name="store" /></div><p className="text-xl font-black text-slate-950">MiTiendita</p></div>
+          <div className="mb-8 lg:hidden"><Image src="/logo.svg" alt="" width={48} height={48} className="mb-4 h-12 w-12 rounded-xl" /><p className="text-xl font-black text-slate-950">MiTiendita</p></div>
           <p className="text-sm font-bold uppercase tracking-[0.16em] text-violet-700">Panel del negocio</p>
           <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950">Bienvenido de nuevo</h2>
           <p className="mt-2 text-sm font-medium text-slate-600">Ingresa tu correo y contraseña para continuar.</p>

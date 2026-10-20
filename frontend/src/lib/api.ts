@@ -22,10 +22,10 @@ function safeFetch(url: string, init?: RequestInit): Promise<Response> {
   });
 }
 
-async function get<T>(path: string, revalidate = 0): Promise<T> {
+async function get<T>(path: string, revalidate = 0, tags?: string[]): Promise<T> {
   const res = await fetch(
     `${API}${path}`,
-    revalidate > 0 ? { next: { revalidate } } : { cache: "no-store" },
+    revalidate > 0 ? { next: { revalidate, tags } } : { cache: "no-store" },
   );
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -163,12 +163,20 @@ export interface PublicPlan {
   slug: string;
   priceMonth: string;
   maxProducts: number | null;
+  // Lo que incluye (lo marca el superadmin). Opcional por compatibilidad.
+  maxImages?: number;
+  featExcel?: boolean;
+  featCredits?: boolean;
+  featSeo?: boolean;
+  featPrioritySupport?: boolean;
+  featSetup?: boolean;
+  featNoBranding?: boolean;
 }
 
 /** Planes activos para la landing. Devuelve [] si el backend no responde. */
 export async function getPublicPlans(): Promise<PublicPlan[]> {
   try {
-    return await get<PublicPlan[]>("/public/plans", 60);
+    return await get<PublicPlan[]>("/public/plans", 60, ["precios"]);
   } catch {
     return [];
   }
@@ -181,12 +189,13 @@ export interface PublicLegal {
   legalAddress: string | null;
   supportEmail: string | null;
   supportWhatsapp: string | null;
+  trialDays?: number;
 }
 
 /** Titular de la plataforma y contacto de soporte. Devuelve null si el backend no responde. */
 export async function getPublicLegal(): Promise<PublicLegal | null> {
   try {
-    return await get<PublicLegal>("/public/legal", 300);
+    return await get<PublicLegal>("/public/legal", 60, ["precios"]);
   } catch {
     return null;
   }

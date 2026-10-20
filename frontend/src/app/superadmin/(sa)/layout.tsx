@@ -107,15 +107,14 @@ export default function SaLayout({ children }: { children: React.ReactNode }) {
           href="/superadmin"
           className="mb-6 flex items-center gap-2.5 px-1.5"
         >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-600 shadow-lg shadow-violet-950/40">
-            <DashboardIcon name="store" className="h-[18px] w-[18px]" />
-          </span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.svg" alt="MiTiendita" className="h-9 w-9 shrink-0 rounded-lg shadow-lg shadow-black/30" />
           <span className="min-w-0">
             <span className="block truncate text-sm font-black">
               MiTiendita
             </span>
-            <span className="block text-[9px] font-bold uppercase tracking-[0.18em] text-violet-300">
-              Administrador global
+            <span className="block text-[9px] font-bold uppercase tracking-[0.16em] text-violet-300">
+              Superadmin
             </span>
           </span>
         </Link>
@@ -137,21 +136,25 @@ export default function SaLayout({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        <div className="rounded-lg bg-white/5 p-2.5 ring-1 ring-white/10">
-          <p className="text-[11px] font-bold text-white">
-            Administrador global
-          </p>
-          <p className="mt-0.5 text-[10px] leading-4 text-slate-400">
-            Acceso y control de todas las empresas.
-          </p>
+        {/* Mismo pie que el panel de la dueña: un acceso útil y cerrar sesión. */}
+        <div className="space-y-1 border-t border-white/10 pt-3">
+          <a
+            href="/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex w-full items-center gap-2.5 rounded-lg bg-white/5 px-2.5 py-2 text-[13px] font-semibold text-violet-200 transition hover:bg-violet-500/20 hover:text-white"
+          >
+            <DashboardIcon name="store" className="h-4 w-4" />
+            Ver la web ↗
+          </a>
+          <button
+            onClick={logout}
+            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-semibold text-slate-300 transition hover:bg-red-500/15 hover:text-red-300"
+          >
+            <DashboardIcon name="logout" className="h-4 w-4" />
+            Cerrar sesión
+          </button>
         </div>
-        <button
-          onClick={logout}
-          className="mt-2.5 flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-semibold text-slate-300 hover:bg-red-500/15 hover:text-red-300"
-        >
-          <DashboardIcon name="logout" className="h-4 w-4" />
-          Cerrar sesión
-        </button>
       </aside>
 
       <div className="flex h-dvh min-h-0 min-w-0 flex-1 flex-col overflow-hidden">

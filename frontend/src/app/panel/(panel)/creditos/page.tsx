@@ -7,6 +7,7 @@ import { DashboardIcon } from "@/components/DashboardIcon";
 import { usesCredits } from "@/lib/business-categories";
 import { CreditCustomerForm } from "@/components/credits/CreditCustomerForm";
 import { CreditCustomerModal } from "@/components/credits/CreditCustomerModal";
+import { PlanLockCard } from "@/components/PlanLock";
 
 const FILTERS = [
   { id: "all", label: "Todas" },
@@ -27,6 +28,8 @@ export default function CreditsPage() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [storeButton, setStoreButton] = useState({ on: false, whatsapp: false });
+  // Si su plan no incluye créditos, se muestra el aviso para mejorar el plan.
+  const [planLock, setPlanLock] = useState<{ planName: string | null; supportWhatsapp: string | null } | null>(null);
 
   const load = useCallback((term: string, status: FilterId) => {
     setLoading(true);
@@ -44,13 +47,14 @@ export default function CreditsPage() {
   }, []);
 
   useEffect(() => {
-    adminApi
-      .settings()
-      .then((settings) => {
+    Promise.all([adminApi.settings(), adminApi.planStatus().catch(() => null)])
+      .then(([settings, plan]) => {
         const ok = usesCredits(settings.businessType);
+        const inPlan = plan?.limits?.credits ?? true;
         setAllowed(ok);
         setStoreButton({ on: settings.creditRequests, whatsapp: Boolean(settings.whatsappNumber) });
-        if (ok) load("", "all");
+        if (!inPlan) setPlanLock({ planName: plan?.planName ?? null, supportWhatsapp: plan?.supportWhatsapp ?? null });
+        if (ok && inPlan) load("", "all");
       })
       .catch(() => setAllowed(false));
   }, [load]);
@@ -59,6 +63,17 @@ export default function CreditsPage() {
 
   if (allowed === null) {
     return <p className="p-10 text-center font-semibold text-slate-600">Cargando...</p>;
+  }
+  if (allowed && planLock) {
+    return (
+      <PlanLockCard
+        title="Ventas al crédito no está en tu plan"
+        text="Entrega productos para pagar en abonos, lleva la cuenta de cada clienta y mira quién te debe. Disponible en un plan superior."
+        feature="las ventas al crédito"
+        planName={planLock.planName}
+        supportWhatsapp={planLock.supportWhatsapp}
+      />
+    );
   }
   if (!allowed) {
     return (

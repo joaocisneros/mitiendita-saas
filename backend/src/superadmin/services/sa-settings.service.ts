@@ -30,6 +30,7 @@ export class SaSettingsService {
         legalAddress: true,
         supportEmail: true,
         supportWhatsapp: true,
+        trialDays: true,
       },
     });
     return {
@@ -39,6 +40,8 @@ export class SaSettingsService {
       legalAddress: s?.legalAddress?.trim() || null,
       supportEmail: s?.supportEmail || null,
       supportWhatsapp: s?.supportWhatsapp || null,
+      // La landing muestra "Probar gratis N días" con el valor configurado.
+      trialDays: s?.trialDays ?? 14,
     };
   }
 

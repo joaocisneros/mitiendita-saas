@@ -52,12 +52,19 @@ export class StorefrontService {
 
   /** Información de marca + categorías activas de la tienda. */
   async getStore(subdomain: string) {
-    const company = await this.resolveActiveCompany(subdomain);
-    const categories = await this.prisma.category.findMany({
-      where: { companyId: company.id, deletedAt: null, isActive: true },
-      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-      select: { id: true, name: true, slug: true, imageUrl: true },
-    });
+    // Tienda y categorías a la vez (una sola espera a la base de datos).
+    const [company, categories] = await Promise.all([
+      this.resolveActiveCompany(subdomain),
+      this.prisma.category.findMany({
+        where: {
+          company: { subdomain, deletedAt: null },
+          deletedAt: null,
+          isActive: true,
+        },
+        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+        select: { id: true, name: true, slug: true, imageUrl: true },
+      }),
+    ]);
 
     const s = company.settings;
     return {
@@ -89,10 +96,16 @@ export class StorefrontService {
         facebookUrl: s?.facebookUrl ?? null,
         tiktokUrl: s?.tiktokUrl ?? null,
         searchVisible: s?.searchVisible ?? true,
-        creditRequests: s?.creditRequests ?? false,
-        seoTitle: s?.seoTitle ?? null,
-        seoDescription: s?.seoDescription ?? null,
+        // Funciones del plan: si no las incluye, la tienda usa lo automático.
+        creditRequests:
+          (company.plan?.featCredits ?? true) && (s?.creditRequests ?? false),
+        seoTitle:
+          (company.plan?.featSeo ?? true) ? (s?.seoTitle ?? null) : null,
+        seoDescription:
+          (company.plan?.featSeo ?? true) ? (s?.seoDescription ?? null) : null,
         socialImageUrl: s?.socialImageUrl ?? null,
+        // "Hecho con MiTiendita" al pie: lo quitan los planes que lo incluyen.
+        showBranding: !(company.plan?.featNoBranding ?? false),
       },
       categories,
     };
@@ -111,13 +124,13 @@ export class StorefrontService {
       availability?: string;
     },
   ) {
-    const company = await this.resolveActiveCompany(subdomain);
     const freeStock = this.prisma.product.fields.reserved;
     const page = opts.page ?? 1;
     const limit = opts.limit ?? 24;
 
+    // Se filtra por el subdominio para consultar productos y tienda a la vez.
     const where = {
-      companyId: company.id,
+      company: { subdomain, deletedAt: null },
       deletedAt: null,
       isActive: true,
       ...(opts.categorySlug
@@ -141,7 +154,9 @@ export class StorefrontService {
     };
     const orderBy = ORDER[opts.sort ?? 'featured'] ?? ORDER.featured;
 
-    const [rows, total] = await Promise.all([
+    const [, rows, total] = await Promise.all([
+      // Valida que la tienda exista y esté activa (404/403) en paralelo.
+      this.resolveActiveCompany(subdomain),
       this.prisma.product.findMany({
         where,
         orderBy,
@@ -184,37 +199,39 @@ export class StorefrontService {
 
   /** Detalle público de un producto por su slug. */
   async getProduct(subdomain: string, slug: string) {
-    const company = await this.resolveActiveCompany(subdomain);
-    const product = await this.prisma.product.findFirst({
-      where: {
-        companyId: company.id,
-        slug,
-        deletedAt: null,
-        isActive: true,
-      },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        description: true,
-        price: true,
-        stock: true,
-        reserved: true,
-        imageUrl: true,
-        images: true,
-        brand: true,
-        material: true,
-        sizeGuide: true,
-        sizes: true,
-        colors: true,
-        variantStocks: true,
-        reservationPaymentMode: true,
-        reservationAdvanceType: true,
-        reservationAdvanceValue: true,
-        isFeatured: true,
-        category: { select: { name: true, slug: true } },
-      },
-    });
+    const [, product] = await Promise.all([
+      this.resolveActiveCompany(subdomain),
+      this.prisma.product.findFirst({
+        where: {
+          company: { subdomain, deletedAt: null },
+          slug,
+          deletedAt: null,
+          isActive: true,
+        },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          description: true,
+          price: true,
+          stock: true,
+          reserved: true,
+          imageUrl: true,
+          images: true,
+          brand: true,
+          material: true,
+          sizeGuide: true,
+          sizes: true,
+          colors: true,
+          variantStocks: true,
+          reservationPaymentMode: true,
+          reservationAdvanceType: true,
+          reservationAdvanceValue: true,
+          isFeatured: true,
+          category: { select: { name: true, slug: true } },
+        },
+      }),
+    ]);
     if (!product) throw new NotFoundException('Producto no encontrado.');
     return this.toPublicProduct(product);
   }
@@ -224,7 +241,12 @@ export class StorefrontService {
   private async resolveActiveCompany(subdomain: string) {
     const company = await this.prisma.company.findFirst({
       where: { subdomain, deletedAt: null },
-      include: { settings: true },
+      include: {
+        settings: true,
+        plan: {
+          select: { featSeo: true, featCredits: true, featNoBranding: true },
+        },
+      },
     });
     if (!company) throw new NotFoundException('Tienda no encontrada.');
     if (company.status !== 'active') {

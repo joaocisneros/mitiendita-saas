@@ -309,6 +309,8 @@ export const adminApi = {
         currentPeriodEndsAt: string | null;
         planName: string | null;
         supportWhatsapp: string | null;
+        /** Lo que incluye el plan de la tienda. */
+        limits?: { planName: string | null; maxImages: number; excel: boolean; credits: boolean; seo: boolean };
       }>(r, "Error"),
     ),
   updateSettings: (body: UpdateSettingsInput) =>
@@ -727,6 +729,8 @@ export interface RegisterInput {
   subdomain: string;
   whatsappNumber: string;
   businessType?: string;
+  /** Plan elegido en la landing (slug). */
+  plan?: string;
 }
 export interface AdminCustomer {
   id: string;

@@ -42,4 +42,10 @@ export class RegisterDto {
   @IsString()
   @MaxLength(60)
   businessType?: string; // opcional e informativo
+
+  /** Plan elegido en la landing (slug). La prueba gratis empieza con ese plan. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  plan?: string;
 }

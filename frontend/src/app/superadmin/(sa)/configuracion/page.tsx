@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { superApi, type PlatformSettings } from "@/lib/superadmin-api";
+import { superApi, type PlatformSettings, refreshPublicPrices } from "@/lib/superadmin-api";
 
 const CONTROL = "h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-400 focus:border-violet-600 focus:ring-4 focus:ring-violet-100";
 
@@ -47,6 +47,8 @@ export default function PlatformConfigPage() {
       });
       setSettings(result);
       setSaved(true);
+      // Días de prueba y WhatsApp de ventas: la página de precios los muestra al instante.
+      void refreshPublicPrices();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "No se pudo guardar la configuración.");
     } finally {

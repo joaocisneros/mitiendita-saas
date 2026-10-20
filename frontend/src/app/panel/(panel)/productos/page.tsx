@@ -129,6 +129,8 @@ export default function ProductosPage() {
   // Páginas de 20: con muchos productos se pasa a los siguientes (antes solo se veían los primeros 20).
   const [page, setPage] = useState(1);
   const [listInfo, setListInfo] = useState({ total: 0, pages: 1 });
+  // Fotos por producto según el plan (el superadmin lo cambia y se aplica al abrir el formulario).
+  const [maxImages, setMaxImages] = useState(6);
 
   const noun = isDigital ? "plan" : isService ? "servicio" : "producto";
   const nounPlural = isDigital ? "Planes" : isService ? "Servicios" : "Productos";
@@ -193,6 +195,15 @@ export default function ProductosPage() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appliedSearch, page]);
+
+  // Cada vez que se abre el formulario se lee el plan actual (cambios del superadmin al instante).
+  useEffect(() => {
+    if (!editing) return;
+    adminApi
+      .planStatus()
+      .then((status) => setMaxImages(status.limits?.maxImages ?? 6))
+      .catch(() => {});
+  }, [editing]);
 
   function openNew() {
     setForm({ ...EMPTY, stock: isDigital || isService ? "999" : "" });
@@ -328,7 +339,7 @@ export default function ProductosPage() {
   }
 
   async function onImages(files: FileList | File[]) {
-    const remaining = Math.max(0, 6 - form.images.length);
+    const remaining = Math.max(0, maxImages - form.images.length);
     const list = Array.from(files)
       .filter((file) => file.type.startsWith("image/"))
       .slice(0, remaining);
@@ -927,13 +938,13 @@ export default function ProductosPage() {
             <aside className={`flex flex-col gap-3 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200 ${isPhysical ? "lg:col-span-2 xl:col-span-1" : ""}`}>
               <div>
                 <span className="mb-2 block text-sm font-bold text-gray-700">
-                  Fotos {form.images.length > 0 && <span className="font-normal text-slate-400">({form.images.length}/6)</span>}
+                  Fotos {form.images.length > 0 && <span className="font-normal text-slate-400">({form.images.length}/{maxImages})</span>}
                 </span>
                 <div
                   className={`grid grid-cols-3 gap-3 xl:grid-cols-2 ${dragOver ? "rounded-2xl ring-2 ring-violet-400" : ""}`}
                   onDragOver={(event) => {
                     event.preventDefault();
-                    if (form.images.length < 6) setDragOver(true);
+                    if (form.images.length < maxImages) setDragOver(true);
                   }}
                   onDragLeave={() => setDragOver(false)}
                   onDrop={(event) => {
@@ -974,7 +985,7 @@ export default function ProductosPage() {
                       </button>
                     </div>
                   ))}
-                  {form.images.length < 6 && (
+                  {form.images.length < maxImages && (
                     <label className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-gray-200 text-center text-xs font-semibold text-violet-700 hover:border-violet-300 hover:bg-violet-50">
                       <span className="text-3xl leading-none">{uploading ? "…" : "+"}</span>
                       {uploading ? "Subiendo..." : "Agregar"}
@@ -994,7 +1005,8 @@ export default function ProductosPage() {
                   )}
                 </div>
                 <p className="mt-2 text-xs font-medium text-slate-500">
-                  La primera foto es la portada. Hasta 6 fotos por {noun}.
+                  La primera foto es la portada. Hasta {maxImages} fotos por {noun}.
+                  {form.images.length > maxImages && ` Este ${noun} conserva sus ${form.images.length} fotos; para agregar otra, quita alguna o mejora tu plan.`}
                 </p>
               </div>
 

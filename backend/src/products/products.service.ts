@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { planLimitsOf } from '../common/plan/plan-limits';
 import { PrismaService } from '../prisma/prisma.service';
 import { MediaService } from '../media/media.service';
 import { slugify } from '../common/utils/slug.util';
@@ -51,6 +52,19 @@ function cleanVariantStocks(
   });
 }
 
+/** Fotos por producto según el plan (el superadmin lo cambia y aplica al instante). */
+function assertImagesAllowed(
+  images: string[] | undefined,
+  maxImages: number,
+  planName?: string | null,
+) {
+  if (images && images.length > maxImages) {
+    throw new BadRequestException(
+      `Tu plan${planName ? ` ${planName}` : ''} permite hasta ${maxImages} fotos por producto.`,
+    );
+  }
+}
+
 @Injectable()
 export class ProductsService {
   constructor(
@@ -79,8 +93,10 @@ export class ProductsService {
     const name = toCatalogName(dto.name);
     const slug = await this.uniqueSlug(companyId, slugify(name));
     // La portada (imageUrl) siempre es la primera foto de la galería.
+    const { maxImages } = await planLimitsOf(this.prisma, companyId);
+    assertImagesAllowed(dto.images, maxImages, company.plan?.name);
     const images =
-      dto.images?.slice(0, 6) ?? (dto.imageUrl ? [dto.imageUrl] : []);
+      dto.images?.slice(0, maxImages) ?? (dto.imageUrl ? [dto.imageUrl] : []);
     const variantStocks = cleanVariantStocks(dto.variantStocks) ?? [];
     const stock = variantStocks.length
       ? variantStocks.reduce((sum, item) => sum + item.stock, 0)
@@ -168,7 +184,11 @@ export class ProductsService {
       (current.imageUrl ? [current.imageUrl] : []);
     if (dto.images !== undefined) {
       // La portada (imageUrl) siempre es la primera foto de la galería.
-      const images = dto.images.slice(0, 6);
+      const limits = await planLimitsOf(this.prisma, companyId);
+      // Si su plan bajó de fotos, se respetan las que ya tenía: solo no puede agregar más.
+      const allowed = Math.max(limits.maxImages, currentImages.length);
+      assertImagesAllowed(dto.images, allowed, limits.planName);
+      const images = dto.images.slice(0, allowed);
       data.images = images;
       data.imageUrl = images[0] ?? null;
     } else if (dto.imageUrl !== undefined) {

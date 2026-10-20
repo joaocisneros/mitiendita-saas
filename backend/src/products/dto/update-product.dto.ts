@@ -70,7 +70,8 @@ export class UpdateProductDto {
 
   @IsOptional()
   @IsArray()
-  @ArrayMaxSize(6, { message: 'Máximo 6 fotos por producto.' })
+  // El límite exacto lo pone el plan (ProductsService); aquí solo el tope general.
+  @ArrayMaxSize(12, { message: 'Máximo 12 fotos por producto.' })
   @IsString({ each: true })
   images?: string[];
 
