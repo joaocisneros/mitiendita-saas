@@ -2,7 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { getPublicLegal, getPublicPlans, type PublicPlan } from "@/lib/api";
 import { formatPrice } from "@/lib/format";
-import { BUSINESS_CATEGORIES } from "@/lib/business-categories";
 import { WhatsAppFloat } from "@/components/WhatsAppFloat";
 import { supportNumber, whatsappLink } from "@/lib/contact";
 
@@ -10,85 +9,133 @@ import { supportNumber, whatsappLink } from "@/lib/contact";
 // así en producción no queda un enlace roto si no quieres mostrar ninguna.
 const DEMO = process.env.NEXT_PUBLIC_DEMO_STORE ?? "";
 
-const features = [
+// Los 11 rubros del sistema con nombres que reconoce cualquier negocio (Ropa sale aparte de Comercio).
+const POPULAR_BUSINESSES = [
+  { emoji: "🛒", label: "Bodegas y tiendas" },
+  { emoji: "👕", label: "Ropa y calzado" },
+  { emoji: "🍕", label: "Restaurantes y comida" },
+  { emoji: "💅", label: "Belleza y barberías" },
+  { emoji: "🏥", label: "Salud y consultorios" },
+  { emoji: "🎓", label: "Academias y colegios" },
+  { emoji: "🏨", label: "Hoteles y turismo" },
+  { emoji: "🚗", label: "Talleres y autos" },
+  { emoji: "🏠", label: "Inmobiliarias" },
+  { emoji: "🧹", label: "Servicios a domicilio" },
+  { emoji: "🎬", label: "Cursos y membresías" },
+  { emoji: "📡", label: "Internet y celulares" },
+];
+
+// Lo que ofrece MiTiendita, juntado en 4 grupos para que se lea rápido.
+const featureGroups = [
   {
-    icon: "🛍️",
-    title: "Catálogo en minutos",
-    text: "Sube tus productos o servicios y comparte tu tienda al instante.",
+    icon: "🏪",
+    title: "Vende en línea",
+    subtitle: "Tu tienda abierta las 24 horas",
+    soft: "bg-violet-50 text-violet-700",
+    items: [
+      ["🛍️", "Catálogo en minutos", "Sube productos o servicios y comparte tu link"],
+      ["📱", "Pedidos por WhatsApp", "Llegan ordenados a tu chat"],
+      ["👕", "Tallas y colores", "Con el stock de cada uno"],
+      ["🗂️", "Categorías", "Tus clientes encuentran todo rápido"],
+      ["🎨", "Con tu marca", "Tu logo y tus colores"],
+      ["🔎", "Aparece en Google", "Te encuentran al buscarte"],
+    ],
   },
   {
-    icon: "📱",
-    title: "Vende por WhatsApp",
-    text: "Tus pedidos llegan ordenados a tu chat, sin perder ninguno.",
+    icon: "💳",
+    title: "Cobra y entrega",
+    subtitle: "Pagos y envíos sin enredos",
+    soft: "bg-fuchsia-50 text-fuchsia-700",
+    items: [
+      ["💜", "Yape y Plin", "Con el comprobante del cliente"],
+      ["🚚", "Delivery o recojo", "El cliente elige al pedir"],
+      ["🤝", "Ventas al crédito", "Anota abonos y quién te debe"],
+      ["🧾", "Recibos", "Listos para imprimir o enviar"],
+    ],
   },
   {
-    icon: "💜",
-    title: "Cobra con Yape",
-    text: "Muestra tu QR y confirma los pagos con el comprobante del cliente.",
+    icon: "🗓️",
+    title: "Citas y cuotas",
+    subtitle: "Reservas y pagos mensuales",
+    soft: "bg-sky-50 text-sky-700",
+    items: [
+      ["📅", "Reservas y citas", "Barberías, spas y consultorios"],
+      ["🔁", "Suscripciones", "Cobra mensualidades fijas"],
+      ["⏰", "Vencimientos", "Controlados automáticamente"],
+    ],
   },
   {
-    icon: "🚚",
-    title: "Entrega a domicilio o recojo",
-    text: "Tú decides cómo entregar; el cliente elige al hacer el pedido.",
-  },
-  {
-    icon: "📅",
-    title: "Reservas y citas",
-    text: "Ideal para barberías, spas y consultorios: agenda sin enredos.",
-  },
-  {
-    icon: "🔁",
-    title: "Suscripciones",
-    text: "Cobra mensualidades y controla los vencimientos automáticamente.",
-  },
-  {
-    icon: "📦",
-    title: "Control de inventario",
-    text: "Stock al día, alertas de bajo inventario y reportes de ventas.",
-  },
-  {
-    icon: "📊",
-    title: "Reportes claros",
-    text: "Mira cuánto vendes, tus mejores productos y tu crecimiento.",
+    icon: "📈",
+    title: "Controla tu negocio",
+    subtitle: "Stock, ventas y ganancias",
+    soft: "bg-emerald-50 text-emerald-700",
+    items: [
+      ["📦", "Inventario al día", "Con alertas de bajo stock"],
+      ["📊", "Reportes", "Ventas y productos más vendidos"],
+      ["💰", "Tu ganancia real", "Costo privado y Excel del mes"],
+      ["👥", "Tus clientes", "Teléfono, compras e historial"],
+    ],
   },
 ];
 
 const steps = [
   {
     n: "1",
+    time: "1 minuto",
     title: "Crea tu cuenta",
     text: "Regístrate gratis y elige el rubro de tu negocio.",
   },
   {
     n: "2",
+    time: "5 minutos",
     title: "Sube tus productos",
-    text: "Agrega fotos, precios y tu QR de Yape. Listo en minutos.",
+    text: "Agrega fotos, precios y tu QR de Yape o Plin.",
   },
   {
     n: "3",
+    time: "¡Listo!",
     title: "Comparte y vende",
-    text: "Manda el link de tu tienda y recibe pedidos por WhatsApp.",
+    text: "Comparte tu link en tus redes o WhatsApp y recibe pedidos, reservas y pagos al instante.",
   },
 ];
 
-const faqs = [
-  {
-    q: "¿Necesito conocimientos técnicos?",
-    a: "No. Si sabes usar WhatsApp, sabes usar MiTiendita. Todo se maneja desde tu celular.",
-  },
-  {
-    q: "¿Sirve para mi tipo de negocio?",
-    a: "Sí. Funciona para bodegas, restaurantes, barberías, academias, servicios digitales y mucho más.",
-  },
-  {
-    q: "¿Cómo cobro a mis clientes?",
-    a: "Muestras tu QR de Yape o Plin. El cliente paga y sube su comprobante; tú lo confirmas desde tu panel.",
-  },
-  {
-    q: "¿Puedo probar antes de pagar?",
-    a: "Claro. Puedes crear tu tienda y empezar a publicar sin costo. Pasas a un plan pagado cuando lo necesites.",
-  },
-];
+/** Preguntas frecuentes. Las respuestas siguen lo que dicen los Términos (sección 5). */
+function faqsFor(trialDays: number) {
+  return [
+    {
+      q: "¿Necesito conocimientos técnicos?",
+      a: "No. Si sabes usar WhatsApp, sabes usar MiTiendita. Todo se maneja desde tu celular.",
+    },
+    {
+      q: "¿Sirve para mi tipo de negocio?",
+      a: "Sí. Bodegas, ropa, restaurantes, barberías, consultorios, academias y más: cada rubro trae sus funciones.",
+    },
+    {
+      q: "¿Cómo cobro a mis clientes?",
+      a: "Muestras tu QR de Yape o Plin. El cliente paga y sube su comprobante; tú lo confirmas desde tu panel.",
+    },
+    {
+      q: "¿Cobran comisión por mis ventas?",
+      a: "No. El dinero de tus ventas va directo a tu Yape o Plin. Solo pagas el precio fijo de tu plan.",
+    },
+    {
+      q: "¿Puedo probar antes de pagar?",
+      a: `Sí. Tienes ${trialDays} días gratis para crear tu tienda y vender, sin tarjeta de crédito.`,
+    },
+    {
+      q: "¿Qué pasa cuando termina la prueba?",
+      a: "Eliges un plan y lo pagas con Yape o Plin. Si no, tu tienda se pausa, pero tus datos se guardan.",
+    },
+    {
+      q: "¿Puedo cancelar cuando quiera?",
+      a: "Sí. No hay contratos ni permanencia: dejas de pagar y listo. Si lo pides, te damos una copia de tu información.",
+    },
+    {
+      q: "¿Puedo cambiar de plan después?",
+      a: "Sí. Si tu negocio crece, escríbenos por WhatsApp y te pasamos a un plan con más productos y funciones.",
+    },
+  ];
+}
 
 /** Lo que traen todos los planes. Algunas funciones dependen del rubro (citas, delivery). */
 const BASE_FEATURES = [
@@ -197,37 +244,116 @@ export default async function Home() {
       <section className="relative overflow-hidden">
         <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-violet-50 via-white to-white" />
         <div className="pointer-events-none absolute -top-24 left-1/2 -z-10 h-72 w-72 -translate-x-1/2 rounded-full bg-violet-200/40 blur-3xl" />
-        <div className="mx-auto max-w-6xl px-5 py-16 text-center sm:py-24">
-          <span className="inline-block rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold text-violet-700">
-            Hecho para negocios del Perú 🇵🇪
-          </span>
-          <h1 className="mx-auto mt-5 max-w-3xl text-4xl font-extrabold leading-tight tracking-tight sm:text-6xl">
-            Tu tienda online,{" "}
-            <span className="text-violet-600">lista en minutos</span>
-          </h1>
-          <p className="mx-auto mt-5 max-w-xl text-lg text-gray-600">
-            Deja el desorden de WhatsApp. Publica tus productos, recibe pedidos
-            ordenados y cobra con Yape, todo desde tu celular.
-          </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link
-              href="/registro"
-              className="w-full rounded-full bg-violet-600 px-7 py-3.5 font-semibold text-white shadow-lg shadow-violet-600/20 transition hover:bg-violet-700 sm:w-auto"
-            >
-              Crear mi tienda gratis
-            </Link>
-            {DEMO && (
+        <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 py-14 sm:py-20 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="text-center lg:text-left">
+            <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-violet-700 shadow-sm ring-1 ring-violet-100">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              Hecho para negocios del Perú 🇵🇪
+            </span>
+            <h1 className="mt-5 text-4xl font-extrabold leading-[1.1] tracking-tight text-slate-950 sm:text-5xl lg:text-[3.4rem]">
+              Vende más con tu{" "}
+              <span className="bg-gradient-to-r from-violet-600 to-fuchsia-500 bg-clip-text text-transparent">
+                tienda online
+              </span>
+              , lista en minutos
+            </h1>
+            <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-slate-600 lg:mx-0">
+              Deja el desorden de WhatsApp. Publica tus productos, recibe
+              pedidos ordenados y cobra con Yape o Plin, todo desde tu celular.
+            </p>
+            <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start">
               <Link
-                href={`/tienda/${DEMO}`}
-                className="w-full rounded-full bg-white px-7 py-3.5 font-semibold text-violet-700 ring-1 ring-violet-200 hover:bg-violet-50 sm:w-auto"
+                href="/registro"
+                className="w-full rounded-xl bg-violet-600 px-7 py-3.5 font-semibold text-white shadow-lg shadow-violet-600/25 transition hover:-translate-y-0.5 hover:bg-violet-700 sm:w-auto"
               >
-                Ver tienda de ejemplo →
+                Crear mi tienda gratis
               </Link>
-            )}
+              {DEMO && (
+                <Link
+                  href={`/tienda/${DEMO}`}
+                  className="w-full rounded-xl bg-white px-7 py-3.5 font-semibold text-slate-800 ring-1 ring-slate-200 transition hover:ring-violet-300 sm:w-auto"
+                >
+                  Ver tienda de ejemplo →
+                </Link>
+              )}
+            </div>
+            <ul className="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm font-medium text-slate-600 lg:justify-start">
+              {[
+                "Sin tarjeta de crédito",
+                "Sin contratos",
+                "Listo para vender hoy",
+              ].map((item) => (
+                <li key={item} className="flex items-center gap-1.5">
+                  <span className="grid h-4 w-4 place-items-center rounded-full bg-emerald-100 text-[10px] font-black text-emerald-700">
+                    ✓
+                  </span>
+                  {item}
+                </li>
+              ))}
+            </ul>
           </div>
-          <p className="mt-5 text-sm font-medium text-slate-500">
-            Sin tarjeta de crédito · Listo para vender hoy mismo
-          </p>
+
+          {/* Vista de una tienda en el celular (hecha con código, carga al instante) */}
+          <div className="relative mx-auto hidden w-full max-w-[300px] sm:block" aria-hidden>
+            <div className="absolute -inset-10 -z-10 rounded-full bg-gradient-to-tr from-violet-200/60 to-fuchsia-200/40 blur-3xl" />
+            <div className="rounded-[2.4rem] bg-slate-900 p-2.5 shadow-2xl shadow-violet-900/20">
+              <div className="overflow-hidden rounded-[1.9rem] bg-white">
+                <div className="bg-gradient-to-r from-rose-600 to-amber-500 px-4 pb-4 pt-6 text-white">
+                  <div className="flex items-center gap-2.5">
+                    <span className="grid h-9 w-9 place-items-center rounded-full bg-white/90 text-lg">🍕</span>
+                    <div>
+                      <p className="text-sm font-bold leading-tight">Pizzería Bella Nápoli</p>
+                      <p className="text-[10px] text-white/80">Abierto · Delivery y recojo</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-1.5 px-3 pt-3 text-[10px] font-semibold">
+                  <span className="rounded-full bg-rose-600 px-2.5 py-1 text-white">Todo</span>
+                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">Pizzas</span>
+                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">Bebidas</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 p-3">
+                  {[
+                    ["🍕", "Pizza Americana", "S/ 32.00", "from-amber-100 to-orange-100"],
+                    ["🍕", "Pizza Hawaiana", "S/ 35.00", "from-yellow-100 to-amber-100"],
+                    ["🥤", "Gaseosa 1.5 L", "S/ 9.00", "from-sky-100 to-indigo-100"],
+                    ["🍰", "Torta de chocolate", "S/ 12.00", "from-rose-100 to-pink-100"],
+                  ].map(([emoji, name, price, bg]) => (
+                    <div key={name} className="rounded-xl ring-1 ring-slate-100">
+                      <div className={`grid h-16 place-items-center rounded-t-xl bg-gradient-to-br ${bg} text-2xl`}>
+                        {emoji}
+                      </div>
+                      <div className="p-2">
+                        <p className="truncate text-[10px] font-semibold text-slate-800">{name}</p>
+                        <div className="mt-1 flex items-center justify-between">
+                          <span className="text-[11px] font-black text-slate-900">{price}</span>
+                          <span className="grid h-5 w-5 place-items-center rounded-full bg-rose-600 text-xs font-bold text-white">+</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mx-3 mb-4 flex items-center justify-between rounded-xl bg-emerald-500 px-3 py-2.5 text-[11px] font-bold text-white">
+                  <span>Pedir por WhatsApp</span>
+                  <span>S/ 67.00</span>
+                </div>
+              </div>
+            </div>
+            <div className="absolute -left-14 top-24 flex items-center gap-2.5 rounded-xl bg-white px-3 py-2.5 shadow-xl ring-1 ring-slate-100">
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-emerald-100 text-sm">🛎️</span>
+              <div>
+                <p className="text-[11px] font-bold text-slate-900">Nuevo pedido</p>
+                <p className="text-[10px] text-slate-500">#1042 · S/ 67.00</p>
+              </div>
+            </div>
+            <div className="absolute -right-12 bottom-24 flex items-center gap-2.5 rounded-xl bg-white px-3 py-2.5 shadow-xl ring-1 ring-slate-100">
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-violet-100 text-sm">💜</span>
+              <div>
+                <p className="text-[11px] font-bold text-slate-900">Pago con Yape</p>
+                <p className="text-[10px] text-emerald-600">Comprobante recibido</p>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -241,15 +367,15 @@ export default async function Home() {
             Cada rubro tiene su propia tienda, con las funciones que realmente
             necesita.
           </p>
-          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            {BUSINESS_CATEGORIES.map((c) => (
+          <div className="mx-auto mt-8 grid max-w-5xl grid-cols-2 gap-3 lg:grid-cols-4">
+            {POPULAR_BUSINESSES.map((b) => (
               <div
-                key={c.id}
+                key={b.label}
                 className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3 ring-1 ring-black/5"
               >
-                <span className="text-2xl">{c.emoji}</span>
-                <span className="text-sm font-bold text-slate-800">
-                  {c.label}
+                <span className="text-2xl">{b.emoji}</span>
+                <span className="text-sm font-bold leading-tight text-slate-800">
+                  {b.label}
                 </span>
               </div>
             ))}
@@ -258,22 +384,28 @@ export default async function Home() {
       </section>
 
       {/* Cómo funciona */}
-      <section className="py-16">
-        <div className="mx-auto max-w-6xl px-5">
+      <section className="py-14">
+        <div className="mx-auto max-w-5xl px-5">
           <h2 className="text-center text-2xl font-extrabold tracking-tight sm:text-3xl">
             Empieza en 3 pasos
           </h2>
-          <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-3">
+          <p className="mx-auto mt-2 max-w-xl text-center text-gray-600">
+            Tu tienda vendiendo hoy mismo, sin saber de tecnología.
+          </p>
+          <div className="relative mt-8 grid gap-5 sm:mt-10 sm:grid-cols-3 sm:gap-6">
+            <div className="absolute left-[16.6%] right-[16.6%] top-6 hidden h-0.5 bg-gradient-to-r from-violet-200 via-violet-400 to-violet-200 sm:block" />
             {steps.map((s) => (
-              <div
-                key={s.n}
-                className="relative rounded-2xl bg-white p-6 text-center shadow-sm ring-1 ring-black/5"
-              >
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-violet-600 text-lg font-black text-white">
+              <div key={s.n} className="relative flex items-start gap-4 text-left sm:block sm:text-center">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-violet-600 text-lg font-black text-white shadow-lg shadow-violet-600/25 ring-4 ring-white sm:mx-auto">
                   {s.n}
                 </div>
-                <h3 className="mt-4 font-bold">{s.title}</h3>
-                <p className="mt-1 text-sm text-gray-600">{s.text}</p>
+                <div>
+                <span className="inline-block rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-bold text-violet-700 sm:mt-3">
+                  {s.time}
+                </span>
+                <h3 className="mt-2 font-bold text-slate-900">{s.title}</h3>
+                <p className="mt-1 text-sm text-gray-600 sm:mx-auto sm:max-w-[16rem]">{s.text}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -286,15 +418,37 @@ export default async function Home() {
           <h2 className="text-center text-2xl font-extrabold tracking-tight sm:text-3xl">
             Todo lo que tu negocio necesita
           </h2>
-          <div className="mt-10 grid grid-cols-1 gap-6 px-0 sm:grid-cols-2 lg:grid-cols-4">
-            {features.map((f) => (
+          <p className="mx-auto mt-2 max-w-xl text-center text-gray-600">
+            Todo incluido en una sola herramienta, desde tu celular.
+          </p>
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {featureGroups.map((g) => (
               <div
-                key={f.title}
-                className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-black/5"
+                key={g.title}
+                className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5"
               >
-                <div className="text-3xl">{f.icon}</div>
-                <h3 className="mt-3 font-bold">{f.title}</h3>
-                <p className="mt-1 text-sm text-gray-600">{f.text}</p>
+                <div className="flex items-center gap-3">
+                  <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl text-2xl ${g.soft}`}>
+                    {g.icon}
+                  </span>
+                  <div>
+                    <h3 className="font-extrabold leading-tight text-slate-900">{g.title}</h3>
+                    <p className="text-xs text-slate-500">{g.subtitle}</p>
+                  </div>
+                </div>
+                <ul className="mt-4 space-y-3 border-t border-slate-100 pt-4">
+                  {g.items.map(([icon, title, text]) => (
+                    <li key={title} className="flex items-start gap-3">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-slate-50 text-lg ring-1 ring-slate-100">
+                        {icon}
+                      </span>
+                      <span className="leading-snug">
+                        <b className="block text-sm font-semibold text-slate-900">{title}</b>
+                        <span className="text-xs text-slate-500">{text}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             ))}
           </div>
@@ -458,76 +612,111 @@ export default async function Home() {
       </section>
 
       {/* Preguntas frecuentes */}
-      <section className="bg-gray-50 py-16">
-        <div className="mx-auto max-w-3xl px-5">
+      <section className="bg-gray-50 py-14">
+        <div className="mx-auto max-w-5xl px-5">
           <h2 className="text-center text-2xl font-extrabold tracking-tight sm:text-3xl">
             Preguntas frecuentes
           </h2>
-          <div className="mt-8 space-y-3">
-            {faqs.map((f) => (
-              <details
+          <div className="mt-6 grid gap-2.5 md:grid-cols-2">
+            {faqsFor(trialDays).map((f) => (
+              <div
                 key={f.q}
-                className="group rounded-xl bg-white p-5 shadow-sm ring-1 ring-black/5"
+                className="rounded-lg bg-white px-4 py-3 ring-1 ring-black/5"
               >
-                <summary className="flex cursor-pointer list-none items-center justify-between font-bold text-slate-800">
-                  {f.q}
-                  <span className="text-violet-600 transition group-open:rotate-45">
-                    +
-                  </span>
-                </summary>
-                <p className="mt-3 text-sm text-gray-600">{f.a}</p>
-              </details>
+                <h3 className="text-sm font-bold text-slate-900">{f.q}</h3>
+                <p className="mt-1 text-[13px] leading-snug text-gray-600">{f.a}</p>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
       {/* Pie */}
-      <footer className="border-t border-black/5 py-10">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-5 sm:flex-row">
-          <span className="flex items-center gap-2 text-lg font-extrabold tracking-tight">
-            <Image
-              src="/logo.svg"
-              alt=""
-              width={32}
-              height={32}
-              className="h-8 w-8 rounded-lg"
-            />
-            <span>
-              Mi<span className="text-violet-600">Tiendita</span>
+      <footer className="border-t border-black/5 bg-white">
+        <div className="mx-auto grid max-w-6xl grid-cols-3 gap-x-4 gap-y-8 px-5 py-10 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
+          <div className="col-span-3 lg:col-span-1">
+            <span className="flex items-center gap-2 text-lg font-extrabold tracking-tight">
+              <Image
+                src="/logo.svg"
+                alt=""
+                width={32}
+                height={32}
+                className="h-8 w-8 rounded-lg"
+              />
+              <span>
+                Mi<span className="text-violet-600">Tiendita</span>
+              </span>
             </span>
-          </span>
-          <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm font-medium text-slate-600">
-            <Link href="/registro" className="hover:text-violet-700">
-              Crear tienda
-            </Link>
-            <Link href="/panel/login" className="hover:text-violet-700">
-              Ingresar
-            </Link>
-            <Link href="#precios" className="hover:text-violet-700">
-              Precios
-            </Link>
-            <Link href="/api-docs" className="hover:text-violet-700">
-              Documentación de la API
-            </Link>
-            <Link href="/terminos" className="hover:text-violet-700">
-              Términos
-            </Link>
-            <Link href="/privacidad" className="hover:text-violet-700">
-              Privacidad
-            </Link>
-            <a
-              href={whatsappLink()}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-bold text-green-600 hover:text-green-700"
-            >
-              WhatsApp
-            </a>
-          </nav>
-          <span className="text-sm text-gray-400">
-            © {new Date().getFullYear()} MiTiendita · Perú
-          </span>
+            <p className="mt-3 max-w-xs text-sm text-slate-500">
+              Tu tienda online para vender por WhatsApp y cobrar con Yape o
+              Plin.
+            </p>
+          </div>
+          {[
+            {
+              title: "Producto",
+              links: [
+                ["Crear tienda", "/registro"],
+                ["Ingresar", "/panel/login"],
+                ["Precios", "#precios"],
+              ],
+            },
+            {
+              title: "Legal",
+              links: [
+                ["Términos", "/terminos"],
+                ["Privacidad", "/privacidad"],
+              ],
+            },
+            {
+              title: "Ayuda",
+              links: [["Documentación de la API", "/api-docs"]],
+            },
+          ].map((col) => (
+            <div key={col.title}>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                {col.title}
+              </p>
+              <ul className="mt-3 space-y-2 text-sm font-medium text-slate-600">
+                {col.links.map(([label, href]) => (
+                  <li key={href}>
+                    <Link href={href} className="hover:text-violet-700">
+                      {label}
+                    </Link>
+                  </li>
+                ))}
+                {col.title === "Ayuda" && (
+                  <li>
+                    <a
+                      href={whatsappLink()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold text-green-600 hover:text-green-700"
+                    >
+                      Escríbenos por WhatsApp
+                    </a>
+                  </li>
+                )}
+              </ul>
+            </div>
+          ))}
+        </div>
+        <div className="border-t border-black/5">
+          <div className="mx-auto flex max-w-6xl flex-col items-center justify-center gap-x-3 gap-y-1 px-5 pb-20 pt-5 text-xs text-slate-400 sm:flex-row sm:pb-6">
+            <span>© {new Date().getFullYear()} MiTiendita · Hecho en Perú</span>
+            <span className="hidden sm:inline">·</span>
+            <span>
+              Desarrollado por{" "}
+              <a
+                href="https://cytios-systems.vercel.app/"
+                target="_blank"
+                rel="noopener"
+                className="font-semibold text-slate-600 hover:text-violet-700"
+              >
+                Cytios Systems
+              </a>
+            </span>
+          </div>
         </div>
       </footer>
 
