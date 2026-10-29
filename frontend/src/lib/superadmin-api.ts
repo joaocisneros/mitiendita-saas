@@ -133,6 +133,9 @@ export interface SaCompany {
   orders: number;
   products: number;
   customers: number;
+  /** Clientas de crédito y cuántas deben (solo para ver). */
+  creditCustomers?: number;
+  creditDebtors?: number;
   subscriptionStatus: "trial" | "active" | "past_due" | "cancelled";
   currentPeriodEndsAt: string | null;
   lastPaymentAt: string | null;

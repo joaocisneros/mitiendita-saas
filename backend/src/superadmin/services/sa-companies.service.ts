@@ -163,12 +163,30 @@ export class SaCompaniesService {
               orders: { where: VALID_ORDER },
               products: true,
               customers: { where: BUYER_CUSTOMER },
+              creditCustomers: true,
             },
           },
         },
       }),
       this.prisma.company.count({ where }),
     ]);
+    // Clientas de crédito que deben (tienen alguna venta al crédito pendiente).
+    const debtRows = companies.length
+      ? await this.prisma.creditSale.groupBy({
+          by: ['companyId', 'creditCustomerId'],
+          where: {
+            companyId: { in: companies.map((company) => company.id) },
+            status: 'pending',
+          },
+        })
+      : [];
+    const debtorsByCompany = new Map<string, number>();
+    for (const row of debtRows) {
+      debtorsByCompany.set(
+        row.companyId,
+        (debtorsByCompany.get(row.companyId) ?? 0) + 1,
+      );
+    }
     const paymentAudits = companies.length
       ? await this.prisma.superAdminAudit.findMany({
           where: {
@@ -198,6 +216,9 @@ export class SaCompaniesService {
         orders: company._count.orders,
         products: company._count.products,
         customers: company._count.customers,
+        // Solo para ver: clientas de crédito y cuántas deben.
+        creditCustomers: company._count.creditCustomers,
+        creditDebtors: debtorsByCompany.get(company.id) ?? 0,
         subscriptionStatus: company.subscriptionStatus,
         currentPeriodEndsAt: company.currentPeriodEndsAt,
         lastPaymentAt: lastPaymentByCompany.get(company.id) ?? null,

@@ -189,6 +189,7 @@ export default function CompaniesPage() {
                 <th className="p-4">Productos</th>
                 <th className="p-4">Pedidos</th>
                 <th className="p-4">Clientes</th>
+                <th className="p-4">Crédito</th>
                 <th className="p-4 text-right">Acciones</th>
               </tr>
             </thead>
@@ -255,6 +256,26 @@ export default function CompaniesPage() {
                   <td className="p-4 font-bold text-slate-900">
                     {company.customers}
                   </td>
+                  {/* Ventas al crédito: cuántas clientas tiene y cuántas deben. */}
+                  <td className="p-4">
+                    {company.creditCustomers ? (
+                      <div className="leading-tight">
+                        <p className="font-bold text-slate-900">
+                          {company.creditCustomers}{" "}
+                          {company.creditCustomers === 1 ? "clienta" : "clientas"}
+                        </p>
+                        {company.creditDebtors ? (
+                          <p className="text-xs font-semibold text-amber-700">
+                            {company.creditDebtors} {company.creditDebtors === 1 ? "debe" : "deben"}
+                          </p>
+                        ) : (
+                          <p className="text-xs font-semibold text-emerald-700">Todas al día</p>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs font-medium text-slate-400">Sin crédito</span>
+                    )}
+                  </td>
                   <td className="p-4 text-right">
                     <div className="flex justify-end gap-1.5">
                       <button
@@ -274,7 +295,7 @@ export default function CompaniesPage() {
               {!loading && companies.length === 0 && (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="p-12 text-center font-semibold text-slate-600"
                   >
                     No se encontraron empresas.
@@ -284,7 +305,7 @@ export default function CompaniesPage() {
               {loading && (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="p-12 text-center font-semibold text-slate-600"
                   >
                     Cargando empresas...
